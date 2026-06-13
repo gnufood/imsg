@@ -1,0 +1,9 @@
+pre-commit:
+  commands:
+    rust:
+      run: just pre-commit
+
+pre-push:
+  commands:
+    rust:
+      run: just pre-push

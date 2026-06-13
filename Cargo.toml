@@ -1,0 +1,55 @@
+[workspace]
+members = [
+    "crates/imsg-obex",
+    "crates/imsg-transport",
+    "crates/imsg-formats",
+    "crates/imsg-map",
+    "crates/imsg-pbap",
+    "crates/imsg-config",
+    "crates/imsg-session",
+    "crates/cli",
+]
+resolver = "2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+unused_must_use = "deny"
+unreachable_pub = "deny"
+unused_imports = "deny"
+unused_mut = "deny"
+dead_code = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unimplemented = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+indexing_slicing = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+todo = "deny"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Ethan <claude@gnu.foo>"]
+license = "MIT"
+rust-version = "1.89.0"
+repository = "https://github.com/gnufood/imsg"
+readme = "README.md"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = true
+opt-level = "z"
+debug = false
+strip = true
+codegen-units = 1
+incremental = false
+panic = "abort"

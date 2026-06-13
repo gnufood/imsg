@@ -1,0 +1,23 @@
+[package]
+name = "imsg-map"
+description = "MAP protocol logic — commands, folder navigation, MNS server, and iOS quirks"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+bitflags = "2.12.1"
+bytes = "1.11.1"
+futures = "0.3"
+quick-xml = "0.40.1"
+formats = { package = "imsg-formats", version = "0.1.0", path = "../imsg-formats" }
+obex-core = { package = "imsg-obex", version = "0.1.0", path = "../imsg-obex" }
+thiserror = "2.0.18"
+tokio = { version = "1.52.3", features = ["full"] }
+transport = { package = "imsg-transport", version = "0.1.0", path = "../imsg-transport" }
+
+[lints]
+workspace = true

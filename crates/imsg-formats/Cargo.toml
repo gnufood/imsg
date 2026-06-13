@@ -1,0 +1,22 @@
+[package]
+name = "imsg-formats"
+description = "Parsed representations of Bluetooth MAP and PBAP wire formats"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+calcard = "0.3.4"
+quick-xml = "0.40.1"
+thiserror = "2.0.18"
+winnow = "1.0.3"
+
+[dev-dependencies]
+pretty_assertions = "1"
+rstest = "0.25"
+
+[lints]
+workspace = true

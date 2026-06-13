@@ -1,0 +1,24 @@
+[workspace]
+members = ["cargo:."]
+
+# Config for 'dist'
+[dist]
+cargo-dist-version = "0.32.0"
+ci = "github"
+installers = ["shell"]
+targets = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+install-path = "CARGO_HOME"
+install-updater = false
+simple-download-url = "https://releases.gnu.foo/imsg/{tag}"
+hosting = ["simple", "github"]
+changelog-style = "git-cliff"
+allow-dirty = ["ci"]
+
+[dist.dependencies.apt]
+libdbus-1-dev = '*'
+libbluetooth-dev = '*'
+pkg-config = '*'
+
+[[dist.extra-artifacts]]
+artifacts = ["tools/setup-x86_64", "tools/setup-aarch64"]
+build = ["true"]

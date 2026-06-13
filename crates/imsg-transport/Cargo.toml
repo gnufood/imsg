@@ -1,0 +1,29 @@
+[package]
+name = "imsg-transport"
+description = "RFCOMM and iroh QUIC transport connectors for OBEX streams"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+bluer = { version = "0.17.4", features = ["rfcomm", "bluetoothd"] }
+bytes = "1.11.1"
+futures = "0.3"
+iroh = "0.98"
+obex-core = { package = "imsg-obex", version = "0.1.0", path = "../imsg-obex" }
+tokio = { version = "1.52.3", features = ["full"] }
+tracing = "0.1.44"
+uuid = { version = "1" }
+zbus = "5.16.0"
+
+[dev-dependencies]
+futures = "0.3"
+iroh = "0.98"
+tempfile = "3.27.0"
+tokio = { version = "1.52.3", features = ["full"] }
+
+[lints]
+workspace = true

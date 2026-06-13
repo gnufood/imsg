@@ -1,0 +1,25 @@
+[package]
+name = "imsg-obex"
+description = "Sans-IO OBEX packet codec, framing, and client/server state machines"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+bytes = "1.11.1"
+thiserror = "2.0.18"
+tokio = { version = "1.52.3", features = ["io-util"] }
+tokio-util = { version = "0.7.18", features = ["codec"] }
+winnow = "1.0.3"
+zerocopy = { version = "0.8", features = ["derive"] }
+
+[dev-dependencies]
+pretty_assertions = "1"
+proptest = "1"
+rstest = "0.25"
+
+[lints]
+workspace = true
