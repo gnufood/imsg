@@ -1,4 +1,4 @@
-//! `watch` subcommand: stream MAP notification events to stdout until Ctrl+C.
+//! `watch` subcommand — MAP notification events via stdout or ratatui panel.
 
 use anyhow::Result;
 use config::Config;
@@ -14,18 +14,14 @@ use crate::commands::conn;
 #[cfg(not(feature = "tui"))]
 use crate::output;
 
-/// Streams MAP notification events until Ctrl+C or the MNS session closes.
-///
-/// With `hub = true`, subscribes to a remote hub's MNS stream over iroh and prints one line per
-/// event (the TUI panel is RFCOMM-only). Otherwise connects MAP via RFCOMM and registers the MNS
-/// RFCOMM profile with `BlueZ`; with `--features tui` active that path renders in a ratatui
-/// panel. Does NOT reconnect on session drop — exit and re-run to reconnect.
+/// With `hub = true`, subscribes to the hub's MNS stream over iroh (stdout; TUI is RFCOMM-only).
+/// Otherwise connects via RFCOMM and registers MNS with `BlueZ`; with `--features tui` renders
+/// in ratatui. Does NOT reconnect on session drop.
 ///
 /// # Errors
 ///
-/// Returns an error if hub mode is requested but `hub.node_key` is unset/invalid or the hub
-/// connection fails, if the MAP connection fails, if `BlueZ` MNS registration fails, or if the
-/// MNS task panics.
+/// Returns error if `hub.node_key` is unset/invalid, MAP or hub connection fails, `BlueZ` MNS
+/// registration fails, or the MNS task panics.
 pub(crate) async fn run(
     cfg: &Config,
     endpoint: Option<&Endpoint>,
@@ -68,7 +64,6 @@ async fn spawn_mns_task(
     }))
 }
 
-/// Plain stdout event loop used when the `tui` feature is not active.
 #[cfg(not(feature = "tui"))]
 async fn run_plain(cfg: &Config, device: Option<&str>) -> Result<()> {
     let (cancel_tx, cancel_rx) = watch::channel(false);
@@ -91,7 +86,13 @@ async fn run_plain(cfg: &Config, device: Option<&str>) -> Result<()> {
     }
 
     let _ = cancel_tx.send(true);
-    match mns_handle.await {
+    // Tokio's SIGINT handler is permanent once installed; without this arm a second
+    // Ctrl+C during mns_handle.await is absorbed with no effect.
+    let join_result = tokio::select! {
+        r = mns_handle => r,
+        _ = tokio::signal::ctrl_c() => return Ok(()),
+    };
+    match join_result {
         Ok(Ok(())) => {}
         Ok(Err(e)) => return Err(e),
         Err(e) => return Err(anyhow::anyhow!("MNS task panicked: {e}")),
@@ -99,15 +100,13 @@ async fn run_plain(cfg: &Config, device: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-/// TUI event loop: renders events in a ratatui panel until Ctrl+C, `q`, `Esc`, or MNS close.
-///
-/// Does not reconnect on MAP drop or MNS bind error. Calls `ratatui::restore()` before
-/// returning in all exit paths.
+/// Exits on Ctrl+C, `q`, `Esc`, or MNS close; does not reconnect.
+/// Calls `ratatui::restore()` on all exit paths.
 #[cfg(feature = "tui")]
 async fn run_tui(cfg: &Config, device: Option<&str>) -> Result<()> {
     let (cancel_tx, cancel_rx) = watch::channel(false);
     let (event_tx, mut event_rx) = mpsc::channel::<MnsEvent>(32);
-    let (key_tx, mut key_rx) = mpsc::channel::<crossterm::event::KeyCode>(8);
+    let (key_tx, mut key_rx) = mpsc::channel::<crossterm::event::KeyEvent>(8);
 
     let mut client = conn::connect_map(cfg, None, device).await?;
     // Hold the MAP connection alive; iOS drops notification registration on OBEX DISCONNECT.
@@ -117,18 +116,32 @@ async fn run_tui(cfg: &Config, device: Option<&str>) -> Result<()> {
 
     let mut terminal = ratatui::init();
 
-    // Fire-and-forget key reader: exits when key_tx closes after run_loop returns.
-    tokio::spawn(async move {
+    // std::thread::spawn (not spawn_blocking) — long-lived loop; 50 ms poll lets it notice key_tx closing.
+    std::thread::spawn(move || {
+        use std::time::Duration;
         loop {
-            let result = tokio::task::spawn_blocking(crossterm::event::read).await;
-            match result {
-                Ok(Ok(crossterm::event::Event::Key(k))) => {
-                    if key_tx.send(k.code).await.is_err() {
+            match crossterm::event::poll(Duration::from_millis(50)) {
+                Ok(true) => match crossterm::event::read() {
+                    Ok(crossterm::event::Event::Key(k)) if k.is_press() => {
+                        if key_tx.blocking_send(k).is_err() {
+                            break;
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::warn!("crossterm::event::read error: {e}");
+                        break;
+                    }
+                },
+                Ok(false) => {
+                    if key_tx.is_closed() {
                         break;
                     }
                 }
-                Ok(Ok(_)) => {}
-                _ => break,
+                Err(e) => {
+                    tracing::warn!("crossterm::event::poll error: {e}");
+                    break;
+                }
             }
         }
     });
@@ -137,7 +150,13 @@ async fn run_tui(cfg: &Config, device: Option<&str>) -> Result<()> {
 
     ratatui::restore();
     let _ = cancel_tx.send(true);
-    match mns_handle.await {
+    // Tokio's SIGINT handler is permanent once installed; without this arm a Ctrl+C
+    // during mns_handle.await is absorbed with no effect.
+    let join_result = tokio::select! {
+        r = mns_handle => r,
+        _ = tokio::signal::ctrl_c() => return loop_result,
+    };
+    match join_result {
         Ok(Ok(())) => {}
         Ok(Err(e)) => return Err(e),
         Err(e) => return Err(anyhow::anyhow!("MNS task panicked: {e}")),
@@ -145,14 +164,14 @@ async fn run_tui(cfg: &Config, device: Option<&str>) -> Result<()> {
     loop_result
 }
 
-/// Inner event loop for the TUI: returns when any exit condition is met.
+/// Ctrl+C handled as `KeyCode::Char('c')` + `CONTROL` — raw mode clears `ISIG`, so no SIGINT.
 #[cfg(feature = "tui")]
 async fn run_loop(
     terminal: &mut ratatui::DefaultTerminal,
     event_rx: &mut mpsc::Receiver<MnsEvent>,
-    key_rx: &mut mpsc::Receiver<crossterm::event::KeyCode>,
+    key_rx: &mut mpsc::Receiver<crossterm::event::KeyEvent>,
 ) -> Result<()> {
-    use crossterm::event::KeyCode;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     const MAX_EVENTS: usize = 500;
     let mut events: std::collections::VecDeque<String> = std::collections::VecDeque::new();
@@ -162,7 +181,6 @@ async fn run_loop(
         terminal.draw(|f| render(f, &events, &mut state))?;
 
         tokio::select! {
-            _ = tokio::signal::ctrl_c() => break,
             maybe = event_rx.recv() => match maybe {
                 Some(ev) => {
                     if events.len() == MAX_EVENTS {
@@ -175,16 +193,18 @@ async fn run_loop(
                 None => break,
             },
             maybe = key_rx.recv() => match maybe {
-                Some(KeyCode::Down) => {
+                Some(KeyEvent { code: KeyCode::Char('c'), modifiers, .. })
+                    if modifiers.contains(KeyModifiers::CONTROL) => break,
+                Some(KeyEvent { code: KeyCode::Down, .. }) => {
                     let sel = state.selected().unwrap_or(0);
                     let last = events.len().saturating_sub(1);
                     state.select(Some(sel.saturating_add(1).min(last)));
                 }
-                Some(KeyCode::Up) => {
+                Some(KeyEvent { code: KeyCode::Up, .. }) => {
                     let sel = state.selected().unwrap_or(0);
                     state.select(Some(sel.saturating_sub(1)));
                 }
-                Some(KeyCode::Char('q') | KeyCode::Esc) | None => break,
+                Some(KeyEvent { code: KeyCode::Char('q') | KeyCode::Esc, .. }) | None => break,
                 Some(_) => {}
             },
         }
@@ -193,10 +213,8 @@ async fn run_loop(
     Ok(())
 }
 
-/// Renders event log as a bordered scrollable list (upper) and a one-line status bar (bottom).
-///
-/// Out-of-bounds `state.selected()` is handled by ratatui — this function does not check bounds.
-/// Does not modify `events`.
+/// Scrollable event list above a one-line status bar.
+/// `state.selected()` out-of-bounds is safe — ratatui clips it.
 #[cfg(feature = "tui")]
 fn render(
     frame: &mut ratatui::Frame,
