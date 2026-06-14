@@ -23,3 +23,14 @@ pre-commit: fmt check lint
 pre-push: fmt-check check lint test
 
 ci: fmt-check check lint test build
+
+release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    VERSION=$(git cliff --bumped-version | sed 's/^v//')
+    git cliff -o CHANGELOG.md --tag "v${VERSION}"
+    git add CHANGELOG.md
+    cargo release --workspace "${VERSION}" --execute
+
+ship: ci release
+    git push --follow-tags

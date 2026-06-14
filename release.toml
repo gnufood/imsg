@@ -1,0 +1,13 @@
+shared-version = true
+consolidate-commits = true
+
+tag-name = "v{{version}}"
+tag-prefix = ""
+
+sign-commit = true
+sign-tag = true
+
+pre-release-commit-message = "chore(release): v{{version}}"
+
+publish = true
+push = false
