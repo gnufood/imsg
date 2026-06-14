@@ -35,7 +35,7 @@ missing_panics_doc = "deny"
 todo = "deny"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 authors = ["Ethan <claude@gnu.foo>"]
 license = "MIT"
