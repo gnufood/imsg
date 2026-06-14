@@ -31,4 +31,4 @@ release:
     cargo release --workspace "${VERSION}" --execute
 
 ship: ci release
-    git push --follow-tags
+    git push origin HEAD --follow-tags
