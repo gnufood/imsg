@@ -82,15 +82,10 @@ Expand beyond MAP (messaging) and PBAP (contacts).
 
 ## Known issues
 
-### OBS-02 — Proxy teardown log noise
-
-`INFO hub proxy ch{n}: session closed` on every command. `copy_bidirectional` sees abort before clean EOF because the endpoint closes first. Fix: thread `Connection` through the command lifecycle, drain before `Endpoint::close`.
-
-### GAP-06 — Undelete error surface
-
-`imsg delete --undelete` exposes raw `RSP_NOT_IMPLEMENTED`. iOS doesn't implement MAP undelete. Map the response to a human-readable error.
-
 ---
 
 ## Completed
+
+- [x] **OBS-02** — Proxy teardown log noise — `70f9b44`
+- [x] **GAP-06** — Undelete error surface — `a36219b`
 
