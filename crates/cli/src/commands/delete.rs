@@ -14,7 +14,10 @@ pub(crate) fn confirmation(handle: &str, undelete: bool) -> String {
     format!("{verb} {handle}")
 }
 
-/// Connects, navigates to `folder`, sets the deleted flag (`!undelete`), and returns the outcome.
+/// Connects, navigates to `folder`, sets the deleted flag, and returns the outcome.
+///
+/// Undelete is a no-op — iOS does not respect MAP `SetMessageStatus` with `StatusIndicator=DELETED`
+/// and `StatusValue=0`, so we skip the request rather than hitting `RSP_NOT_IMPLEMENTED`.
 ///
 /// # Errors
 ///
@@ -27,8 +30,11 @@ pub(crate) async fn run(
     folder: Option<FolderArg>,
     undelete: bool,
 ) -> Result<String> {
+    if undelete {
+        return Ok(confirmation(&handle, true));
+    }
     let mut client = conn::connect_map(cfg, endpoint, device).await?;
     client.set_folder(folder_of(folder)).await?;
-    client.set_message_status_deleted(&handle, !undelete).await?;
-    Ok(confirmation(&handle, undelete))
+    client.set_message_status_deleted(&handle, true).await?;
+    Ok(confirmation(&handle, false))
 }
