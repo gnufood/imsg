@@ -16,6 +16,7 @@ use iroh::endpoint::{presets, Incoming, VarInt};
 use obex_core::{wrap, ObexTransport, TransportError};
 use tokio::io::{AsyncRead, AsyncWrite, Join, ReadBuf};
 use tokio::sync::{broadcast, watch, Semaphore};
+use tokio::task::JoinSet;
 
 pub use iroh::endpoint::{Connection, RecvStream, SendStream};
 pub use iroh::{Endpoint, EndpointAddr, EndpointId, SecretKey};
@@ -258,6 +259,7 @@ pub async fn run_hub(
         .map_err(iroh_err)?;
     let map_sem = Arc::new(Semaphore::new(1));
     let pbap_sem = Arc::new(Semaphore::new(1));
+    let mut tasks = JoinSet::new();
     loop {
         tokio::select! {
             _ = cancel.changed() => if *cancel.borrow() { break },
@@ -266,7 +268,7 @@ pub async fn run_hub(
                 let events = mns_events.subscribe();
                 let map_sem = Arc::clone(&map_sem);
                 let pbap_sem = Arc::clone(&pbap_sem);
-                tokio::spawn(async move {
+                tasks.spawn(async move {
                     if let Err(e) = handle_incoming(
                         incoming, bt_addr, map_ch, pbap_ch, events, map_sem, pbap_sem,
                     ).await {
@@ -276,6 +278,9 @@ pub async fn run_hub(
             }
         }
     }
+    // Drain in-flight proxy tasks so copy_bidirectional completes naturally
+    // before Endpoint::close tears down the QUIC connections.
+    while tasks.join_next().await.is_some() {}
     endpoint.close().await;
     Ok(())
 }
