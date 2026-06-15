@@ -2281,7 +2281,7 @@ dependencies = [
 
 [[package]]
 name = "imsg"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "bluer",
@@ -2306,7 +2306,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-config"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bluer",
  "dirs",
@@ -2319,7 +2319,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-formats"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "calcard",
  "pretty_assertions",
@@ -2331,7 +2331,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-map"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bitflags 2.13.0",
  "bytes",
@@ -2346,7 +2346,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-obex"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bytes",
  "pretty_assertions",
@@ -2361,7 +2361,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-pbap"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bytes",
  "futures",
@@ -2375,7 +2375,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-session"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bluer",
  "bytes",
@@ -2393,7 +2393,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-transport"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bluer",
  "bytes",
