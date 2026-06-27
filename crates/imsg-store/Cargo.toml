@@ -1,0 +1,22 @@
+[package]
+name = "imsg-store"
+description = "Encrypted SQLCipher message store for imsg: schema, migrations, and query layer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+rusqlite = { version = "0.37", features = ["bundled-sqlcipher"] }
+# tokio-rusqlite 0.7 pins rusqlite ^0.37; versions must stay in sync
+tokio-rusqlite = "0.7"
+refinery = { version = "0.9", features = ["rusqlite"] }
+secrecy = "0.10"
+strum = "0.28"
+strum_macros = "0.28"
+thiserror = "2"
+
+[lints]
+workspace = true
