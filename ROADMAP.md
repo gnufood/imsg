@@ -1,6 +1,6 @@
 # Roadmap
 
-> Last updated: 2026-06-13
+> Last updated: 2026-06-27
 
 ---
 
@@ -10,8 +10,6 @@
 
 Local encrypted message database so `imsg` works without the phone connected.
 
-- [ ] `store` crate — SQLCipher (SQLite with full-database encryption)
-- [ ] 256-bit key generated on first run, stored in OS keyring (GNOME Keyring / KWallet). Never on disk. No plaintext.
 - [ ] `watch` upgraded to sync daemon — writes incoming messages to DB on MNS event
 - [ ] Body fetch strategy: eager (full content on every MNS event) vs. lazy (metadata only, fetch on open)
 
@@ -88,4 +86,6 @@ Expand beyond MAP (messaging) and PBAP (contacts).
 
 - [x] **OBS-02** — Proxy teardown log noise — `70f9b44`
 - [x] **GAP-06** — Undelete error surface — `a36219b`
+- [x] **STORE-01** — Encrypted SQLCipher message store — `68fef48`
+- [x] **STORE-02** — Keyring-backed 256-bit DB key — `3dd359e`
 
