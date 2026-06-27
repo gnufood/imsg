@@ -1,6 +1,6 @@
 [package]
 name = "imsg"
-version = "0.1.3"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
