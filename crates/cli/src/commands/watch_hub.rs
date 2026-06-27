@@ -7,8 +7,17 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 use transport::iroh::Endpoint;
 
 use crate::commands::conn;
-use crate::commands::watch::format_event;
 use crate::output;
+
+/// Formats an MNS event for stdout: `<EventType>  handle=<h>  folder=<f>`.
+fn format_event(ev: &map_core::mns_event::MnsEvent) -> String {
+    format!(
+        "{:?}  handle={}  folder={}",
+        ev.event_type(),
+        ev.handle().unwrap_or("-"),
+        ev.folder().unwrap_or("-"),
+    )
+}
 
 /// Upper bound on a single MNS event frame from the hub. Real MAP event reports are well under
 /// 1 KiB; this cap bounds memory against a malformed or hostile length prefix.
