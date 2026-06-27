@@ -353,6 +353,26 @@ impl<T: AsyncRead + AsyncWrite + Unpin> MapClient<T> {
         }
     }
 
+    /// Sends OBEX DISCONNECT and awaits the server acknowledgement.
+    ///
+    /// Consumes `self` — the session is unusable after this call regardless of the outcome.
+    /// Does not close the underlying stream; the stream is dropped when `self` is consumed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MapError`] if the request cannot be encoded, the transport fails, or the
+    /// server returns a non-OK response.
+    pub async fn disconnect(mut self) -> Result<(), MapError> {
+        let req = self.obex.disconnect_request()?;
+        self.transport.send(req).await?;
+        let rsp_bytes = Self::recv(&mut self.transport).await?;
+        let rsp = ObexClient::parse_response(&rsp_bytes)?;
+        if !rsp.opcode.is_ok() {
+            return Err(MapError::ServerError(rsp.opcode.to_byte()));
+        }
+        Ok(())
+    }
+
     async fn recv(transport: &mut ObexTransport<T>) -> Result<Bytes, MapError> {
         transport.next().await.ok_or(MapError::UnexpectedEof)?.map_err(MapError::Transport)
     }

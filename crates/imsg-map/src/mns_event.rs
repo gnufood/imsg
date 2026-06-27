@@ -1,5 +1,7 @@
 //! MAP MNS event types, event struct, parser error, and XML event-report parser.
 
+use std::fmt;
+
 use obex_core::client::ObexError;
 use obex_core::TransportError;
 use quick_xml::{events::Event, Reader, XmlVersion};
@@ -28,6 +30,24 @@ pub enum EventType {
     MemoryAvailable,
     /// Read/unread flag toggled on device; `handle` present.
     ReadStatusChanged,
+}
+
+impl fmt::Display for EventType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Canonical MAP 1.4 event-type strings — must stay in sync with `event_type_from_str`.
+        f.write_str(match self {
+            Self::NewMessage => "NewMessage",
+            Self::DeliverySuccess => "DeliverySuccess",
+            Self::SendingSuccess => "SendingSuccess",
+            Self::DeliveryFailure => "DeliveryFailure",
+            Self::SendingFailure => "SendingFailure",
+            Self::MessageDeleted => "MessageDeleted",
+            Self::MessageShift => "MessageShift",
+            Self::MemoryFull => "MemoryFull",
+            Self::MemoryAvailable => "MemoryAvailable",
+            Self::ReadStatusChanged => "ReadStatusChanged",
+        })
+    }
 }
 
 /// Fields absent in the `<event>` element are `None`.
