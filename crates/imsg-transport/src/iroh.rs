@@ -318,7 +318,8 @@ async fn proxy_rfcomm(
         .map_err(|_| TransportError::External("rfcomm semaphore closed".into()))?;
     let (send, recv) = conn.accept_bi().await.map_err(iroh_err)?;
     let mut quic = tokio::io::join(recv, send);
-    let mut rfcomm = crate::rfcomm::connect(bt_addr, channel).await?;
+    let mut rfcomm =
+        crate::rfcomm::connect(bt_addr, channel, crate::rfcomm::DEFAULT_BT_CONNECTED_GATE).await?;
     let result = tokio::io::copy_bidirectional(&mut quic, &mut rfcomm).await;
     match &result {
         Ok((up, down)) => tracing::info!("hub proxy ch{channel}: {up}↑ {down}↓ bytes proxied"),

@@ -20,10 +20,11 @@ uuid = { version = "1" }
 zbus = "5.16.0"
 
 [dev-dependencies]
-futures = "0.3"
-iroh = "0.98"
+futures  = "0.3"
+iroh     = "0.98"
+socket2  = "0.6.4"
 tempfile = "3.27.0"
-tokio = { version = "1.52.3", features = ["full"] }
+tokio    = { version = "1.52.3", features = ["full"] }
 
 [lints]
 workspace = true
