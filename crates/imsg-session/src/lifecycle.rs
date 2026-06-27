@@ -1,8 +1,11 @@
 //! Connection lifecycle: SDP lookup, RFCOMM connect, OBEX session establishment and teardown.
 
+use std::time::Duration;
+
 use map_core::client::MapClient;
 use pbap_core::client::PbapClient;
 use tokio::io::{AsyncRead, AsyncWrite};
+use transport::rfcomm::DEFAULT_BT_CONNECTED_GATE;
 
 use crate::SessionError;
 
@@ -20,16 +23,19 @@ pub async fn establish_map_session<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(client)
 }
 
-/// RFCOMM connect to `addr`:`channel` then [`establish_map_session`].
+/// RFCOMM connect to `addr`:`channel` (gating on `BT_CONNECTED` up to `bt_gate`) then
+/// [`establish_map_session`].
 ///
 /// # Errors
 ///
-/// Returns [`SessionError::Transport`] on RFCOMM failure, [`SessionError::Map`] on OBEX failure.
+/// Returns [`SessionError::Transport`] on RFCOMM failure or `BT_CONNECTED` timeout,
+/// [`SessionError::Map`] on OBEX failure.
 pub async fn connect_map(
     addr: bluer::Address,
     channel: u8,
+    bt_gate: Duration,
 ) -> Result<MapClient<bluer::rfcomm::Stream>, SessionError> {
-    let stream = transport::rfcomm::connect(addr, channel).await?;
+    let stream = transport::rfcomm::connect(addr, channel, bt_gate).await?;
     establish_map_session(stream).await
 }
 
@@ -42,7 +48,7 @@ pub async fn connect_pbap(
     addr: bluer::Address,
     channel: u8,
 ) -> Result<PbapClient<bluer::rfcomm::Stream>, SessionError> {
-    let stream = transport::rfcomm::connect(addr, channel).await?;
+    let stream = transport::rfcomm::connect(addr, channel, DEFAULT_BT_CONNECTED_GATE).await?;
     let client = PbapClient::connect(stream).await?;
     Ok(client)
 }
