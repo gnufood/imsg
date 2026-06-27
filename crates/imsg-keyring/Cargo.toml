@@ -1,0 +1,19 @@
+[package]
+name = "imsg-keyring"
+description = "OS keyring access for imsg: get-or-create the database encryption key via Secret Service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+getrandom = "0.4"
+keyring-core = "1"
+secrecy = "0.10"
+thiserror = "2"
+zbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
+
+[lints]
+workspace = true
