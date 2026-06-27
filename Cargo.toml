@@ -6,7 +6,11 @@ members = [
     "crates/imsg-map",
     "crates/imsg-pbap",
     "crates/imsg-config",
+    "crates/imsg-keyring",
+    "crates/imsg-store",
     "crates/imsg-session",
+    "crates/imsg-ipc",
+    "crates/imsg-broker",
     "crates/cli",
 ]
 resolver = "2"
