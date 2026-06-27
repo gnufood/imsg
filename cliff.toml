@@ -13,6 +13,14 @@ body = """
 {% else %}\
 ## [Unreleased]
 {% endif %}\
+{% set breaking = commits | filter(attribute="breaking", value=true) %}\
+{% if breaking | length > 0 %}
+### ⚠️ Breaking Changes
+{# breaking commits carry `!` or a BREAKING CHANGE footer #}
+{%- for commit in breaking %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}
+{%- endfor %}
+{% endif %}\
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | upper_first }}
 {# show scope as a prefix, and sort entries by scope #}
@@ -47,3 +55,7 @@ commit_parsers = [
 ]
 sort_commits = "oldest"
 protect_breaking_commits = true
+
+[bump]
+# Pre-1.0 convention: a breaking change bumps the minor (0.1.x -> 0.2.0), not the major.
+breaking_always_bump_major = false
