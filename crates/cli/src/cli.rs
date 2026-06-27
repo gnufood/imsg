@@ -114,8 +114,20 @@ pub(crate) enum Command {
     },
     /// Group inbox and sent messages into conversation threads.
     Threads,
-    /// Stream live message-notification events.
+    /// Stream live message-notification events and persist them to the local store.
     Watch,
+    /// Backfill the local store with all messages from the device since the last sync.
+    Sync {
+        /// Restrict the backfill to a single folder; omit to sync all folders.
+        #[arg(long, value_enum)]
+        folder: Option<FolderArg>,
+    },
+    /// Stop using the local store for reads; synced data is preserved by default.
+    Unsync {
+        /// Delete the database file and all synced data in addition to disabling sync.
+        #[arg(long)]
+        purge: bool,
+    },
     /// List the MAP message folders on the device.
     Folders,
     /// Start the iroh hub on this machine and print the node key for spokes.
@@ -132,6 +144,22 @@ pub(crate) enum Command {
         #[command(subcommand)]
         cmd: ConfigCmd,
     },
+    /// Query the session broker.
+    Broker {
+        /// Broker action.
+        #[command(subcommand)]
+        cmd: BrokerCmd,
+    },
+    /// Internal: session broker process, auto-started by the CLI — not for direct invocation.
+    #[command(name = "__broker_serve", hide = true)]
+    BrokerServe,
+}
+
+/// `broker` actions.
+#[derive(Subcommand, Debug)]
+pub(crate) enum BrokerCmd {
+    /// Report whether the broker is running and whether its MAP session is connected.
+    Status,
 }
 
 /// `config` actions.
