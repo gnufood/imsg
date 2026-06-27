@@ -1,118 +1,157 @@
-//! `threads` subcommand: group inbox and sent messages into per-contact conversation threads.
+//! `threads` subcommand: aggregate per-contact threads live from the device (non-opted) or
+//! from the local store (opted-in).
 
-use std::collections::HashMap;
 use std::fmt::Write as _;
+use std::path::Path;
 
 use anyhow::Result;
 use config::Config;
-use map_core::folders::Folder;
-use map_core::messages::{ListMessagesFilter, MessageEntry};
-
+use ipc::{BrokerRequest, BrokerResponse, ThreadDto};
+use session::live::models::LiveThread;
+use store::{OutgoingStatus, Store, ThreadRow};
 use transport::iroh::Endpoint;
 
-use crate::commands::conn;
-use crate::fmt::fmt_datetime;
+use crate::commands::{broker, conn, live_footer};
 
-/// Connects to MAP, fetches inbox and sent messages, groups them into per-contact
-/// conversation threads sorted most-recent-first; each thread shows at most five messages.
-/// Messages with empty addressing are silently excluded.
+/// Returns a per-contact thread summary read live from the device, sorted most-recent-first.
+///
+/// RFCOMM path (`endpoint` is `None`): the broker answers a [`BrokerRequest::Threads`]. Hub path:
+/// a direct MAP connection via [`session::live::threads`]. Counts are approximate (device window,
+/// not full corpus) and carry no delivery badge. Neither path touches the store.
 ///
 /// # Errors
 ///
-/// Returns an error if the MAP connection, folder navigation, or either listing request
-/// fails.
+/// Returns an error if the broker call, MAP connection, or device listing fails.
 pub(crate) async fn run(
     cfg: &Config,
     endpoint: Option<&Endpoint>,
     device: Option<&str>,
+    config_path: Option<&Path>,
 ) -> Result<String> {
+    if endpoint.is_none() {
+        let rows = threads_via_broker(cfg, device, config_path).await?;
+        let lines: Vec<ThreadLine> = rows.iter().map(ThreadLine::from_dto).collect();
+        return Ok(live_footer(render_thread_rows(&lines)));
+    }
     let mut client = conn::connect_map(cfg, endpoint, device).await?;
-    client.set_folder(Folder::Inbox).await?;
-    let mut all = client.list_messages(&ListMessagesFilter::default()).await?;
-    client.set_folder(Folder::Sent).await?;
-    all.extend(client.list_messages(&ListMessagesFilter::default()).await?);
-    let groups = group(&all);
-    Ok(render_threads(&groups))
+    let result = session::live::threads(&mut client).await;
+    if let Err(e) = client.disconnect().await {
+        tracing::warn!("MAP disconnect failed: {e}");
+    }
+    let rows = result?;
+    let lines: Vec<ThreadLine> = rows.iter().map(ThreadLine::from_live).collect();
+    Ok(live_footer(render_thread_rows(&lines)))
 }
 
-const fn key_for(msg: &MessageEntry) -> Option<&str> {
-    let key =
-        if msg.sent { msg.recipient_addressing.as_str() } else { msg.sender_addressing.as_str() };
-    if key.is_empty() {
-        None
-    } else {
-        Some(key)
-    }
-}
-
-fn group(entries: &[MessageEntry]) -> Vec<(String, Vec<&MessageEntry>)> {
-    let mut map: HashMap<&str, Vec<&MessageEntry>> = HashMap::new();
-    for entry in entries {
-        if let Some(key) = key_for(entry) {
-            map.entry(key).or_default().push(entry);
-        }
-    }
-    let mut groups: Vec<(String, Vec<&MessageEntry>)> = map
-        .into_iter()
-        .map(|(key, mut msgs)| {
-            msgs.sort_by(|a, b| a.datetime.as_str().cmp(b.datetime.as_str()));
-            (key.to_owned(), msgs)
-        })
-        .collect();
-    groups.sort_by(|a, b| {
-        let max_a = a.1.iter().copied().map(|m| m.datetime.as_str()).max().unwrap_or("");
-        let max_b = b.1.iter().copied().map(|m| m.datetime.as_str()).max().unwrap_or("");
-        max_b.cmp(max_a)
-    });
-    groups
-}
-
-fn render_threads(groups: &[(String, Vec<&MessageEntry>)]) -> String {
-    if groups.is_empty() {
-        return "(no threads)".to_owned();
-    }
-    let mut out = String::with_capacity(groups.len().saturating_mul(128));
-    for (key, msgs) in groups {
-        let name = msgs
-            .iter()
-            .copied()
-            .find_map(|m| {
-                let n = if m.sent { m.recipient_name.as_str() } else { m.sender_name.as_str() };
-                if n.is_empty() {
-                    None
-                } else {
-                    Some(n)
-                }
-            })
-            .unwrap_or(key.as_str());
-        let unread = msgs.iter().copied().filter(|m| !m.read && !m.sent).count();
-        let total = msgs.len();
-        let _ = write!(out, "{name}");
-        if name != key.as_str() {
-            let _ = write!(out, "  {key}");
-        }
-        let _ = write!(out, "  {total} messages");
-        if unread > 0 {
-            let _ = write!(out, "  {unread} unread");
-        }
-        let _ = writeln!(out);
-        let skip = msgs.len().saturating_sub(5);
-        if skip > 0 {
-            let _ = writeln!(out, "  \u{2026} {skip} earlier");
-        }
-        for msg in msgs.iter().copied().skip(skip) {
-            let marker = if !msg.read && !msg.sent { '*' } else { ' ' };
-            let dir = if msg.sent { '\u{2192}' } else { '\u{2190}' };
-            let mut tail = msg.subject.chars();
-            let head: String = tail.by_ref().take(72).collect();
-            let dt = fmt_datetime(&msg.datetime);
-            if tail.next().is_some() {
-                let _ = writeln!(out, "  {marker} {dir} {dt}  {head}\u{2026}");
-            } else {
-                let _ = writeln!(out, "  {marker} {dir} {dt}  {head}");
-            }
-        }
+/// Returns per-contact thread summaries from the local store with a freshness footer.
+///
+/// Never opens a Bluetooth connection.
+///
+/// # Errors
+///
+/// Returns an error if the store read or `last_sync_at` query fails.
+pub(crate) async fn run_store(store: &Store) -> Result<String> {
+    let rows = store.threads().await?;
+    let lines: Vec<ThreadLine> = rows.iter().map(ThreadLine::from_row).collect();
+    let mut out = render_thread_rows(&lines);
+    if !out.ends_with('\n') {
         out.push('\n');
     }
+    out.push_str(&crate::commands::freshness_line(store.last_sync_at().await?));
+    Ok(out)
+}
+
+/// Issues a [`BrokerRequest::Threads`] and unwraps the [`BrokerResponse::Threads`] frame.
+async fn threads_via_broker(
+    cfg: &Config,
+    device: Option<&str>,
+    config_path: Option<&Path>,
+) -> Result<Vec<ThreadDto>> {
+    match broker::call(cfg, device, config_path, BrokerRequest::Threads).await? {
+        BrokerResponse::Threads(rows) => Ok(rows),
+        BrokerResponse::Failed(reason) => Err(anyhow::anyhow!("{reason}")),
+        BrokerResponse::Error(e) => Err(anyhow::anyhow!("{e}")),
+        other => Err(anyhow::anyhow!("unexpected broker response: {other:?}")),
+    }
+}
+
+/// One rendered thread summary line, sourced from a store row, a live DTO, or a live model.
+///
+/// `badge` is the store-only delivery state of the latest message; live sources leave it `None`
+/// (no device source).
+struct ThreadLine<'a> {
+    address: &'a str,
+    latest_ms: i64,
+    total: i64,
+    unread: i64,
+    badge: Option<&'static str>,
+}
+
+impl<'a> ThreadLine<'a> {
+    fn from_row(t: &'a ThreadRow) -> Self {
+        Self {
+            address: &t.address,
+            latest_ms: t.latest_ms,
+            total: t.total,
+            unread: t.unread,
+            badge: outgoing_badge(t.latest_outgoing_status.as_ref()),
+        }
+    }
+
+    fn from_dto(t: &'a ThreadDto) -> Self {
+        Self {
+            address: &t.address,
+            latest_ms: t.latest_ms,
+            total: i64::from(t.total),
+            unread: i64::from(t.unread),
+            badge: None,
+        }
+    }
+
+    fn from_live(t: &'a LiveThread) -> Self {
+        Self {
+            address: &t.address,
+            latest_ms: t.latest_ms,
+            total: i64::from(t.total),
+            unread: i64::from(t.unread),
+            badge: None,
+        }
+    }
+}
+
+/// Renders thread lines as one summary line each.
+///
+/// Returns `"(no threads)"` when `lines` is empty.
+fn render_thread_rows(lines: &[ThreadLine]) -> String {
+    if lines.is_empty() {
+        return "(no threads)".to_owned();
+    }
+    let mut out = String::with_capacity(lines.len().saturating_mul(64));
+    for line in lines {
+        let dt = session::sync::ms_to_display(line.latest_ms);
+        let _ = write!(out, "{}  {} messages", line.address, line.total);
+        if line.unread > 0 {
+            let _ = write!(out, "  {} unread", line.unread);
+        }
+        let _ = write!(out, "  (latest: {dt})");
+        if let Some(badge) = line.badge {
+            let _ = write!(out, "  {badge}");
+        }
+        let _ = writeln!(out);
+    }
     out
+}
+
+/// Returns a short delivery badge for the latest message's outgoing status, or `None`.
+const fn outgoing_badge(status: Option<&OutgoingStatus>) -> Option<&'static str> {
+    match status {
+        None => None,
+        Some(OutgoingStatus::Queued) => Some("[queued]"),
+        Some(OutgoingStatus::Sending) => Some("[sending]"),
+        Some(OutgoingStatus::SentUnconfirmed) => Some("[sent?]"),
+        Some(OutgoingStatus::SentConfirmed) => Some("[confirmed]"),
+        Some(OutgoingStatus::FailedRetryable) => Some("[failed: retryable]"),
+        Some(OutgoingStatus::FailedPermanent) => Some("[failed]"),
+        Some(OutgoingStatus::Unknown) => Some("[unknown]"),
+    }
 }
