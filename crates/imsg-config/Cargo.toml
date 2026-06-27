@@ -9,8 +9,9 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
-bluer = { version = "0.17.4", default-features = false }
-dirs = "6.0.0"
+bluer        = { version = "0.17.4", default-features = false }
+dirs         = "6.0.0"
+interprocess = { version = "2.4.2", features = ["tokio"] }
 figment = { version = "0.10.19", features = ["toml", "env"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2.0.18"

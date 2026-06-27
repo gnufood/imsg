@@ -1,8 +1,13 @@
 //! Layered configuration for imsg: compiled-in defaults → /etc → XDG user → local → env.
 
+mod broker;
 mod write;
 
-pub use write::{hub_key_path, hub_lock_path, set_device, set_hub_key};
+pub use broker::BrokerConfig;
+pub use write::{
+    broker_abstract_name, broker_log_path, db_path, hub_key_path, hub_lock_path, set_device,
+    set_hub_key,
+};
 
 use std::path::PathBuf;
 
@@ -16,6 +21,16 @@ const DEFAULTS: &str = r"
 [device]
 map_channel = 2
 pbap_channel = 13
+
+[broker]
+idle_secs = 15
+connect_max_attempts = 3
+bt_connected_secs = 5
+initial_backoff_ms = 500
+max_backoff_secs = 30
+startup_budget_secs = 30
+readiness_wait_secs = 40
+readiness_poll_ms = 50
 ";
 
 /// Layers (ascending priority): compiled-in defaults → `/etc/imsg.toml` →
@@ -87,6 +102,12 @@ pub struct Config {
     /// Absent until `imsg spoke add` writes the key.
     #[serde(default)]
     pub hub: HubConfig,
+    /// Absent from config — `store.resolve()` falls back to [`db_path`].
+    #[serde(default)]
+    pub store: StoreConfig,
+    /// Session broker idle-timeout settings.
+    #[serde(default)]
+    pub broker: BrokerConfig,
 }
 
 /// MAC address (`XX:XX:XX:XX:XX:XX`) plus MAP/PBAP RFCOMM channels `[1, 30]`.
@@ -114,13 +135,31 @@ pub struct HubConfig {
     pub node_key: Option<String>,
 }
 
-/// Checks `device.address` MAC format and that channel values are in `[1, 30]`.
-/// Does not cross-validate bridge addresses against each other or verify device reachability.
+/// Optional DB path override. Absent from config → [`StoreConfig::resolve`] falls back to [`db_path`].
+#[derive(Debug, Default, Deserialize)]
+pub struct StoreConfig {
+    /// Absolute path to the `SQLCipher` database file. When absent, resolved via [`db_path`].
+    pub(crate) path: Option<PathBuf>,
+}
+
+impl StoreConfig {
+    /// Returns the configured path when set; otherwise delegates to [`db_path`].
+    ///
+    /// Returns `None` only in minimal containers where [`db_path`] itself returns `None`.
+    #[must_use]
+    pub fn resolve(&self) -> Option<PathBuf> {
+        self.path.clone().or_else(db_path)
+    }
+}
+
+/// Checks `device.address` MAC format, channel values in `[1, 30]`, and broker timing
+/// consistency. Does not cross-validate bridge addresses against each other or verify device
+/// reachability.
 ///
 /// # Errors
 ///
-/// Returns [`ConfigError::Invalid`] when `device.address` is not `XX:XX:XX:XX:XX:XX`
-/// or a channel value is `0` or greater than `30`.
+/// Returns [`ConfigError::Invalid`] when `device.address` is not `XX:XX:XX:XX:XX:XX`, a channel
+/// value is `0` or greater than `30`, or the `[broker]` timing policy is inconsistent.
 pub(crate) fn validate(cfg: &Config) -> Result<(), ConfigError> {
     cfg.device
         .address
@@ -137,7 +176,7 @@ pub(crate) fn validate(cfg: &Config) -> Result<(), ConfigError> {
             });
         }
     }
-    Ok(())
+    cfg.broker.validate()
 }
 
 #[cfg(test)]
@@ -160,7 +199,12 @@ mod tests {
     #[test]
     fn validate_rejects_bad_address() {
         for bad in ["NOTAMAC", "GG:GG:GG:GG:GG:GG", "00:11:22:33:44", "00:11:22:33:44:55:66"] {
-            let cfg = Config { device: make_device(bad), hub: HubConfig::default() };
+            let cfg = Config {
+                device: make_device(bad),
+                hub: HubConfig::default(),
+                store: StoreConfig::default(),
+                broker: BrokerConfig::default(),
+            };
             assert!(
                 matches!(validate(&cfg), Err(ConfigError::Invalid { field: "device.address", .. })),
                 "expected Invalid for {bad:?}"
@@ -178,6 +222,8 @@ mod tests {
                     pbap_channel: 13,
                 },
                 hub: HubConfig::default(),
+                store: StoreConfig::default(),
+                broker: BrokerConfig::default(),
             };
             assert!(
                 matches!(
@@ -194,6 +240,8 @@ mod tests {
                 pbap_channel: 0,
             },
             hub: HubConfig::default(),
+            store: StoreConfig::default(),
+            broker: BrokerConfig::default(),
         };
         assert!(matches!(
             validate(&cfg),
@@ -254,5 +302,34 @@ mod tests {
             assert!(p.ends_with("imsg/hub.lock"), "unexpected path: {p:?}");
         }
         // None is valid in container environments — silently skip.
+    }
+
+    #[test]
+    #[serial]
+    fn store_path_env_override() {
+        figment::Jail::expect_with(|jail| {
+            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+            jail.set_env("IMSG_STORE__PATH", "/tmp/test.db");
+            let cfg: Config = figment(None).extract()?;
+            assert_eq!(cfg.store.path.as_deref(), Some(std::path::Path::new("/tmp/test.db")));
+            assert_eq!(cfg.store.resolve().as_deref(), Some(std::path::Path::new("/tmp/test.db")));
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn store_defaults_to_db_path() {
+        figment::Jail::expect_with(|jail| {
+            let dir = jail.directory().to_string_lossy().into_owned();
+            jail.set_env("HOME", &dir);
+            jail.set_env("XDG_CONFIG_HOME", &dir);
+            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+            let cfg: Config = figment(None).extract()?;
+            assert!(cfg.store.path.is_none());
+            // resolve() falls back to db_path() — same value.
+            assert_eq!(cfg.store.resolve(), db_path());
+            Ok(())
+        });
     }
 }

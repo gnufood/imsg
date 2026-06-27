@@ -2,9 +2,50 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+use interprocess::local_socket::{GenericNamespaced, Name, ToNsName as _};
 use toml_edit::{DocumentMut, Item, Table};
 
 use super::ConfigError;
+
+/// Opens (or creates) `~/.config/imsg/imsg.toml`, sets `[section].key = value`, writes back.
+///
+/// All other keys and sections are preserved. Parent directories are created if absent.
+///
+/// # Errors
+///
+/// Returns [`ConfigError::Io`] when the config directory cannot be determined or on FS failure.
+/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
+/// Returns [`ConfigError::Invalid`] when the section already exists but is not a TOML table.
+fn patch_config(section: &'static str, key: &str, value: &str) -> Result<(), ConfigError> {
+    let config_dir = dirs::config_dir().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::NotFound, "cannot determine user config directory")
+    })?;
+    let path = config_dir.join("imsg/imsg.toml");
+
+    let mut doc: DocumentMut = match fs::read_to_string(&path) {
+        Ok(content) => content.parse()?,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => DocumentMut::new(),
+        Err(e) => return Err(ConfigError::Io(e)),
+    };
+
+    let root = doc.as_table_mut();
+    if root.get(section).is_none_or(|i| !i.is_table()) {
+        root.insert(section, Item::Table(Table::new()));
+    }
+    root.get_mut(section)
+        .and_then(Item::as_table_mut)
+        .ok_or(ConfigError::Invalid {
+            field: section,
+            msg: format!("[{section}] section is not a TOML table"),
+        })?
+        .insert(key, toml_edit::value(value));
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&path, doc.to_string())?;
+    Ok(())
+}
 
 /// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
 ///
@@ -21,34 +62,7 @@ pub fn set_device(address: &str) -> Result<(), ConfigError> {
     address
         .parse::<bluer::Address>()
         .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
-
-    let config_dir = dirs::config_dir().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "cannot determine user config directory")
-    })?;
-    let path = config_dir.join("imsg/imsg.toml");
-
-    let mut doc: DocumentMut = match fs::read_to_string(&path) {
-        Ok(content) => content.parse()?,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => DocumentMut::new(),
-        Err(e) => return Err(ConfigError::Io(e)),
-    };
-
-    let root = doc.as_table_mut();
-    if root.get("device").is_none_or(|i| !i.is_table()) {
-        root.insert("device", Item::Table(Table::new()));
-    }
-    let device =
-        root.get_mut("device").and_then(Item::as_table_mut).ok_or(ConfigError::Invalid {
-            field: "device",
-            msg: "[device] section is not a TOML table".to_owned(),
-        })?;
-    device.insert("address", toml_edit::value(address));
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, doc.to_string())?;
-    Ok(())
+    patch_config("device", "address", address)
 }
 
 /// `{data_dir}/imsg/hub.key`; `None` in minimal containers where `dirs::data_dir()` is unavailable.
@@ -56,6 +70,40 @@ pub fn set_device(address: &str) -> Result<(), ConfigError> {
 #[must_use]
 pub fn hub_key_path() -> Option<PathBuf> {
     dirs::data_dir().map(|d| d.join("imsg/hub.key"))
+}
+
+/// `{data_dir}/imsg/messages.db`; `None` in minimal containers where `dirs::data_dir()` is unavailable.
+/// Callers must not substitute a fallback silently.
+#[must_use]
+pub fn db_path() -> Option<PathBuf> {
+    dirs::data_dir().map(|d| d.join("imsg/messages.db"))
+}
+
+/// Abstract-namespace local socket name for the broker serving `addr`.
+///
+/// On Linux this maps to the kernel abstract socket namespace — no filesystem inode,
+/// automatic kernel cleanup on process death, and `EADDRINUSE` on a second bind (atomic
+/// single-instance election with no TOCTOU window).  The `addr` component (Bluetooth MAC)
+/// gives per-device isolation without a separate registry.
+///
+/// # Errors
+///
+/// Returns an error if the OS rejects the derived name, which should not occur for valid
+/// Bluetooth MAC strings.
+pub fn broker_abstract_name(addr: &str) -> io::Result<Name<'static>> {
+    format!("imsg/broker/{addr}").to_ns_name::<GenericNamespaced>()
+}
+
+/// `$XDG_STATE_HOME/imsg/broker-{addr}.log`, falling back to `~/.local/state` then `$TMPDIR`.
+///
+/// Truncated on each broker start. Parallel to [`broker_abstract_name`]; `addr` ensures
+/// per-device isolation. Inspect this file when the broker fails to start.
+#[must_use]
+pub fn broker_log_path(addr: &str) -> PathBuf {
+    let base = dirs::state_dir().unwrap_or_else(|| {
+        dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")
+    });
+    base.join(format!("imsg/broker-{addr}.log"))
 }
 
 /// `{data_dir}/imsg/hub.lock`. Zero-byte file used as an advisory `flock` lock.
@@ -85,33 +133,7 @@ pub fn set_hub_key(key: &str) -> Result<(), ConfigError> {
             msg: "must not be empty".to_owned(),
         });
     }
-
-    let config_dir = dirs::config_dir().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "cannot determine user config directory")
-    })?;
-    let path = config_dir.join("imsg/imsg.toml");
-
-    let mut doc: DocumentMut = match fs::read_to_string(&path) {
-        Ok(content) => content.parse()?,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => DocumentMut::new(),
-        Err(e) => return Err(ConfigError::Io(e)),
-    };
-
-    let root = doc.as_table_mut();
-    if root.get("hub").is_none_or(|i| !i.is_table()) {
-        root.insert("hub", Item::Table(Table::new()));
-    }
-    let hub = root.get_mut("hub").and_then(Item::as_table_mut).ok_or(ConfigError::Invalid {
-        field: "hub",
-        msg: "[hub] section is not a TOML table".to_owned(),
-    })?;
-    hub.insert("node_key", toml_edit::value(key));
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, doc.to_string())?;
-    Ok(())
+    patch_config("hub", "node_key", key)
 }
 
 #[cfg(test)]
@@ -119,6 +141,13 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
+
+    #[test]
+    fn broker_abstract_name_produces_valid_name() -> Result<(), ConfigError> {
+        broker_abstract_name("AA:BB:CC:DD:EE:FF")?;
+        broker_abstract_name("00:00:00:00:00:00")?;
+        Ok(())
+    }
 
     #[test]
     fn set_hub_key_rejects_empty() {
