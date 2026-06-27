@@ -1,3 +1,6 @@
 /target/
 /.cargo/config.toml
 
+# Local scratch / planning notes
+/internal/
+
