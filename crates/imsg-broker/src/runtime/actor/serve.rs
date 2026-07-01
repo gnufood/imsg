@@ -2,6 +2,8 @@
 //!
 //! Second impl block for [`Actor`]; the connection lifecycle lives in [`super::inner`].
 
+use std::time::Duration;
+
 use anyhow::Result;
 use ipc::{BrokerResponse, Reason, WatchEvent};
 use map_core::client::MapClient;
@@ -16,13 +18,12 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// ([`ServeOutcome::Exit`]), or the session dies mid-op ([`ServeOutcome::Dropped`]).
     ///
     /// MNS events are forwarded to subscribers; one-shot ops are dispatched in arrival order.
+    /// `self.idle == None` (daemon's persistent mode) disables the timeout branch entirely.
     pub(in crate::runtime::actor) async fn serve_active(
         &mut self,
         client: &mut MapClient<T>,
     ) -> ServeOutcome {
         loop {
-            let sleep = tokio::time::sleep(self.idle);
-            tokio::pin!(sleep);
             tokio::select! {
                 biased;
                 maybe_ev = recv_mns(&mut self.mns_rx) => if let Some(ev) = maybe_ev {
@@ -37,7 +38,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                         return ServeOutcome::Dropped;
                     }
                 }
-                () = &mut sleep => {
+                () = idle_sleep(self.idle) => {
                     tracing::info!("idle timeout — shutting down");
                     return ServeOutcome::Exit;
                 }
@@ -55,7 +56,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
             }
             DeviceOp::Unsubscribe => {
                 self.watch_count = self.watch_count.saturating_sub(1);
-                if self.watch_count == 0 {
+                if !wants_mns(self.watch_count, self.idle) {
                     self.stop_mns();
                 }
                 OpOutcome::Continue
@@ -127,9 +128,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         }
     }
 
-    /// Registers a watch subscriber, starting MNS on the first one, and returns a fresh receiver.
+    /// Registers a watch subscriber, starting MNS if it isn't already running (e.g. persistent
+    /// mode already started it), and returns a fresh receiver.
     async fn handle_subscribe(&mut self, reply: oneshot::Sender<broadcast::Receiver<WatchEvent>>) {
-        if self.watch_count == 0 {
+        if self.mns_rx.is_none() {
             self.start_mns().await;
         }
         self.watch_count = self.watch_count.saturating_add(1);
@@ -170,6 +172,14 @@ async fn recv_mns(rx: &mut Option<mpsc::Receiver<session::MnsEvent>>) -> Option<
     }
 }
 
+/// Awaits the idle timeout, or `pending` forever when `idle` is `None` (daemon's persistent mode).
+async fn idle_sleep(idle: Option<Duration>) {
+    match idle {
+        Some(d) => tokio::time::sleep(d).await,
+        None => std::future::pending().await,
+    }
+}
+
 /// Flattens an [`session::MnsEvent`] into the wire [`WatchEvent`].
 fn mns_to_watch(ev: &session::MnsEvent) -> WatchEvent {
     WatchEvent {
@@ -179,5 +189,37 @@ fn mns_to_watch(ev: &session::MnsEvent) -> WatchEvent {
         old_folder: ev.old_folder().map(str::to_owned),
         msg_type: ev.msg_type().map(str::to_owned),
         datetime: ev.datetime().map(str::to_owned),
+    }
+}
+
+/// True when MNS should be running: a live `Watch` subscriber, or persistent (daemon) mode,
+/// signaled by `idle == None` (the mode switch introduced for the idle timeout).
+pub(in crate::runtime::actor) const fn wants_mns(watch_count: u32, idle: Option<Duration>) -> bool {
+    watch_count > 0 || idle.is_none()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::wants_mns;
+    use std::time::Duration;
+
+    #[test]
+    fn no_subscribers_ephemeral_does_not_want_mns() {
+        assert!(!wants_mns(0, Some(Duration::from_secs(15))));
+    }
+
+    #[test]
+    fn no_subscribers_persistent_wants_mns() {
+        assert!(wants_mns(0, None));
+    }
+
+    #[test]
+    fn subscribers_ephemeral_wants_mns() {
+        assert!(wants_mns(1, Some(Duration::from_secs(15))));
+    }
+
+    #[test]
+    fn subscribers_persistent_wants_mns() {
+        assert!(wants_mns(1, None));
     }
 }

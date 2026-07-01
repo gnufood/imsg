@@ -64,7 +64,7 @@ pub(in crate::runtime) async fn serve(
     };
     let readiness_wait = cfg.broker.readiness_wait();
     let connector = make_connector(addr, channel, cfg.broker.bt_connected());
-    let handles = super::actor::spawn(connector, store, cfg.broker.idle(), policy);
+    let handles = super::actor::spawn(connector, store, Some(cfg.broker.idle()), policy);
     serve_loop(handles, &listener, device, readiness_wait).await
 }
 

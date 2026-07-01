@@ -25,7 +25,7 @@ struct Actor<T> {
     rx: mpsc::Receiver<DeviceOp>,
     connect: Connector<T>,
     store: Store,
-    idle: Duration,
+    idle: Option<Duration>,
     policy: ConnectPolicy,
     watch_tx: broadcast::Sender<WatchEvent>,
     watch_count: u32,
@@ -61,7 +61,7 @@ enum OpOutcome {
 pub(in crate::runtime) fn spawn<T>(
     connector: Connector<T>,
     store: Store,
-    idle: Duration,
+    idle: Option<Duration>,
     policy: ConnectPolicy,
 ) -> ActorHandles
 where
@@ -157,7 +157,7 @@ mod tests {
     #[tokio::test]
     async fn reaches_active_then_shuts_down_when_handle_dropped() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(fake_connector(), store, Duration::from_secs(60), test_policy());
+        let h = spawn(fake_connector(), store, Some(Duration::from_secs(60)), test_policy());
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         drop(h.handle);
@@ -170,9 +170,35 @@ mod tests {
     #[tokio::test]
     async fn failed_connect_goes_terminal() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(failing_connector(), store, Duration::from_secs(60), test_policy());
+        let h = spawn(failing_connector(), store, Some(Duration::from_secs(60)), test_policy());
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Failed(_))).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn idle_timeout_shuts_down_when_some() -> anyhow::Result<()> {
+        let (store, _dir) = fake_store().await?;
+        let h = spawn(fake_connector(), store, Some(Duration::from_millis(50)), test_policy());
+        let mut state = h.state.clone();
+        state.wait_for(|s| matches!(s, ConnState::Active)).await?;
+        let mut shutdown = h.shutdown;
+        tokio::time::timeout(Duration::from_secs(3), shutdown.changed()).await??;
+        assert!(*shutdown.borrow());
+        Ok(())
+    }
+
+    /// Daemon's persistent mode: `idle: None` must never fire the idle timeout, however long the
+    /// actor sits without a [`DeviceOp`].
+    #[tokio::test]
+    async fn no_idle_timeout_when_none() -> anyhow::Result<()> {
+        let (store, _dir) = fake_store().await?;
+        let h = spawn(fake_connector(), store, None, test_policy());
+        let mut state = h.state.clone();
+        state.wait_for(|s| matches!(s, ConnState::Active)).await?;
+        let mut shutdown = h.shutdown;
+        let outcome = tokio::time::timeout(Duration::from_millis(200), shutdown.changed()).await;
+        assert!(outcome.is_err(), "actor shut down despite idle: None");
         Ok(())
     }
 }

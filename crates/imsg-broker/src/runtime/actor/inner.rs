@@ -2,15 +2,16 @@
 //!
 //! [`Actor::run`] owns the MAP session: it establishes the client via the [`Connector`] with
 //! bounded retry, publishes [`ConnState`], serves [`DeviceOp`]s while `Active`, and on a recoverable
-//! drop reconnects while subscribers remain (otherwise exits so the CLI respawns lazily). A
-//! permanent error or an exhausted budget transitions to terminal [`ConnState::Failed`]. The
-//! serving half of the impl lives in [`super::serve`].
+//! drop reconnects while subscribers remain or in persistent (daemon) mode (otherwise exits so the
+//! CLI respawns lazily). A permanent error or an exhausted budget transitions to terminal
+//! [`ConnState::Failed`]. The serving half of the impl lives in [`super::serve`].
 
 use ipc::{BrokerResponse, Reason};
 use map_core::client::MapClient;
 use session::Disposition;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+use super::serve::wants_mns;
 use super::{dispatch, Actor, ServeOutcome};
 use crate::runtime::types::{ConnState, DeviceOp};
 
@@ -19,8 +20,9 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     ///
     /// Each iteration establishes the session (publishing `Active` and draining the outbox),
     /// restarts MNS if subscribers remain, then serves until idle/shutdown (exit) or a session
-    /// drop. A drop with subscribers reconnects (`Reconnecting`); a drop with none exits so the CLI
-    /// respawns lazily. A failed connect goes terminal `Failed`. Fires the shutdown signal on exit.
+    /// drop. A drop with subscribers or in persistent mode reconnects (`Reconnecting`); otherwise
+    /// exits so the CLI respawns lazily. A failed connect goes terminal `Failed`. Fires the
+    /// shutdown signal on exit.
     pub(in crate::runtime::actor) async fn run(mut self) {
         loop {
             let client = match self.try_connect().await {
@@ -39,17 +41,18 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     }
 
     /// Serves one connected session: publishes `Active`, drains the outbox, restarts MNS for any
-    /// existing subscribers, then serves until the session ends.
+    /// existing subscribers or persistent (daemon) mode, then serves until the session ends.
     ///
-    /// Returns `true` to reconnect (a recoverable drop while subscribers remain) or `false` to exit
-    /// the lifecycle (idle/shutdown, or a drop with no subscribers — the CLI respawns lazily).
+    /// Returns `true` to reconnect (a recoverable drop while subscribers remain or in persistent
+    /// mode) or `false` to exit the lifecycle (idle/shutdown, or a drop with no subscribers in
+    /// ephemeral mode — the CLI respawns lazily).
     async fn run_session(&mut self, mut client: MapClient<T>) -> bool {
         let _ = self.state_tx.send(ConnState::Active);
         let now = session::util::now_ms();
         if let Err(e) = session::outbox::drain_outbox(&mut client, &self.store, now).await {
             tracing::warn!("initial outbox drain failed: {e}");
         }
-        if self.watch_count > 0 {
+        if wants_mns(self.watch_count, self.idle) {
             self.start_mns().await;
         }
         let outcome = self.serve_active(&mut client).await;
@@ -61,8 +64,9 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 }
                 false
             }
-            // Demand-gate: no subscribers means no one needs the link — exit, respawn lazily.
-            ServeOutcome::Dropped if self.watch_count == 0 => {
+            // Demand-gate: no subscribers and not persistent mode means no one needs the link —
+            // exit, respawn lazily. Persistent mode (`idle: None`) always reconnects.
+            ServeOutcome::Dropped if !wants_mns(self.watch_count, self.idle) => {
                 self.fail_pending(&Reason::DeviceUnreachable);
                 false
             }

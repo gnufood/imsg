@@ -2506,6 +2506,8 @@ dependencies = [
  "imsg-pbap",
  "imsg-store",
  "imsg-transport",
+ "secrecy",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tokio-retry",
