@@ -10,17 +10,24 @@ use ipc::{BrokerRequest, BrokerResponse, Reason, MAX_FRAME_LEN};
 use std::time::Duration;
 use tokio::sync::{broadcast, oneshot, watch};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use tokio_util::sync::CancellationToken;
 
 use crate::runtime::types::{ConnState, DeviceHandle, DeviceOp};
 
 /// Reads one request frame and routes it: `Status` from the state watch, `Watch` to the stream
-/// handler, everything else through the readiness gate to the actor.
+/// handler, `Shutdown` to the coordinator token (if any), everything else through the readiness
+/// gate to the actor.
+///
+/// `shutdown` is `Some` only for a persistent (daemon-mode) broker — the ephemeral one-shot
+/// broker has no coordinator to cancel, so it answers `Shutdown` with an explicit error instead
+/// of silently ignoring it.
 pub(in crate::runtime) async fn handle_connection<S>(
     stream: S,
     handle: &DeviceHandle,
     state: watch::Receiver<ConnState>,
     device: String,
     readiness_wait: Duration,
+    shutdown: Option<&CancellationToken>,
 ) -> Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -48,8 +55,25 @@ where
             send_frame(&mut framed, &info).await
         }
         BrokerRequest::Watch => handle_watch(framed, handle).await,
+        BrokerRequest::Shutdown => handle_shutdown(framed, shutdown).await,
         other => handle_one_shot(framed, handle, state, readiness_wait, other).await,
     }
+}
+
+/// Cancels the shutdown coordinator's token, or reports that this broker instance has none.
+async fn handle_shutdown<S: tokio::io::AsyncWrite + Unpin>(
+    mut framed: Framed<S, LengthDelimitedCodec>,
+    shutdown: Option<&CancellationToken>,
+) -> Result<()> {
+    let Some(token) = shutdown else {
+        return send_frame(
+            &mut framed,
+            &BrokerResponse::Error("shutdown not supported by an ephemeral broker".into()),
+        )
+        .await;
+    };
+    token.cancel();
+    send_frame(&mut framed, &BrokerResponse::Ok).await
 }
 
 /// Resolution of the readiness gate for an operational request.
@@ -172,7 +196,7 @@ fn req_to_op(
         BrokerRequest::SendLive { number, message } => {
             DeviceOp::LiveSend { number, message, reply }
         }
-        BrokerRequest::Status | BrokerRequest::Watch => {
+        BrokerRequest::Status | BrokerRequest::Watch | BrokerRequest::Shutdown => {
             return Err(Box::new(BrokerResponse::Error(
                 "internal: routed to one-shot path".into(),
             )));
@@ -196,94 +220,4 @@ async fn send_frame<S: tokio::io::AsyncWrite + Unpin>(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use futures::SinkExt as _;
-    use ipc::SessionState;
-    use tokio::io::duplex;
-
-    fn codec() -> LengthDelimitedCodec {
-        LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec()
-    }
-
-    async fn send_request<S: tokio::io::AsyncWrite + Unpin>(
-        framed: &mut Framed<S, LengthDelimitedCodec>,
-        req: &BrokerRequest,
-    ) -> anyhow::Result<()> {
-        let bytes = Bytes::from(serde_json::to_vec(req)?);
-        framed.send(bytes).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn await_ready_resolves_active_immediately() {
-        let (_tx, mut rx) = watch::channel(ConnState::Active);
-        assert!(matches!(await_ready(&mut rx, Duration::from_millis(50)).await, Ready::Active));
-    }
-
-    #[tokio::test]
-    async fn await_ready_propagates_failed_reason() {
-        let (_tx, mut rx) = watch::channel(ConnState::Failed(Reason::ConnectionRefused));
-        assert!(matches!(
-            await_ready(&mut rx, Duration::from_millis(50)).await,
-            Ready::Failed(Reason::ConnectionRefused)
-        ));
-    }
-
-    #[tokio::test]
-    async fn await_ready_times_out_while_connecting() {
-        let (_tx, mut rx) = watch::channel(ConnState::Connecting);
-        assert!(matches!(await_ready(&mut rx, Duration::from_millis(20)).await, Ready::Timeout));
-    }
-
-    /// Status is answered from the state watch even while `Reconnecting` and with no op consumer —
-    /// proving it bypasses the actor op channel and never waits.
-    #[tokio::test]
-    async fn status_served_from_state_watch() -> anyhow::Result<()> {
-        let (op_tx, _op_rx) = tokio::sync::mpsc::channel(1);
-        let handle = DeviceHandle::from_sender(op_tx);
-        let (state_tx, state_rx) = watch::channel(ConnState::Reconnecting);
-        let (client, server) = duplex(4096);
-
-        let task = tokio::spawn(async move {
-            handle_connection(server, &handle, state_rx, "AA:BB:CC:DD:EE:FF".into(), secs(1)).await
-        });
-        let mut framed = Framed::new(client, codec());
-        send_request(&mut framed, &BrokerRequest::Status).await?;
-        let frame = framed.next().await.context("broker closed stream")??;
-        let resp: BrokerResponse = serde_json::from_slice(&frame)?;
-        assert!(matches!(
-            resp,
-            BrokerResponse::StatusInfo { state: SessionState::Reconnecting, .. }
-        ));
-        drop(state_tx);
-        let _ = task.await;
-        Ok(())
-    }
-
-    /// An operational request returns `NotReady` when the session never reaches `Active` within the
-    /// readiness deadline.
-    #[tokio::test]
-    async fn one_shot_times_out_as_not_ready() -> anyhow::Result<()> {
-        let (op_tx, _op_rx) = tokio::sync::mpsc::channel(1);
-        let handle = DeviceHandle::from_sender(op_tx);
-        let (_state_tx, state_rx) = watch::channel(ConnState::Connecting);
-        let (client, server) = duplex(4096);
-
-        let task = tokio::spawn(async move {
-            handle_connection(server, &handle, state_rx, "dev".into(), Duration::from_millis(40))
-                .await
-        });
-        let mut framed = Framed::new(client, codec());
-        send_request(&mut framed, &BrokerRequest::Sync { folder: None }).await?;
-        let frame = framed.next().await.context("broker closed stream")??;
-        let resp: BrokerResponse = serde_json::from_slice(&frame)?;
-        assert!(matches!(resp, BrokerResponse::Failed(Reason::NotReady)));
-        let _ = task.await;
-        Ok(())
-    }
-
-    fn secs(n: u64) -> Duration {
-        Duration::from_secs(n)
-    }
-}
+mod tests;

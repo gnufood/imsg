@@ -7,4 +7,4 @@
 
 mod runtime;
 
-pub use runtime::run;
+pub use runtime::{run, run_daemon};

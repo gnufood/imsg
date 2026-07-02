@@ -3,13 +3,18 @@
 //! public entry point.
 
 mod actor;
+mod daemon;
 mod handler;
 mod server;
+mod shutdown;
 mod types;
 
 use anyhow::{Context, Result};
 use config::Config;
+use interprocess::local_socket::tokio::Listener as IpcListener;
 use store::Store;
+
+pub use daemon::run_daemon;
 
 /// Binds the abstract broker socket for `addr` and serves IPC requests until idle timeout or
 /// fatal MAP failure.
@@ -29,7 +34,19 @@ use store::Store;
 /// Returns an error if socket binding or the accept loop fails fatally. A failed MAP connect is
 /// handled by the actor (it shuts the broker down), not returned here.
 pub async fn run(cfg: Config, device_override: Option<String>, store: Store) -> Result<()> {
-    let addr_str = device_override.as_deref().unwrap_or_else(|| cfg.device.address()).to_owned();
+    let (addr_str, addr, map_channel, listener) = bind(&cfg, device_override.as_deref())?;
+    server::serve(cfg, addr_str, addr, map_channel, store, listener).await
+}
+
+/// Parses the target device address and wins (or exits on) the abstract-socket election.
+///
+/// Shared by [`run`] and [`daemon::run_daemon`] — the only difference between ephemeral and
+/// persistent mode is which `server::serve*` variant runs on the result.
+fn bind(
+    cfg: &Config,
+    device_override: Option<&str>,
+) -> Result<(String, bluer::Address, u8, IpcListener)> {
+    let addr_str = device_override.unwrap_or_else(|| cfg.device.address()).to_owned();
     let map_channel = cfg.device.map_channel;
     let addr: bluer::Address =
         addr_str.parse().with_context(|| format!("invalid device address: {addr_str}"))?;
@@ -37,5 +54,5 @@ pub async fn run(cfg: Config, device_override: Option<String>, store: Store) -> 
     // Bind-or-exit: wins the singleton election or calls process::exit(0).
     let listener = server::bind_or_exit(&addr_str)?;
 
-    server::serve(cfg, addr_str, addr, map_channel, store, listener).await
+    Ok((addr_str, addr, map_channel, listener))
 }

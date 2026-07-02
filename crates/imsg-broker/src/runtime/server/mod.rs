@@ -56,16 +56,75 @@ pub(in crate::runtime) async fn serve(
     store: Store,
     listener: IpcListener,
 ) -> Result<()> {
-    let policy = ConnectPolicy {
+    let idle = Some(cfg.broker.idle());
+    serve_with_idle(cfg, device, addr, channel, store, listener, idle).await
+}
+
+/// Persistent-mode counterpart to [`serve`]: idle disabled, and — unlike [`serve`]'s plain
+/// [`serve_loop`] — accepts through [`super::shutdown::run`], which converges an IPC `Shutdown`
+/// request and SIGTERM/SIGINT into one graceful drain. `serve` deliberately does not get this:
+/// the ephemeral one-shot broker's shutdown timing stays exactly as-is, zero risk to existing
+/// CLI commands.
+///
+/// # Errors
+///
+/// Returns an error if `listener.accept()` fails fatally.
+pub(in crate::runtime) async fn serve_daemon(
+    cfg: Config,
+    device: String,
+    addr: bluer::Address,
+    channel: u8,
+    store: Store,
+    listener: IpcListener,
+) -> Result<()> {
+    let policy = build_policy(&cfg);
+    let readiness_wait = cfg.broker.readiness_wait();
+    let connector = make_connector(addr, channel, cfg.broker.bt_connected());
+    super::shutdown::run(connector, store, policy, &listener, device, readiness_wait).await
+}
+
+/// Shared by [`serve`] and [`serve_daemon`]; `idle` is their only difference.
+async fn serve_with_idle(
+    cfg: Config,
+    device: String,
+    addr: bluer::Address,
+    channel: u8,
+    store: Store,
+    listener: IpcListener,
+    idle: Option<Duration>,
+) -> Result<()> {
+    let policy = build_policy(&cfg);
+    let readiness_wait = cfg.broker.readiness_wait();
+    let connector = make_connector(addr, channel, cfg.broker.bt_connected());
+    serve_actor(connector, store, idle, policy, &listener, device, readiness_wait).await
+}
+
+/// Builds the connect-retry policy shared by every serve variant.
+pub(in crate::runtime) const fn build_policy(cfg: &Config) -> ConnectPolicy {
+    ConnectPolicy {
         initial_backoff: cfg.broker.initial_backoff(),
         max_backoff: cfg.broker.max_backoff(),
         max_attempts: cfg.broker.connect_max_attempts,
         startup_budget: cfg.broker.startup_budget(),
-    };
-    let readiness_wait = cfg.broker.readiness_wait();
-    let connector = make_connector(addr, channel, cfg.broker.bt_connected());
-    let handles = super::actor::spawn(connector, store, Some(cfg.broker.idle()), policy);
-    serve_loop(handles, &listener, device, readiness_wait).await
+    }
+}
+
+/// Connector-generic core of [`serve`]/[`serve_daemon`], split out so the idle-wiring behavior
+/// is testable against a fake in-memory connector instead of a real MAP session.
+async fn serve_actor<T>(
+    connector: Connector<T>,
+    store: Store,
+    idle: Option<Duration>,
+    policy: ConnectPolicy,
+    listener: &IpcListener,
+    device: String,
+    readiness_wait: Duration,
+) -> Result<()>
+where
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    let handles = super::actor::spawn(connector, store, idle, policy);
+    serve_loop(handles, listener, device, readiness_wait).await
 }
 
 /// Builds the production connector: every call establishes a fresh RFCOMM/OBEX MAP session to
@@ -100,7 +159,8 @@ async fn serve_loop(
         let st = state.clone();
         let dev = device.clone();
         tokio::spawn(async move {
-            if let Err(e) = handle_connection(stream, &h, st, dev, readiness_wait).await {
+            // `None`: the ephemeral broker has no shutdown coordinator to cancel.
+            if let Err(e) = handle_connection(stream, &h, st, dev, readiness_wait, None).await {
                 tracing::warn!("connection error: {e}");
             }
         });
@@ -108,40 +168,4 @@ async fn serve_loop(
 }
 
 #[cfg(test)]
-mod tests {
-    use interprocess::local_socket::{GenericNamespaced, ListenerOptions, ToNsName as _};
-
-    /// The kernel produces `EADDRINUSE` when the abstract name is already bound.
-    ///
-    /// `bind_or_exit` maps this to `process::exit(0)`. This test verifies the invariant it
-    /// relies on without calling `exit` (which would kill the test process).
-    #[tokio::test]
-    async fn abstract_name_election_is_atomic() -> anyhow::Result<()> {
-        let n1 = "imsg/broker/FE:ED:DE:AD:00:01".to_ns_name::<GenericNamespaced>()?;
-        let n2 = "imsg/broker/FE:ED:DE:AD:00:01".to_ns_name::<GenericNamespaced>()?;
-        let _l1 = ListenerOptions::new().name(n1).create_tokio()?;
-        let Err(err) = ListenerOptions::new().name(n2).create_tokio() else {
-            return Err(anyhow::anyhow!(
-                "second bind to a held abstract name unexpectedly succeeded"
-            ));
-        };
-        assert_eq!(err.kind(), std::io::ErrorKind::AddrInUse);
-        Ok(())
-    }
-
-    /// The abstract name is released the instant the listener is dropped.
-    ///
-    /// This is the anti-regression for the entire stale-socket bug class: with filesystem
-    /// sockets a crash leaves an inode behind; with abstract sockets the kernel cleans up
-    /// atomically on any exit.
-    #[tokio::test]
-    async fn abstract_name_released_on_listener_drop() -> anyhow::Result<()> {
-        let n1 = "imsg/broker/FE:ED:DE:AD:00:02".to_ns_name::<GenericNamespaced>()?;
-        let n2 = "imsg/broker/FE:ED:DE:AD:00:02".to_ns_name::<GenericNamespaced>()?;
-        let l = ListenerOptions::new().name(n1).create_tokio()?;
-        drop(l);
-        // Would be EADDRINUSE if the abstract name leaked.
-        ListenerOptions::new().name(n2).create_tokio()?;
-        Ok(())
-    }
-}
+mod tests;
