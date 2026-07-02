@@ -106,6 +106,18 @@ pub fn broker_log_path(addr: &str) -> PathBuf {
     base.join(format!("imsg/broker-{addr}.log"))
 }
 
+/// `$XDG_STATE_HOME/imsg/daemon-{addr}.log`, falling back to `~/.local/state` then `$TMPDIR`.
+///
+/// Truncated on each `imsg daemon start`. Distinct from [`broker_log_path`] so a persistent
+/// daemon's detached stdout/stderr never mixes with an ephemeral broker session's log.
+#[must_use]
+pub fn daemon_log_path(addr: &str) -> PathBuf {
+    let base = dirs::state_dir().unwrap_or_else(|| {
+        dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")
+    });
+    base.join(format!("imsg/daemon-{addr}.log"))
+}
+
 /// `{data_dir}/imsg/hub.lock`. Zero-byte file used as an advisory `flock` lock.
 ///
 /// Released on exit or crash (kernel closes all fds). Callers create and lock it —

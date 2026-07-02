@@ -153,12 +153,35 @@ pub(crate) enum Command {
     /// Internal: session broker process, auto-started by the CLI — not for direct invocation.
     #[command(name = "__broker_serve", hide = true)]
     BrokerServe,
+    /// Manage the persistent background broker (opt-in; required for GUI use).
+    Daemon {
+        /// Daemon action.
+        #[command(subcommand)]
+        cmd: DaemonCmd,
+    },
 }
 
 /// `broker` actions.
 #[derive(Subcommand, Debug)]
 pub(crate) enum BrokerCmd {
     /// Report whether the broker is running and whether its MAP session is connected.
+    Status,
+}
+
+/// `daemon` actions.
+#[derive(Subcommand, Debug)]
+pub(crate) enum DaemonCmd {
+    /// Start the persistent broker. Detaches into the background by default; idempotent if
+    /// already running.
+    Start {
+        /// Stay attached instead of detaching — required under a process supervisor (e.g. a
+        /// systemd unit). Stops on Ctrl-C, SIGTERM, or an IPC `Shutdown` request.
+        #[arg(long)]
+        foreground: bool,
+    },
+    /// Request a graceful stop. A no-op (not an error) if nothing is running.
+    Stop,
+    /// Report whether the daemon is running and whether its MAP session is connected.
     Status,
 }
 

@@ -4,6 +4,7 @@ pub mod broker;
 pub mod config;
 pub mod conn;
 pub mod contacts;
+pub mod daemon;
 pub mod delete;
 pub mod folders;
 pub mod get;
@@ -127,6 +128,7 @@ async fn run_command(
             None
         }
         Command::Unsync { purge } => Some(run_unsync(purge, config_path).await?),
+        Command::Daemon { cmd } => daemon::dispatch(cmd, device, config_path).await?,
     };
     Ok(out)
 }
@@ -278,7 +280,7 @@ pub(crate) fn freshness_line(last_sync_at: Option<i64>) -> String {
 }
 
 /// Loads the layered configuration, attaching a hint about the most common failure.
-fn load(path: Option<PathBuf>) -> Result<::config::Config> {
+pub(in crate::commands) fn load(path: Option<PathBuf>) -> Result<::config::Config> {
     ::config::load(path)
         .context("loading config (run `imsg config set-device <ADDR>` if device.address is unset)")
 }
@@ -293,7 +295,7 @@ fn load(path: Option<PathBuf>) -> Result<::config::Config> {
 ///
 /// Returns an error if the data directory is unavailable, keyring init fails, key retrieval
 /// fails, or [`store::Store::open`] fails.
-async fn open_store(cfg: &::config::Config) -> Result<store::Store> {
+pub(in crate::commands) async fn open_store(cfg: &::config::Config) -> Result<store::Store> {
     let path =
         cfg.store.resolve().context("no data directory available (set HOME or XDG_DATA_HOME)")?;
     let ready = keyring::init_store().context("Secret Service store init failed")?;

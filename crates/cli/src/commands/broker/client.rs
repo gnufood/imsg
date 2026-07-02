@@ -57,6 +57,27 @@ pub(in crate::commands) async fn run_status(cfg: &Config, device: Option<&str>) 
     }
 }
 
+/// Sends a graceful `Shutdown` request, or reports `"not running"` if unreachable.
+///
+/// Idempotent by design — stopping something that isn't running is a no-op, not an error, and
+/// this never auto-starts the broker just to shut it back down.
+///
+/// # Errors
+///
+/// Returns an error if the connection succeeds but sending or receiving the frame fails.
+pub(in crate::commands) async fn run_stop(cfg: &Config, device: Option<&str>) -> Result<String> {
+    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let Ok(mut framed) = connect_raw(addr).await else {
+        return Ok(format!("daemon for {addr}: not running"));
+    };
+    send_frame(&mut framed, &BrokerRequest::Shutdown).await?;
+    match recv_frame(&mut framed).await? {
+        BrokerResponse::Ok => Ok(format!("daemon for {addr}: stopping")),
+        BrokerResponse::Error(e) => Ok(format!("daemon for {addr}: {e}")),
+        other => Ok(format!("unexpected response: {other:?}")),
+    }
+}
+
 /// Encodes `req` as JSON and writes one length-delimited frame.
 ///
 /// # Errors

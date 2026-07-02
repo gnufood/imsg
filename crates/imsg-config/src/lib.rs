@@ -5,8 +5,8 @@ mod write;
 
 pub use broker::BrokerConfig;
 pub use write::{
-    broker_abstract_name, broker_log_path, db_path, hub_key_path, hub_lock_path, set_device,
-    set_hub_key,
+    broker_abstract_name, broker_log_path, daemon_log_path, db_path, hub_key_path, hub_lock_path,
+    set_device, set_hub_key,
 };
 
 use std::path::PathBuf;

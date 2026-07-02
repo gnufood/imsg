@@ -50,10 +50,13 @@ pub(super) async fn ensure_running(
 /// child exits before that, or after `deadline_in` elapses. `deadline_in` is validated at config
 /// load to exceed the broker's own startup budget, so this never gives up mid-connect.
 ///
+/// Shared with `commands::daemon`'s detached-start readiness wait — the abstract-socket
+/// election works identically regardless of which mode spawned the process.
+///
 /// # Errors
 ///
 /// Returns an error if the child exits before the socket is connectable or the deadline fires.
-async fn connect_retry(
+pub(in crate::commands) async fn connect_retry(
     addr: &str,
     child: &mut Child,
     log_path: &Path,
@@ -88,7 +91,9 @@ async fn connect_retry(
 }
 
 /// Returns `true` if the abstract broker socket for `addr` is currently connectable.
-async fn probe(addr: &str) -> bool {
+///
+/// Shared with `commands::daemon` — "is it running" is the same check regardless of mode.
+pub(in crate::commands) async fn probe(addr: &str) -> bool {
     match config::broker_abstract_name(addr) {
         Ok(name) => ConnectOptions::new().name(name).connect_tokio().await.is_ok(),
         Err(_) => false,

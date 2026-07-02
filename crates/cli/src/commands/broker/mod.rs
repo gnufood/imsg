@@ -15,7 +15,8 @@ use interprocess::local_socket::tokio::Stream as LocalStream;
 use ipc::{BrokerRequest, BrokerResponse};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-pub(in crate::commands) use client::{run_status, send_frame};
+pub(in crate::commands) use client::{run_status, run_stop, send_frame};
+pub(in crate::commands) use spawn::{connect_retry, probe};
 
 /// Sends `req` to the broker (auto-starting if necessary) and returns one response frame.
 ///
