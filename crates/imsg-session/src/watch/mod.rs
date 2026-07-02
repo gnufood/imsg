@@ -14,11 +14,12 @@ use crate::{EventType, MnsEvent};
 
 /// Maps a MAP folder path segment (or full path like `telecom/msg/inbox`) to a [`Folder`].
 ///
-/// Matches on the last `/`-delimited segment. Returns `None` for unknown folder names.
+/// Matches on the last `/`-delimited segment, case-insensitively — real devices report
+/// uppercase paths (e.g. `TELECOM/MSG/INBOX`). Returns `None` for unknown folder names.
 fn parse_folder(s: &str) -> Option<Folder> {
     // rsplit('/').next() always yields Some on any &str; unwrap_or(s) is a no-op fallback.
     let leaf = s.rsplit('/').next().unwrap_or(s);
-    match leaf {
+    match leaf.to_ascii_lowercase().as_str() {
         "inbox" => Some(Folder::Inbox),
         "sent" => Some(Folder::Sent),
         "outbox" => Some(Folder::Outbox),

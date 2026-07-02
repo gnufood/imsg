@@ -1,4 +1,5 @@
-//! Device actor serving: the `Active`-phase select loop, op dispatch, and MNS fan-out.
+//! Device actor serving: the `Active`-phase select loop, op dispatch, and MNS event handling
+//! (store write + subscriber fan-out).
 //!
 //! Second impl block for [`Actor`]; the connection lifecycle lives in [`super::inner`].
 
@@ -7,6 +8,7 @@ use std::time::Duration;
 use anyhow::Result;
 use ipc::{BrokerResponse, Reason, WatchEvent};
 use map_core::client::MapClient;
+use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
@@ -17,8 +19,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Serves [`DeviceOp`]s against the live `client` until idle timeout, all handles dropped
     /// ([`ServeOutcome::Exit`]), or the session dies mid-op ([`ServeOutcome::Dropped`]).
     ///
-    /// MNS events are forwarded to subscribers; one-shot ops are dispatched in arrival order.
-    /// `self.idle == None` (daemon's persistent mode) disables the timeout branch entirely.
+    /// MNS events are written to the store, then forwarded to `Watch` subscribers, unconditionally
+    /// — not gated on a subscriber being attached (the daemon's steady state has none). One-shot
+    /// ops are dispatched in arrival order. `self.idle == None` (daemon's persistent mode) disables
+    /// the timeout branch entirely.
     pub(in crate::runtime::actor) async fn serve_active(
         &mut self,
         client: &mut MapClient<T>,
@@ -27,7 +31,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
             tokio::select! {
                 biased;
                 maybe_ev = recv_mns(&mut self.mns_rx) => if let Some(ev) = maybe_ev {
-                    let _ = self.watch_tx.send(mns_to_watch(&ev));
+                    let outcome = on_mns_event(&ev, client, &self.store, &self.watch_tx).await;
+                    if matches!(outcome, OpOutcome::SessionLost) {
+                        return ServeOutcome::Dropped;
+                    }
                 } else {
                     self.mns_rx = None;
                     self.mns_cancel = None;
@@ -192,6 +199,33 @@ fn mns_to_watch(ev: &session::MnsEvent) -> WatchEvent {
     }
 }
 
+/// Writes an MNS event to the store, then fans it out to `Watch` subscribers regardless of the
+/// write outcome — subscribers should still see the raw event even if persistence failed.
+///
+/// Returns [`OpOutcome::SessionLost`] when the MAP fetch behind a `NewMessage` event hits a fatal
+/// transport error — the caller should reconnect. Non-fatal store/MAP errors are logged and
+/// otherwise ignored; the event is not retried (`Store::reconcile_outgoing` and periodic backfill
+/// are the correctness fallback for anything missed).
+async fn on_mns_event<T: AsyncRead + AsyncWrite + Unpin>(
+    ev: &session::MnsEvent,
+    client: &mut MapClient<T>,
+    store: &Store,
+    watch_tx: &broadcast::Sender<WatchEvent>,
+) -> OpOutcome {
+    let now = session::util::now_ms();
+    let mut outcome = OpOutcome::Continue;
+    if let Err(e) = session::watch::handle_mns_event(ev, client, store, now).await {
+        if session::outbox::is_fatal_anyhow(&e) {
+            tracing::warn!("MNS event handling lost the session: {e:#}");
+            outcome = OpOutcome::SessionLost;
+        } else {
+            tracing::warn!("MNS event store write failed: {e:#}");
+        }
+    }
+    let _ = watch_tx.send(mns_to_watch(ev));
+    outcome
+}
+
 /// True when MNS should be running: a live `Watch` subscriber, or persistent (daemon) mode,
 /// signaled by `idle == None` (the mode switch introduced for the idle timeout).
 pub(in crate::runtime::actor) const fn wants_mns(watch_count: u32, idle: Option<Duration>) -> bool {
@@ -199,27 +233,4 @@ pub(in crate::runtime::actor) const fn wants_mns(watch_count: u32, idle: Option<
 }
 
 #[cfg(test)]
-mod tests {
-    use super::wants_mns;
-    use std::time::Duration;
-
-    #[test]
-    fn no_subscribers_ephemeral_does_not_want_mns() {
-        assert!(!wants_mns(0, Some(Duration::from_secs(15))));
-    }
-
-    #[test]
-    fn no_subscribers_persistent_wants_mns() {
-        assert!(wants_mns(0, None));
-    }
-
-    #[test]
-    fn subscribers_ephemeral_wants_mns() {
-        assert!(wants_mns(1, Some(Duration::from_secs(15))));
-    }
-
-    #[test]
-    fn subscribers_persistent_wants_mns() {
-        assert!(wants_mns(1, None));
-    }
-}
+mod tests;

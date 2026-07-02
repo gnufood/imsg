@@ -103,6 +103,28 @@ async fn new_message_upserts_fetched_body() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Regression: `imsg-session/src/test_support.rs::NEW_MESSAGE_XML` models a real device's
+/// uppercase folder path (`TELECOM/MSG/INBOX`); `parse_folder` must match it case-insensitively
+/// or `NewMessage` events are silently dropped on real hardware.
+#[tokio::test]
+async fn new_message_matches_uppercase_device_folder_path() -> anyhow::Result<()> {
+    let (store, _dir) = fake_store().await?;
+    let wire = BMessage::outbound_sms("+15550002", "hi")
+        .encode()
+        .replace("FOLDER:telecom/msg/outbox", "FOLDER:telecom/msg/inbox")
+        .replace("STATUS:UNREAD", "STATUS:READ")
+        .replace("TEL:\r\n", "TEL:+15550001\r\n");
+    let mut client = fake_client_with_message(wire).await?;
+    let ev = parse_event_report(crate::test_support::NEW_MESSAGE_XML)?;
+    handle_mns_event(&ev, &mut client, &store, 1000).await?;
+    let row = store
+        .get_by_handle("ABC123")
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("row not upserted — uppercase folder path was dropped"))?;
+    assert_eq!(row.text, "hi");
+    Ok(())
+}
+
 #[tokio::test]
 async fn message_deleted_removes_row() -> anyhow::Result<()> {
     let (store, _dir) = fake_store().await?;
