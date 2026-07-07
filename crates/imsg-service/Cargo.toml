@@ -1,0 +1,16 @@
+[package]
+name = "imsg-service"
+description = "OS service-manager integration for imsg: install/start/stop the daemon as a systemd/launchd/OpenRC/rc.d/sc.exe service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+service-manager = "0.11"
+thiserror = "2"
+
+[lints]
+workspace = true

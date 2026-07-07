@@ -7,6 +7,7 @@ members = [
     "crates/imsg-pbap",
     "crates/imsg-config",
     "crates/imsg-keyring",
+    "crates/imsg-service",
     "crates/imsg-store",
     "crates/imsg-session",
     "crates/imsg-ipc",
