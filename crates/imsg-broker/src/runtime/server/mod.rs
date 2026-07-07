@@ -77,7 +77,7 @@ pub(in crate::runtime) async fn serve_daemon(
     store: Store,
     listener: IpcListener,
 ) -> Result<()> {
-    let policy = build_policy(&cfg);
+    let policy = build_daemon_policy(&cfg);
     let readiness_wait = cfg.broker.readiness_wait();
     let connector = make_connector(addr, channel, cfg.broker.bt_connected());
     super::shutdown::run(connector, store, policy, &listener, device, readiness_wait).await
@@ -99,13 +99,27 @@ async fn serve_with_idle(
     serve_actor(connector, store, idle, policy, &listener, device, readiness_wait).await
 }
 
-/// Builds the connect-retry policy shared by every serve variant.
+/// Builds the connect-retry policy for one-shot (`serve`) mode: bounded attempts within a
+/// wall-clock budget, so a CLI command fails fast and reports a clear error when the device
+/// isn't reachable, rather than hanging.
 pub(in crate::runtime) const fn build_policy(cfg: &Config) -> ConnectPolicy {
     ConnectPolicy {
         initial_backoff: cfg.broker.initial_backoff(),
         max_backoff: cfg.broker.max_backoff(),
         max_attempts: cfg.broker.connect_max_attempts,
-        startup_budget: cfg.broker.startup_budget(),
+        startup_budget: Some(cfg.broker.startup_budget()),
+    }
+}
+
+/// Builds the connect-retry policy for persistent (`serve_daemon`) mode: unbounded attempts,
+/// no wall-clock deadline. A daemon started before the phone is in Bluetooth range should keep
+/// retrying (capped backoff, same schedule as one-shot mode) until it connects, not give up.
+pub(in crate::runtime) const fn build_daemon_policy(cfg: &Config) -> ConnectPolicy {
+    ConnectPolicy {
+        initial_backoff: cfg.broker.initial_backoff(),
+        max_backoff: cfg.broker.max_backoff(),
+        max_attempts: u32::MAX,
+        startup_budget: None,
     }
 }
 

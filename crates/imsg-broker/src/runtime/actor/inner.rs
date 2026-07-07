@@ -77,14 +77,20 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         }
     }
 
-    /// Establishes the session within the wall-clock startup budget.
+    /// Establishes the session, within the wall-clock startup budget if the policy has one.
+    ///
+    /// `startup_budget: None` (persistent/daemon mode) applies no deadline — only the attempt
+    /// budget bounds it, and daemon policies set that to effectively unbounded too.
     ///
     /// Returns the live client, or a terminal [`Reason`] when the budget elapses, the attempt
     /// budget is exhausted, or a permanent error occurs.
     async fn try_connect(&mut self) -> Result<MapClient<T>, Reason> {
-        match tokio::time::timeout(self.policy.startup_budget, self.connect_with_retry()).await {
-            Ok(result) => result,
-            Err(_elapsed) => Err(Reason::DeviceUnreachable),
+        match self.policy.startup_budget {
+            Some(budget) => match tokio::time::timeout(budget, self.connect_with_retry()).await {
+                Ok(result) => result,
+                Err(_elapsed) => Err(Reason::DeviceUnreachable),
+            },
+            None => self.connect_with_retry().await,
         }
     }
 

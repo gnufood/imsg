@@ -136,6 +136,34 @@ mod tests {
         })
     }
 
+    /// Fails transiently `fails` times, then succeeds like [`fake_connector`]. Models a device
+    /// that's briefly out of Bluetooth range before it connects.
+    fn flaky_connector(mut fails: u32) -> Connector<tokio::io::DuplexStream> {
+        Box::new(move || {
+            if fails > 0 {
+                fails = fails.saturating_sub(1);
+                return Box::pin(async {
+                    Err(SessionError::Transport(obex_core::TransportError::Io(
+                        std::io::Error::new(std::io::ErrorKind::TimedOut, "no link yet"),
+                    )))
+                });
+            }
+            Box::pin(async {
+                let (client_io, server_io) = duplex(4096);
+                tokio::spawn(async move {
+                    let mut t = obex_core::wrap(server_io);
+                    t.send(Bytes::from_static(MAP_CONNECT_RSP)).await.ok();
+                    t.next().await;
+                    t.send(Bytes::from_static(NOTIF_REG_OK)).await.ok();
+                    while t.next().await.is_some() {
+                        t.send(Bytes::from_static(GENERIC_OK)).await.ok();
+                    }
+                });
+                session::lifecycle::establish_map_session(client_io).await
+            })
+        })
+    }
+
     /// In-memory `Store` (temp-dir `SQLite`) plus the dir guard.
     async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
         let dir = tempfile::tempdir()?;
@@ -150,7 +178,7 @@ mod tests {
             initial_backoff: Duration::from_millis(1),
             max_backoff: Duration::from_millis(2),
             max_attempts: 2,
-            startup_budget: Duration::from_secs(5),
+            startup_budget: Some(Duration::from_secs(5)),
         }
     }
 
@@ -199,6 +227,35 @@ mod tests {
         let mut shutdown = h.shutdown;
         let outcome = tokio::time::timeout(Duration::from_millis(200), shutdown.changed()).await;
         assert!(outcome.is_err(), "actor shut down despite idle: None");
+        Ok(())
+    }
+
+    /// `test_policy()` only tolerates 2 attempts; a connector that fails 3 times must still
+    /// exhaust it and go terminal, regardless of `idle`.
+    #[tokio::test]
+    async fn bounded_policy_still_gives_up_past_cap() -> anyhow::Result<()> {
+        let (store, _dir) = fake_store().await?;
+        let h = spawn(flaky_connector(3), store, Some(Duration::from_secs(60)), test_policy());
+        let mut state = h.state.clone();
+        state.wait_for(|s| matches!(s, ConnState::Failed(_))).await?;
+        Ok(())
+    }
+
+    /// Daemon's persistent connect policy (`startup_budget: None`, `max_attempts: u32::MAX`)
+    /// must survive far more transient failures than the CLI-bounded `test_policy()` would
+    /// tolerate — the whole point of a daemon started before the phone is in Bluetooth range.
+    #[tokio::test]
+    async fn unbounded_policy_survives_past_bounded_cap() -> anyhow::Result<()> {
+        let (store, _dir) = fake_store().await?;
+        let policy = ConnectPolicy {
+            initial_backoff: Duration::from_millis(1),
+            max_backoff: Duration::from_millis(2),
+            max_attempts: u32::MAX,
+            startup_budget: None,
+        };
+        let h = spawn(flaky_connector(3), store, Some(Duration::from_secs(60)), policy);
+        let mut state = h.state.clone();
+        state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         Ok(())
     }
 }

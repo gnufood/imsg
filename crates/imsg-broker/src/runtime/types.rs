@@ -27,8 +27,10 @@ pub(in crate::runtime) struct ConnectPolicy {
     pub(in crate::runtime) max_backoff: Duration,
     /// Maximum connect attempts per connection phase (`>= 1`).
     pub(in crate::runtime) max_attempts: u32,
-    /// Wall-clock cap on a whole connection phase, across all its attempts.
-    pub(in crate::runtime) startup_budget: Duration,
+    /// Wall-clock cap on a whole connection phase, across all its attempts. `None` means no
+    /// deadline — persistent (daemon) mode retries until it connects, however long the device
+    /// is out of range, rather than giving up like a one-shot CLI command should.
+    pub(in crate::runtime) startup_budget: Option<Duration>,
 }
 
 /// The actor's MAP-session lifecycle state, published over a `watch` channel.

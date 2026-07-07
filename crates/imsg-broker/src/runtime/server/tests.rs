@@ -45,7 +45,7 @@ fn test_policy() -> ConnectPolicy {
         initial_backoff: Duration::from_millis(1),
         max_backoff: Duration::from_millis(2),
         max_attempts: 2,
-        startup_budget: Duration::from_secs(5),
+        startup_budget: Some(Duration::from_secs(5)),
     }
 }
 
