@@ -94,16 +94,21 @@ pub fn broker_abstract_name(addr: &str) -> io::Result<Name<'static>> {
     format!("imsg/broker/{addr}").to_ns_name::<GenericNamespaced>()
 }
 
+/// `$XDG_STATE_HOME/imsg/{kind}-{addr}.log`, falling back to `~/.local/state` then `$TMPDIR`.
+fn state_log_path(kind: &str, addr: &str) -> PathBuf {
+    let base = dirs::state_dir().unwrap_or_else(|| {
+        dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")
+    });
+    base.join(format!("imsg/{kind}-{addr}.log"))
+}
+
 /// `$XDG_STATE_HOME/imsg/broker-{addr}.log`, falling back to `~/.local/state` then `$TMPDIR`.
 ///
 /// Truncated on each broker start. Parallel to [`broker_abstract_name`]; `addr` ensures
 /// per-device isolation. Inspect this file when the broker fails to start.
 #[must_use]
 pub fn broker_log_path(addr: &str) -> PathBuf {
-    let base = dirs::state_dir().unwrap_or_else(|| {
-        dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")
-    });
-    base.join(format!("imsg/broker-{addr}.log"))
+    state_log_path("broker", addr)
 }
 
 /// `$XDG_STATE_HOME/imsg/daemon-{addr}.log`, falling back to `~/.local/state` then `$TMPDIR`.
@@ -112,10 +117,7 @@ pub fn broker_log_path(addr: &str) -> PathBuf {
 /// daemon's detached stdout/stderr never mixes with an ephemeral broker session's log.
 #[must_use]
 pub fn daemon_log_path(addr: &str) -> PathBuf {
-    let base = dirs::state_dir().unwrap_or_else(|| {
-        dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")
-    });
-    base.join(format!("imsg/daemon-{addr}.log"))
+    state_log_path("daemon", addr)
 }
 
 /// `{data_dir}/imsg/hub.lock`. Zero-byte file used as an advisory `flock` lock.

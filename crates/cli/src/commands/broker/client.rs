@@ -38,20 +38,27 @@ pub(super) async fn connect_raw(addr: &str) -> Result<Framed<LocalStream, Length
 
 /// Returns a one-line health summary, or `"not running"` if the broker is unreachable.
 ///
+/// `label` prefixes the summary (e.g. `"broker"` or `"daemon"`) to match the command the
+/// caller invoked — the underlying probe is identical regardless of which spawned the process.
+///
 /// Does not start the broker — only probes whether it is already listening.
 ///
 /// # Errors
 ///
 /// Returns an error if a running broker returns a malformed response.
-pub(in crate::commands) async fn run_status(cfg: &Config, device: Option<&str>) -> Result<String> {
+pub(in crate::commands) async fn run_status(
+    cfg: &Config,
+    device: Option<&str>,
+    label: &str,
+) -> Result<String> {
     let addr = device.unwrap_or_else(|| cfg.device.address());
     let Ok(mut framed) = connect_raw(addr).await else {
-        return Ok(format!("broker for {addr}: not running"));
+        return Ok(format!("{label} for {addr}: not running"));
     };
     send_frame(&mut framed, &BrokerRequest::Status).await?;
     match recv_frame(&mut framed).await? {
         BrokerResponse::StatusInfo { state, device: dev } => {
-            Ok(format!("broker for {dev}: {state}"))
+            Ok(format!("{label} for {dev}: {state}"))
         }
         other => Ok(format!("unexpected response: {other:?}")),
     }

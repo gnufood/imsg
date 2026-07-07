@@ -50,7 +50,7 @@ pub(crate) async fn dispatch(
         }
         DaemonCmd::Status => {
             let cfg = load(config_path)?;
-            Ok(Some(broker::run_status(&cfg, device).await?))
+            Ok(Some(broker::run_status(&cfg, device, "daemon").await?))
         }
     }
 }
@@ -118,10 +118,11 @@ async fn spawn_detached(
     if let Some(parent) = log_path.parent() {
         tokio::fs::create_dir_all(parent).await.context("creating daemon log directory")?;
     }
-    let log_file = tokio::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
+    let mut open_opts = tokio::fs::OpenOptions::new();
+    open_opts.create(true).write(true).truncate(true);
+    #[cfg(unix)]
+    open_opts.mode(0o600); // daemon log outlives this process — keep it off-limits to other users
+    let log_file = open_opts
         .open(log_path)
         .await
         .with_context(|| format!("opening daemon log: {}", log_path.display()))?

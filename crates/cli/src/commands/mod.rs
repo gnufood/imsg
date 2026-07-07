@@ -27,8 +27,8 @@ use crate::output;
 use crate::progress::with_spinner;
 
 /// Implements all commands: `config`, `list`, `folders`, `get`, `delete`, `send`,
-/// `contacts`, `threads`, `watch`, `sync`, `unsync`, `hub`, and `spoke`. All network-bound one-shot commands
-/// run under a [`with_spinner`] progress indicator; the result is printed via [`output::line`]
+/// `contacts`, `threads`, `watch`, `sync`, `unsync`, `hub`, `spoke`, `broker`, and `daemon`.
+/// All network-bound one-shot commands run under a [`with_spinner`] progress indicator; the result is printed via [`output::line`]
 /// after the spinner clears. `watch` and `hub` are streaming/blocking — they manage their own
 /// output and return `None` from [`run_command`].
 ///
@@ -78,7 +78,7 @@ async fn run_command(
             SpokeCmd::Add { key } => spoke::run_add(&key).await?,
         }),
         Command::Broker { cmd } => Some(match cmd {
-            BrokerCmd::Status => broker::run_status(&load(config_path)?, device).await?,
+            BrokerCmd::Status => broker::run_status(&load(config_path)?, device, "broker").await?,
         }),
         Command::List { folder, unread, long, from, since, limit, offset } => {
             let (cfg, db, bpath) = load_with_store(config_path).await?;
