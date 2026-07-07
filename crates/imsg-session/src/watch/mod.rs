@@ -3,7 +3,7 @@
 use map_core::client::MapClient;
 use map_core::folders::Folder;
 use map_core::MessageStatus;
-use store::{Direction, NewMessage, OutgoingStatus, Store, STATUS_READ};
+use store::{Direction, NewMessage, OutgoingStatus, Store};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{mpsc, watch};
 
@@ -32,16 +32,18 @@ fn parse_folder(s: &str) -> Option<Folder> {
 ///
 /// `NewMessage` — navigates to the event folder, fetches the body, and upserts.
 /// `MessageDeleted` — deletes by handle. `MessageShift` — updates folder. `ReadStatusChanged` —
-/// marks the read/unread flag. `DeliverySuccess`/`SendingSuccess` — confirms the outbound
+/// re-fetches the message and writes its true read/unread flag (the event itself carries no
+/// directionality). `DeliverySuccess`/`SendingSuccess` — confirms the outbound
 /// `outgoing_status`; `DeliveryFailure`/`SendingFailure` — marks it permanently failed (same
 /// column [`Store::reconcile_outgoing`] resolves via Sent-folder backfill, so this is the
 /// event-driven fast path for the same outcome). `MemoryFull`/`MemoryAvailable` are logged only —
 /// they carry no `handle` and have no corresponding store row. Missing handle or unknown folder
-/// on `NewMessage` are logged and skipped.
+/// on `NewMessage`/`ReadStatusChanged` are logged and skipped.
 ///
 /// # Errors
 ///
-/// Returns an error if the store write fails. MAP fetch errors on `NewMessage` are propagated.
+/// Returns an error if the store write fails. MAP fetch errors on `NewMessage`/
+/// `ReadStatusChanged` are propagated.
 pub async fn handle_mns_event<T: AsyncRead + AsyncWrite + Unpin>(
     event: &MnsEvent,
     client: &mut MapClient<T>,
@@ -60,11 +62,7 @@ pub async fn handle_mns_event<T: AsyncRead + AsyncWrite + Unpin>(
                 store.update_folder(handle, folder).await?;
             }
         }
-        EventType::ReadStatusChanged => {
-            if let Some(handle) = event.handle() {
-                store.update_status(handle, STATUS_READ).await?;
-            }
-        }
+        EventType::ReadStatusChanged => handle_read_status_changed(event, client, store).await?,
         EventType::DeliverySuccess | EventType::SendingSuccess => {
             mark_outgoing(event, store, OutgoingStatus::SentConfirmed).await?;
         }
@@ -117,6 +115,34 @@ async fn handle_new_message<T: AsyncRead + AsyncWrite + Unpin>(
         outgoing_status: None,
     };
     store.upsert(msg).await?;
+    Ok(())
+}
+
+/// Re-fetches the message and writes its true read/unread flag.
+///
+/// MAP's `ReadStatusChanged` event carries no directionality — it only signals that the flag
+/// changed, not which way — so the previous value can't be trusted to mean "became read";
+/// this must re-fetch and check.
+///
+/// Missing `handle`/`folder` or an unparseable folder are logged and skipped, not errors —
+/// only a MAP transport/protocol failure or a store write failure propagates.
+async fn handle_read_status_changed<T: AsyncRead + AsyncWrite + Unpin>(
+    event: &MnsEvent,
+    client: &mut MapClient<T>,
+    store: &Store,
+) -> anyhow::Result<()> {
+    let (Some(handle), Some(folder_raw)) = (event.handle(), event.folder()) else {
+        tracing::warn!("ReadStatusChanged event missing handle or folder — skipped");
+        return Ok(());
+    };
+    let Some(folder) = parse_folder(folder_raw) else {
+        tracing::warn!("ReadStatusChanged event unknown folder {folder_raw} — skipped");
+        return Ok(());
+    };
+    client.set_folder(folder).await?;
+    let bmsg = client.get_message(handle).await?;
+    let status = i32::from(matches!(bmsg.status(), MessageStatus::Read));
+    store.update_status(handle, status).await?;
     Ok(())
 }
 
