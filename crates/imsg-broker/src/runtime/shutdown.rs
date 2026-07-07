@@ -11,12 +11,13 @@ use anyhow::{Context, Result};
 use interprocess::local_socket::{tokio::prelude::*, tokio::Listener as IpcListener};
 use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
+#[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
 use super::handler::handle_connection;
-use super::types::{ActorHandles, ConnectPolicy, Connector};
+use super::types::{ActorHandles, ConnectPolicy, Connector, TerminalReason};
 
 /// Bound on how long shutdown waits for in-flight connections to finish and for the actor to
 /// confirm it disconnected, each. Not yet configurable.
@@ -39,7 +40,13 @@ where
     T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let token = CancellationToken::new();
+    #[cfg(unix)]
     install_signal_handlers(token.clone());
+    #[cfg(not(unix))]
+    tracing::warn!(
+        "no SIGTERM/SIGINT handling on this platform — only an IPC `Shutdown` request will stop \
+         the daemon"
+    );
     let handles = super::actor::spawn(connector, store, None, policy);
     accept_and_drain(handles, listener, device, readiness_wait, token).await
 }
@@ -48,6 +55,13 @@ where
 ///
 /// Per-connection tasks run through a [`TaskTracker`] (not bare `tokio::spawn`, unlike the
 /// ephemeral broker's [`super::server`] accept loop) so shutdown can wait for them.
+///
+/// # Errors
+///
+/// Returns an error if `listener.accept()` fails fatally, or if the actor's connect phase
+/// exhausted its retry budget or hit a permanent MAP error ([`TerminalReason::PermanentFailure`])
+/// rather than exiting via a requested stop — so the process exits non-zero on a genuine
+/// unrecoverable failure instead of looking identical to a clean `imsg daemon stop`.
 async fn accept_and_drain(
     handles: ActorHandles,
     listener: &IpcListener,
@@ -61,7 +75,7 @@ async fn accept_and_drain(
         let stream = tokio::select! {
             biased;
             result = shutdown.changed() => {
-                if result.is_err() || *shutdown.borrow_and_update() {
+                if result.is_err() || shutdown.borrow_and_update().is_some() {
                     break;
                 }
                 continue;
@@ -86,8 +100,14 @@ async fn accept_and_drain(
     drop(handle);
     tasks.close();
     let _ = tokio::time::timeout(DRAIN_TIMEOUT, tasks.wait()).await;
-    let _ = tokio::time::timeout(DRAIN_TIMEOUT, shutdown.wait_for(|s| *s)).await;
-    Ok(())
+    let _ = tokio::time::timeout(DRAIN_TIMEOUT, shutdown.wait_for(Option::is_some)).await;
+    let reason = shutdown.borrow().clone();
+    match reason {
+        Some(TerminalReason::PermanentFailure(reason)) => {
+            Err(anyhow::anyhow!("daemon stopped: unrecoverable MAP failure: {reason:?}"))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// Cancels `token` on SIGTERM or SIGINT. Runs detached — this task's only job is forwarding

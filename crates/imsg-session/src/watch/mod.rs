@@ -167,6 +167,10 @@ async fn mark_outgoing(
 /// Each `NewMessage` event fetches the body from `client`; other event types only touch
 /// the store. Returns when `cancel_rx` is set to `true` or `event_rx` closes.
 ///
+/// Public for out-of-tree consumers (e.g. a GUI holding its own `MapClient`) — the CLI's own
+/// `watch` command was removed in favor of `imsg daemon`, which drives the broker's actor loop
+/// directly rather than through this function.
+///
 /// # Errors
 ///
 /// Returns an error if the initial backfill, outbox drain, or any store write fails.

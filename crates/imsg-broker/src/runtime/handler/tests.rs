@@ -130,6 +130,49 @@ async fn shutdown_with_coordinator_cancels_token() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// A live `Watch` connection must exit promptly when the shutdown token cancels, not only when
+/// the actor's broadcast sender is dropped — regression guard for a Watch subscriber that used
+/// to outlive `accept_and_drain`'s bounded drain timeouts.
+#[tokio::test]
+async fn watch_exits_promptly_on_shutdown_cancel() -> anyhow::Result<()> {
+    let (op_tx, mut op_rx) = tokio::sync::mpsc::channel(4);
+    let handle = DeviceHandle::from_sender(op_tx);
+    let (_state_tx, state_rx) = watch::channel(ConnState::Active);
+    let (client, server) = duplex(4096);
+    let (bc_tx, _bc_rx) = broadcast::channel(4);
+    let token = CancellationToken::new();
+    let watched = token.clone();
+
+    // Fake actor: answers Backfill/Subscribe then holds the subscription open, never sending an
+    // event and never closing — only the shutdown token can end the connection's loop.
+    tokio::spawn(async move {
+        while let Some(op) = op_rx.recv().await {
+            match op {
+                DeviceOp::Backfill { reply } => {
+                    let _ = reply.send(BrokerResponse::Ok);
+                }
+                DeviceOp::Subscribe { reply } => {
+                    let _ = reply.send(bc_tx.subscribe());
+                }
+                _ => {}
+            }
+        }
+    });
+
+    let task = tokio::spawn(async move {
+        handle_connection(server, &handle, state_rx, "dev".into(), secs(1), Some(&token)).await
+    });
+    let mut framed = Framed::new(client, codec());
+    send_request(&mut framed, &BrokerRequest::Watch).await?;
+    tokio::time::sleep(Duration::from_millis(20)).await; // let Subscribe land
+    watched.cancel();
+
+    tokio::time::timeout(Duration::from_millis(500), task)
+        .await
+        .context("watch connection did not exit promptly after shutdown cancel")???;
+    Ok(())
+}
+
 fn secs(n: u64) -> Duration {
     Duration::from_secs(n)
 }

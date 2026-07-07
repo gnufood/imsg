@@ -83,8 +83,15 @@ async fn start_background(
     config_path: Option<PathBuf>,
 ) -> Result<String> {
     let addr = device.unwrap_or_else(|| cfg.device.address()).to_owned();
-    if broker::probe(&addr).await {
-        return Ok(format!("daemon for {addr}: already running"));
+    match broker::query_persistent(&addr).await {
+        Some(true) => return Ok(format!("daemon for {addr}: already running")),
+        Some(false) => {
+            return Err(anyhow::anyhow!(
+                "an ephemeral broker for {addr} is already using this socket — wait for it to \
+                 idle out (or check `imsg broker status`) before starting the daemon"
+            ));
+        }
+        None => {}
     }
 
     let log_path = config::daemon_log_path(&addr);

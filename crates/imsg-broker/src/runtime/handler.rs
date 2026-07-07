@@ -51,10 +51,14 @@ where
 
     match req {
         BrokerRequest::Status => {
-            let info = BrokerResponse::StatusInfo { state: state.borrow().to_wire(), device };
+            let info = BrokerResponse::StatusInfo {
+                state: state.borrow().to_wire(),
+                device,
+                persistent: shutdown.is_some(),
+            };
             send_frame(&mut framed, &info).await
         }
-        BrokerRequest::Watch => handle_watch(framed, handle).await,
+        BrokerRequest::Watch => handle_watch(framed, handle, shutdown).await,
         BrokerRequest::Shutdown => handle_shutdown(framed, shutdown).await,
         other => handle_one_shot(framed, handle, state, readiness_wait, other).await,
     }
@@ -134,10 +138,14 @@ async fn handle_one_shot<S: tokio::io::AsyncWrite + Unpin>(
 ///
 /// Watch is not readiness-gated — it subscribes immediately (counting as demand that keeps the
 /// broker alive) and events flow once the session is `Active`. Lagged subscribers trigger a
-/// catch-up backfill rather than disconnecting.
+/// catch-up backfill rather than disconnecting. Races the event stream against `shutdown` so a
+/// live subscriber unsubscribes and exits as soon as the coordinator cancels, instead of only
+/// when the actor itself tears down — otherwise a connected `Watch` client would hold the actor's
+/// op channel open indefinitely and block the daemon's bounded drain.
 async fn handle_watch<S: tokio::io::AsyncWrite + Unpin>(
     mut framed: Framed<S, LengthDelimitedCodec>,
     handle: &DeviceHandle,
+    shutdown: Option<&CancellationToken>,
 ) -> Result<()> {
     let (bf_tx, bf_rx) = oneshot::channel();
     if handle.send(DeviceOp::Backfill { reply: bf_tx }).await.is_ok() {
@@ -153,17 +161,20 @@ async fn handle_watch<S: tokio::io::AsyncWrite + Unpin>(
     };
 
     loop {
-        let resp = match event_rx.recv().await {
-            Ok(ev) => BrokerResponse::WatchEvent(ev),
-            Err(broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!("watch subscriber lagged {n} events — backfilling");
-                let (tx, rx) = oneshot::channel();
-                if handle.send(DeviceOp::Backfill { reply: tx }).await.is_ok() {
-                    let _ = rx.await;
+        let resp = tokio::select! {
+            () = cancelled(shutdown) => break,
+            recv = event_rx.recv() => match recv {
+                Ok(ev) => BrokerResponse::WatchEvent(ev),
+                Err(broadcast::error::RecvError::Lagged(n)) => {
+                    tracing::warn!("watch subscriber lagged {n} events — backfilling");
+                    let (tx, rx) = oneshot::channel();
+                    if handle.send(DeviceOp::Backfill { reply: tx }).await.is_ok() {
+                        let _ = rx.await;
+                    }
+                    continue;
                 }
-                continue;
-            }
-            Err(broadcast::error::RecvError::Closed) => break,
+                Err(broadcast::error::RecvError::Closed) => break,
+            },
         };
         if send_frame(&mut framed, &resp).await.is_err() {
             break;
@@ -171,6 +182,15 @@ async fn handle_watch<S: tokio::io::AsyncWrite + Unpin>(
     }
     let _ = handle.send(DeviceOp::Unsubscribe).await;
     Ok(())
+}
+
+/// Resolves when `token` cancels; pending forever for an ephemeral broker with no coordinator to
+/// race against, so `tokio::select!` falls through to the other branch unconditionally.
+async fn cancelled(token: Option<&CancellationToken>) {
+    match token {
+        Some(t) => t.cancelled().await,
+        None => std::future::pending().await,
+    }
 }
 
 /// Converts a one-shot [`BrokerRequest`] into a [`DeviceOp`] with its reply channel.

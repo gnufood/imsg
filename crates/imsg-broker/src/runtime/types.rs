@@ -165,12 +165,27 @@ impl DeviceHandle {
 }
 
 /// Handles to a spawned device actor: the op sender, the connection-state watch, and a shutdown
-/// signal that fires `true` on actor exit.
+/// signal that fires once the actor exits.
 pub(in crate::runtime) struct ActorHandles {
     /// Op dispatch handle.
     pub(in crate::runtime) handle: DeviceHandle,
     /// Connection-state stream; connection tasks read it to gate ops and serve `Status`.
     pub(in crate::runtime) state: watch::Receiver<ConnState>,
-    /// Fires `true` when the actor exits.
-    pub(in crate::runtime) shutdown: watch::Receiver<bool>,
+    /// `Some(reason)` once the actor exits; `None` while still running.
+    pub(in crate::runtime) shutdown: watch::Receiver<Option<TerminalReason>>,
+}
+
+/// Why the actor's connect/serve loop exited terminally.
+///
+/// Distinguishes a normal stop (idle timeout, external shutdown, or — in ephemeral mode — a
+/// session drop with no remaining subscribers) from a connect phase that gave up for good, so the
+/// persistent daemon can exit non-zero on the latter instead of looking identical to a clean
+/// `imsg daemon stop` to a process supervisor.
+#[derive(Clone, Debug)]
+pub(in crate::runtime) enum TerminalReason {
+    /// Idle timeout, an external shutdown request, or a demand-gated exit with no subscribers.
+    Requested,
+    /// [`Actor::try_connect`][crate::runtime::actor] exhausted its retry budget or hit a
+    /// permanent MAP error before ever reaching `Active`.
+    PermanentFailure(Reason),
 }

@@ -18,7 +18,9 @@ use ipc::WatchEvent;
 use store::Store;
 use tokio::sync::{broadcast, mpsc, watch};
 
-use super::types::{ActorHandles, ConnState, ConnectPolicy, Connector, DeviceHandle, DeviceOp};
+use super::types::{
+    ActorHandles, ConnState, ConnectPolicy, Connector, DeviceHandle, DeviceOp, TerminalReason,
+};
 
 /// Owns the connection lifecycle and serves [`DeviceOp`]s from connection tasks.
 struct Actor<T> {
@@ -32,7 +34,7 @@ struct Actor<T> {
     mns_rx: Option<mpsc::Receiver<session::MnsEvent>>,
     mns_cancel: Option<watch::Sender<bool>>,
     state_tx: watch::Sender<ConnState>,
-    shutdown_tx: watch::Sender<bool>,
+    shutdown_tx: watch::Sender<Option<TerminalReason>>,
 }
 
 /// Why [`Actor::serve_active`] stopped serving the current session.
@@ -70,7 +72,7 @@ where
     let (op_tx, op_rx) = mpsc::channel(16);
     let (watch_tx, _initial_rx) = broadcast::channel(64);
     let (state_tx, state_rx) = watch::channel(ConnState::Connecting);
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let (shutdown_tx, shutdown_rx) = watch::channel(None);
 
     let actor = Actor {
         rx: op_rx,
@@ -191,7 +193,7 @@ mod tests {
         drop(h.handle);
         let mut shutdown = h.shutdown;
         tokio::time::timeout(Duration::from_secs(3), shutdown.changed()).await??;
-        assert!(*shutdown.borrow());
+        assert!(matches!(*shutdown.borrow(), Some(TerminalReason::Requested)));
         Ok(())
     }
 
@@ -204,6 +206,19 @@ mod tests {
         Ok(())
     }
 
+    /// A connect phase that gives up for good must publish [`TerminalReason::PermanentFailure`]
+    /// rather than [`TerminalReason::Requested`], so the daemon can exit non-zero on it instead
+    /// of looking identical to a clean stop.
+    #[tokio::test]
+    async fn failed_connect_reports_permanent_failure() -> anyhow::Result<()> {
+        let (store, _dir) = fake_store().await?;
+        let h = spawn(failing_connector(), store, Some(Duration::from_secs(60)), test_policy());
+        let mut shutdown = h.shutdown;
+        tokio::time::timeout(Duration::from_secs(3), shutdown.changed()).await??;
+        assert!(matches!(*shutdown.borrow(), Some(TerminalReason::PermanentFailure(_))));
+        Ok(())
+    }
+
     #[tokio::test]
     async fn idle_timeout_shuts_down_when_some() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
@@ -212,7 +227,7 @@ mod tests {
         state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         let mut shutdown = h.shutdown;
         tokio::time::timeout(Duration::from_secs(3), shutdown.changed()).await??;
-        assert!(*shutdown.borrow());
+        assert!(matches!(*shutdown.borrow(), Some(TerminalReason::Requested)));
         Ok(())
     }
 

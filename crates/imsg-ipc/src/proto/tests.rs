@@ -86,9 +86,13 @@ fn status_info_carries_state() -> Result<(), serde_json::Error> {
     let resp = BrokerResponse::StatusInfo {
         state: SessionState::Reconnecting,
         device: "AA:BB:CC:DD:EE:FF".into(),
+        persistent: true,
     };
     let json = serde_json::to_string(&resp)?;
     let back: BrokerResponse = serde_json::from_str(&json)?;
-    assert!(matches!(back, BrokerResponse::StatusInfo { state: SessionState::Reconnecting, .. }));
+    assert!(matches!(
+        back,
+        BrokerResponse::StatusInfo { state: SessionState::Reconnecting, persistent: true, .. }
+    ));
     Ok(())
 }

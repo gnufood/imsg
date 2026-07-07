@@ -20,22 +20,32 @@ use store::Store;
 use super::handler::handle_connection;
 use crate::runtime::types::{ActorHandles, ConnectPolicy, Connector};
 
-/// Binds the abstract socket for `addr`, or exits 0 if another broker already holds it.
+/// Binds the abstract socket for `addr`.
 ///
 /// `EADDRINUSE` on an abstract name is a kernel-atomic single-instance election: only one
-/// process wins the bind; all others exit immediately. No file, no TOCTOU, no cleanup.
+/// process wins the bind. No file, no TOCTOU, no cleanup. When `allow_silent_exit` is `true`
+/// (the ephemeral one-shot broker, auto-spawned redundantly by racing CLI commands) a losing
+/// process exits 0 immediately — something is already there to serve. When `false` (the
+/// persistent daemon's `--foreground` entry point, including under a service supervisor)
+/// losing the race returns an error instead: silently exiting 0 here would be indistinguishable
+/// from a successful start to `RestartPolicy::OnFailure`, masking a lost startup race as success.
 ///
 /// # Errors
 ///
-/// Returns an error for bind failures other than `EADDRINUSE` (e.g. kernel resource limits).
-pub(in crate::runtime) fn bind_or_exit(addr: &str) -> Result<IpcListener> {
+/// Returns an error if `allow_silent_exit` is `false` and the socket is already held, or for
+/// bind failures other than `EADDRINUSE` (e.g. kernel resource limits).
+pub(in crate::runtime) fn bind_or_exit(addr: &str, allow_silent_exit: bool) -> Result<IpcListener> {
     let name = config::broker_abstract_name(addr).context("constructing abstract socket name")?;
     match ListenerOptions::new().name(name).create_tokio() {
         Ok(l) => Ok(l),
-        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse && allow_silent_exit => {
             tracing::info!("broker already running for {addr} — exiting");
             std::process::exit(0);
         }
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Err(anyhow::anyhow!(
+            "another broker instance already holds the socket for {addr} — refusing to start \
+             silently; check whether a daemon is already running (`imsg daemon status`)"
+        )),
         Err(e) => Err(anyhow::Error::from(e).context("binding abstract broker socket")),
     }
 }
@@ -161,8 +171,9 @@ async fn serve_loop(
         let stream = tokio::select! {
             biased;
             result = shutdown.changed() => {
-                // Sender dropped (actor gone) or value set true — shut down either way.
-                if result.is_err() || *shutdown.borrow_and_update() {
+                // Sender dropped (actor gone) or a reason published — shut down either way.
+                // The ephemeral broker doesn't distinguish why; only the daemon path does.
+                if result.is_err() || shutdown.borrow_and_update().is_some() {
                     return Ok(());
                 }
                 continue;

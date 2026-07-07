@@ -7,6 +7,7 @@ use interprocess::local_socket::{
 };
 use ipc::{BrokerRequest, BrokerResponse, MAX_FRAME_LEN};
 use secrecy::SecretBox;
+use session::SessionError;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 use super::*;
@@ -30,6 +31,19 @@ fn fake_connector() -> Connector<tokio::io::DuplexStream> {
                 }
             });
             session::lifecycle::establish_map_session(client_io).await
+        })
+    })
+}
+
+/// A connector that always fails with a transient transport error — combined with
+/// `test_policy()`'s two-attempt cap, exhausts the retry budget and goes terminal.
+fn failing_connector() -> Connector<tokio::io::DuplexStream> {
+    Box::new(|| {
+        Box::pin(async {
+            Err(SessionError::Transport(obex_core::TransportError::Io(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "no link",
+            ))))
         })
     })
 }
@@ -128,5 +142,31 @@ async fn shutdown_request_is_served_then_drain_converges() -> anyhow::Result<()>
     tokio::time::timeout(Duration::from_millis(500), task)
         .await
         .context("accept_and_drain did not converge after a Shutdown request")???;
+    Ok(())
+}
+
+/// A permanent connect failure — not an external stop — must surface as an `Err` so the daemon
+/// process exits non-zero and a supervisor's `RestartPolicy::OnFailure` can react, instead of
+/// looking identical to a clean `imsg daemon stop`.
+#[tokio::test]
+async fn permanent_connect_failure_surfaces_as_error() -> anyhow::Result<()> {
+    let name = "imsg/broker/test-shutdown-permanent-failure".to_ns_name::<GenericNamespaced>()?;
+    let listener = ListenerOptions::new().name(name).create_tokio()?;
+    let (store, _dir) = fake_store().await?;
+    let handles = super::super::actor::spawn(failing_connector(), store, None, test_policy());
+    let token = CancellationToken::new();
+
+    let result = accept_and_drain(
+        handles,
+        &listener,
+        "test-device".to_owned(),
+        Duration::from_millis(50),
+        token,
+    );
+
+    let outcome = tokio::time::timeout(Duration::from_secs(3), result)
+        .await
+        .context("accept_and_drain did not converge after a permanent connect failure")?;
+    assert!(outcome.is_err(), "expected accept_and_drain to surface the permanent failure as Err");
     Ok(())
 }

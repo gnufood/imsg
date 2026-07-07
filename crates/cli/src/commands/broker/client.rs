@@ -57,10 +57,26 @@ pub(in crate::commands) async fn run_status(
     };
     send_frame(&mut framed, &BrokerRequest::Status).await?;
     match recv_frame(&mut framed).await? {
-        BrokerResponse::StatusInfo { state, device: dev } => {
+        BrokerResponse::StatusInfo { state, device: dev, .. } => {
             Ok(format!("{label} for {dev}: {state}"))
         }
         other => Ok(format!("unexpected response: {other:?}")),
+    }
+}
+
+/// Returns whether a reachable broker is running in persistent (daemon) mode, or `None` if no
+/// broker answers at `addr`.
+///
+/// Used by `daemon start`'s idempotency check to distinguish an already-running daemon from an
+/// ephemeral one-shot broker that merely happens to be holding the socket right now — both
+/// answer a raw connect probe identically, so only the `Status` response's `persistent` field
+/// tells them apart.
+pub(in crate::commands) async fn query_persistent(addr: &str) -> Option<bool> {
+    let mut framed = connect_raw(addr).await.ok()?;
+    send_frame(&mut framed, &BrokerRequest::Status).await.ok()?;
+    match recv_frame(&mut framed).await.ok()? {
+        BrokerResponse::StatusInfo { persistent, .. } => Some(persistent),
+        _ => None,
     }
 }
 

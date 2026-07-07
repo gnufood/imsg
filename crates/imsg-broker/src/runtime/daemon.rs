@@ -18,6 +18,7 @@ use super::server;
 /// Returns an error if socket binding or the accept loop fails fatally. A failed MAP connect is
 /// handled by the actor (it shuts the broker down), not returned here.
 pub async fn run_daemon(cfg: Config, device_override: Option<String>, store: Store) -> Result<()> {
-    let (addr_str, addr, map_channel, listener) = super::bind(&cfg, device_override.as_deref())?;
+    let (addr_str, addr, map_channel, listener) =
+        super::bind(&cfg, device_override.as_deref(), false)?;
     server::serve_daemon(cfg, addr_str, addr, map_channel, store, listener).await
 }

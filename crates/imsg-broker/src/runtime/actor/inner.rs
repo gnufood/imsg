@@ -13,7 +13,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::serve::wants_mns;
 use super::{dispatch, Actor, ServeOutcome};
-use crate::runtime::types::{ConnState, DeviceOp};
+use crate::runtime::types::{ConnState, DeviceOp, TerminalReason};
 
 impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Runs the connect → serve → reconnect lifecycle until the broker exits.
@@ -21,23 +21,23 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Each iteration establishes the session (publishing `Active` and draining the outbox),
     /// restarts MNS if subscribers remain, then serves until idle/shutdown (exit) or a session
     /// drop. A drop with subscribers or in persistent mode reconnects (`Reconnecting`); otherwise
-    /// exits so the CLI respawns lazily. A failed connect goes terminal `Failed`. Fires the
-    /// shutdown signal on exit.
+    /// exits so the CLI respawns lazily. A failed connect goes terminal `Failed`. Publishes why it
+    /// stopped on the shutdown signal — see [`TerminalReason`].
     pub(in crate::runtime::actor) async fn run(mut self) {
-        loop {
+        let reason = loop {
             let client = match self.try_connect().await {
                 Ok(c) => c,
                 Err(reason) => {
                     let _ = self.state_tx.send(ConnState::Failed(reason.clone()));
                     self.fail_pending(&reason);
-                    break;
+                    break TerminalReason::PermanentFailure(reason);
                 }
             };
             if !self.run_session(client).await {
-                break;
+                break TerminalReason::Requested;
             }
-        }
-        let _ = self.shutdown_tx.send(true);
+        };
+        let _ = self.shutdown_tx.send(Some(reason));
     }
 
     /// Serves one connected session: publishes `Active`, drains the outbox, restarts MNS for any

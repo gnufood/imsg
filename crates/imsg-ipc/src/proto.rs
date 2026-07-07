@@ -125,6 +125,10 @@ pub enum BrokerResponse {
         state: SessionState,
         /// Bluetooth MAC address of the paired device this broker owns.
         device: String,
+        /// `true` when this broker is running in persistent (daemon) mode. Distinguishes it
+        /// from an ephemeral one-shot broker that happens to be holding the same socket, which
+        /// self-idles and carries no shutdown coordinator.
+        persistent: bool,
     },
 }
 

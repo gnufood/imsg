@@ -34,25 +34,26 @@ pub use daemon::run_daemon;
 /// Returns an error if socket binding or the accept loop fails fatally. A failed MAP connect is
 /// handled by the actor (it shuts the broker down), not returned here.
 pub async fn run(cfg: Config, device_override: Option<String>, store: Store) -> Result<()> {
-    let (addr_str, addr, map_channel, listener) = bind(&cfg, device_override.as_deref())?;
+    let (addr_str, addr, map_channel, listener) = bind(&cfg, device_override.as_deref(), true)?;
     server::serve(cfg, addr_str, addr, map_channel, store, listener).await
 }
 
-/// Parses the target device address and wins (or exits on) the abstract-socket election.
+/// Parses the target device address and wins (or exits/errors on) the abstract-socket election.
 ///
 /// Shared by [`run`] and [`daemon::run_daemon`] — the only difference between ephemeral and
-/// persistent mode is which `server::serve*` variant runs on the result.
+/// persistent mode is which `server::serve*` variant runs on the result, plus `allow_silent_exit`
+/// (see [`server::bind_or_exit`]): ephemeral mode exits 0 on a lost race, persistent mode errors.
 fn bind(
     cfg: &Config,
     device_override: Option<&str>,
+    allow_silent_exit: bool,
 ) -> Result<(String, bluer::Address, u8, IpcListener)> {
     let addr_str = device_override.unwrap_or_else(|| cfg.device.address()).to_owned();
     let map_channel = cfg.device.map_channel;
     let addr: bluer::Address =
         addr_str.parse().with_context(|| format!("invalid device address: {addr_str}"))?;
 
-    // Bind-or-exit: wins the singleton election or calls process::exit(0).
-    let listener = server::bind_or_exit(&addr_str)?;
+    let listener = server::bind_or_exit(&addr_str, allow_silent_exit)?;
 
     Ok((addr_str, addr, map_channel, listener))
 }
