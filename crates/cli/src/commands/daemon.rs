@@ -21,12 +21,11 @@ use crate::cli::DaemonCmd;
 use crate::commands::{broker, load, open_store};
 use crate::output;
 
-/// Dispatches `daemon` subcommands. `install` (OS service-manager registration) is not yet
-/// implemented — pending the `imsg-service` crate.
+/// Dispatches `daemon` subcommands.
 ///
 /// # Errors
 ///
-/// See [`start_foreground`], [`start_background`], [`stop`], and
+/// See [`start_foreground`], [`start_background`], [`stop`], [`install`], [`uninstall`], and
 /// [`broker::run_status`][crate::commands::broker::run_status].
 pub(crate) async fn dispatch(
     cmd: DaemonCmd,
@@ -52,6 +51,8 @@ pub(crate) async fn dispatch(
             let cfg = load(config_path)?;
             Ok(Some(broker::run_status(&cfg, device, "daemon").await?))
         }
+        DaemonCmd::Install { system } => Ok(Some(install(device, config_path.as_deref(), system)?)),
+        DaemonCmd::Uninstall { system } => Ok(Some(uninstall(system)?)),
     }
 }
 
@@ -149,4 +150,37 @@ async fn spawn_detached(
 /// Returns an error if the connection succeeds but the request/response fails.
 async fn stop(cfg: &Config, device: Option<&str>) -> Result<String> {
     broker::run_stop(cfg, device).await
+}
+
+/// Maps `--system` to the matching [`service::ServiceLevel`]; the default is per-user.
+const fn level(system: bool) -> service::ServiceLevel {
+    if system {
+        service::ServiceLevel::System
+    } else {
+        service::ServiceLevel::User
+    }
+}
+
+/// Registers the daemon with the native OS service manager via [`service::install`], so it
+/// starts on boot/login and restarts on failure. Forwards `--device`/`--config` to the
+/// service's `imsg daemon start --foreground` invocation.
+///
+/// # Errors
+///
+/// Returns an error if no native service manager is available or it rejects the install.
+fn install(device: Option<&str>, config_path: Option<&Path>, system: bool) -> Result<String> {
+    let lvl = level(system);
+    service::install(device, config_path, lvl).context("installing daemon service")?;
+    Ok(format!("daemon service installed ({lvl:?})"))
+}
+
+/// Unregisters the daemon service via [`service::uninstall`]. A no-op if never installed.
+///
+/// # Errors
+///
+/// Returns an error if no native service manager is available or it rejects the uninstall.
+fn uninstall(system: bool) -> Result<String> {
+    let lvl = level(system);
+    service::uninstall(lvl).context("uninstalling daemon service")?;
+    Ok(format!("daemon service uninstalled ({lvl:?})"))
 }

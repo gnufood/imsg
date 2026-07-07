@@ -1,11 +1,15 @@
 //! Command-line surface: global options and the subcommand tree.
 
+pub mod args;
+
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
-use map_core::folders::Folder;
-use pbap_core::phonebook::PhonebookPath;
+
+pub(crate) use self::args::{
+    folder_of, path_of, BrokerCmd, ConfigCmd, DaemonCmd, FolderArg, PathArg, SpokeCmd,
+};
 
 /// Top-level invocation: global transport/config options plus the chosen subcommand.
 #[derive(Parser, Debug)]
@@ -159,105 +163,4 @@ pub(crate) enum Command {
         #[command(subcommand)]
         cmd: DaemonCmd,
     },
-}
-
-/// `broker` actions.
-#[derive(Subcommand, Debug)]
-pub(crate) enum BrokerCmd {
-    /// Report whether the broker is running and whether its MAP session is connected.
-    Status,
-}
-
-/// `daemon` actions.
-#[derive(Subcommand, Debug)]
-pub(crate) enum DaemonCmd {
-    /// Start the persistent broker. Detaches into the background by default; idempotent if
-    /// already running.
-    Start {
-        /// Stay attached instead of detaching — required under a process supervisor (e.g. a
-        /// systemd unit). Stops on Ctrl-C, SIGTERM, or an IPC `Shutdown` request.
-        #[arg(long)]
-        foreground: bool,
-    },
-    /// Request a graceful stop. A no-op (not an error) if nothing is running.
-    Stop,
-    /// Report whether the daemon is running and whether its MAP session is connected.
-    Status,
-}
-
-/// `config` actions.
-#[derive(Subcommand, Debug)]
-pub(crate) enum ConfigCmd {
-    /// Print the resolved configuration.
-    Show,
-    /// Persist the device MAC address to the user config file.
-    SetDevice {
-        /// Bluetooth MAC address (`XX:XX:XX:XX:XX:XX`).
-        address: String,
-    },
-}
-
-/// `spoke` actions.
-#[derive(Subcommand, Debug)]
-pub(crate) enum SpokeCmd {
-    /// Persist the hub's iroh node key to the local config.
-    Add {
-        /// iroh hub node key (printed by `imsg hub`).
-        key: String,
-    },
-}
-
-/// MAP message folder selector. Maps to `map_core::Folder` at command time.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
-pub(crate) enum FolderArg {
-    /// Received messages.
-    Inbox,
-    /// Sent messages.
-    Sent,
-    /// Pending outbound messages.
-    Outbox,
-    /// Deleted messages.
-    Deleted,
-}
-
-/// Lowers the optional folder argument to a [`Folder`], defaulting to the inbox when omitted.
-pub(crate) const fn folder_of(arg: Option<FolderArg>) -> Folder {
-    match arg {
-        Some(FolderArg::Inbox) | None => Folder::Inbox,
-        Some(FolderArg::Sent) => Folder::Sent,
-        Some(FolderArg::Outbox) => Folder::Outbox,
-        Some(FolderArg::Deleted) => Folder::Deleted,
-    }
-}
-
-/// Lowers the PBAP phonebook argument to a [`PhonebookPath`].
-pub(crate) const fn path_of(arg: PathArg) -> PhonebookPath {
-    match arg {
-        PathArg::Pb => PhonebookPath::Pb,
-        PathArg::Ich => PhonebookPath::Ich,
-        PathArg::Och => PhonebookPath::Och,
-        PathArg::Mch => PhonebookPath::Mch,
-        PathArg::Cch => PhonebookPath::Cch,
-        PathArg::Spd => PhonebookPath::Spd,
-        PathArg::Fav => PhonebookPath::Fav,
-    }
-}
-
-/// PBAP phonebook selector. Maps to `pbap_core::PhonebookPath` at command time.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
-pub(crate) enum PathArg {
-    /// Main phonebook.
-    Pb,
-    /// Incoming call history.
-    Ich,
-    /// Outgoing call history.
-    Och,
-    /// Missed call history.
-    Mch,
-    /// Combined call history.
-    Cch,
-    /// Speed-dial entries.
-    Spd,
-    /// Favourites.
-    Fav,
 }

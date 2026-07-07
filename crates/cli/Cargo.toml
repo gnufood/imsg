@@ -30,6 +30,7 @@ bluer                = { version = "0.17.4", default-features = false }
 config               = { package = "imsg-config",    version = "0.2.0", path = "../imsg-config" }
 ipc                  = { package = "imsg-ipc",        version = "0.2.0", path = "../imsg-ipc" }
 imsg-broker          = { version = "0.2.0", path = "../imsg-broker" }
+service              = { package = "imsg-service",   version = "0.2.0", path = "../imsg-service" }
 futures              = "0.3"
 serde_json           = "1.0.150"
 keyring              = { package = "imsg-keyring",   version = "0.2.0", path = "../imsg-keyring" }

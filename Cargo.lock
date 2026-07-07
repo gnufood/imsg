@@ -2420,6 +2420,7 @@ dependencies = [
  "imsg-keyring",
  "imsg-map",
  "imsg-pbap",
+ "imsg-service",
  "imsg-session",
  "imsg-store",
  "imsg-transport",
