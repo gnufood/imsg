@@ -16,7 +16,6 @@ pub(crate) use self::args::{
 #[command(name = "imsg", version, about = "iMessage client over Bluetooth MAP/PBAP")]
 pub(crate) struct Cli {
     /// Route MAP and PBAP connections through the iroh hub configured via `imsg spoke add`.
-    /// `imsg watch --hub` streams live MAP notification events from the hub.
     #[arg(long, global = true)]
     pub(crate) hub: bool,
 
@@ -118,8 +117,6 @@ pub(crate) enum Command {
     },
     /// Group inbox and sent messages into conversation threads.
     Threads,
-    /// Stream live message-notification events and persist them to the local store.
-    Watch,
     /// Backfill the local store with all messages from the device since the last sync.
     Sync {
         /// Restrict the backfill to a single folder; omit to sync all folders.

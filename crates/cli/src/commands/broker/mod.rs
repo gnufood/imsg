@@ -11,11 +11,9 @@ use std::path::Path;
 
 use anyhow::Result;
 use config::Config;
-use interprocess::local_socket::tokio::Stream as LocalStream;
 use ipc::{BrokerRequest, BrokerResponse};
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-pub(in crate::commands) use client::{run_status, run_stop, send_frame};
+pub(in crate::commands) use client::{run_status, run_stop};
 pub(in crate::commands) use spawn::{connect_retry, probe};
 
 /// Sends `req` to the broker (auto-starting if necessary) and returns one response frame.
@@ -36,21 +34,4 @@ pub(crate) async fn call(
     let addr = device.unwrap_or_else(|| cfg.device.address());
     spawn::ensure_running(cfg, device, config_path).await?;
     client::send_request(addr, req).await
-}
-
-/// Returns a live `Framed` connection to the broker for streaming requests (watch mode).
-///
-/// Auto-starts the broker if absent. `config_path` is forwarded as `--config` when set.
-///
-/// # Errors
-///
-/// Returns an error if the broker cannot be started or the connection fails.
-pub(crate) async fn connect(
-    cfg: &Config,
-    device: Option<&str>,
-    config_path: Option<&Path>,
-) -> Result<Framed<LocalStream, LengthDelimitedCodec>> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
-    spawn::ensure_running(cfg, device, config_path).await?;
-    client::connect_raw(addr).await
 }

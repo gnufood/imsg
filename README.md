@@ -80,7 +80,6 @@ imsg threads                                  # conversations grouped by contact
 | `delete <handle>` | Delete a message; `--undelete` to restore |
 | `contacts` | Pull contacts via PBAP; `--list` handles, `--get <handle>`, `--lookup <number>`, `--limit`/`--page` for pagination, `--raw` to skip E.164 normalisation |
 | `threads` | Group inbox and sent into per-contact conversations |
-| `watch` | Stream live MAP notification events |
 | `folders` | List the MAP folder tree on the device |
 | `config show` | Print the resolved configuration |
 | `config set-device <MAC>` | Persist the paired device address |
@@ -107,27 +106,10 @@ imsg hub
 imsg spoke add <KEY>
 imsg --hub list
 imsg --hub send +15550001234 "hello from anywhere"
-imsg --hub watch
 ```
 
 The hub and spoke connect over QUIC via [iroh](https://iroh.computer/) — no port
 forwarding or VPN required. 
-
----
-
-## Watch (live events)
-
-`imsg watch` streams MAP notification events directly from the paired phone over RFCOMM.
-Add `--hub` to receive events forwarded from a remote hub instead.
-
-For a scrollable TUI panel (local watch only), build with the `tui` feature:
-
-```sh
-cargo install imsg --features tui
-imsg watch   # launches the ratatui panel automatically
-```
-
-Use `↑`/`↓` to scroll the event log, `q` / `Esc` / `Ctrl+C` to exit.
 
 ---
 
@@ -163,8 +145,7 @@ node_key = "..."                       # set via `imsg spoke add <KEY>`; absent 
 ```sh
 git clone https://github.com/gnufood/imsg
 cd imsg
-cargo build --release                    # standard build
-cargo build --release --features tui    # include ratatui watch panel
+cargo build --release
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.

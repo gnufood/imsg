@@ -21,14 +21,14 @@ pub(super) async fn send_request(addr: &str, req: BrokerRequest) -> Result<Broke
     recv_frame(&mut framed).await
 }
 
-/// Returns a live `Framed` connection for streaming requests (watch mode).
+/// Returns a live `Framed` connection to the broker's abstract socket.
 ///
 /// Does not auto-start the broker — callers must call `ensure_running` first.
 ///
 /// # Errors
 ///
 /// Returns an error if the abstract socket connect fails.
-pub(super) async fn connect_raw(addr: &str) -> Result<Framed<LocalStream, LengthDelimitedCodec>> {
+async fn connect_raw(addr: &str) -> Result<Framed<LocalStream, LengthDelimitedCodec>> {
     let name = config::broker_abstract_name(addr).context("building broker socket name")?;
     let stream =
         ConnectOptions::new().name(name).connect_tokio().await.context("connecting to broker")?;
@@ -90,7 +90,7 @@ pub(in crate::commands) async fn run_stop(cfg: &Config, device: Option<&str>) ->
 /// # Errors
 ///
 /// Returns an error if serialisation or the socket write fails.
-pub(in crate::commands) async fn send_frame<T: tokio::io::AsyncWrite + Unpin>(
+async fn send_frame<T: tokio::io::AsyncWrite + Unpin>(
     framed: &mut Framed<T, LengthDelimitedCodec>,
     req: &BrokerRequest,
 ) -> Result<()> {

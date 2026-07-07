@@ -14,9 +14,9 @@ use crate::output;
 /// stdout, then runs the iroh hub until Ctrl+C.
 ///
 /// The hub proxies MAP and PBAP RFCOMM streams from connected spokes to the paired Bluetooth
-/// device, and relays MNS notification events from the device out to subscribed spokes (so
-/// `imsg watch --hub` receives live events). MNS relay failures degrade `watch` only — they do
-/// not stop MAP/PBAP proxying or the hub.
+/// device, and relays MNS notification events from the device out to any iroh-connected
+/// subscriber. MNS relay failures degrade only that stream — they do not stop MAP/PBAP
+/// proxying or the hub.
 ///
 /// # Errors
 ///

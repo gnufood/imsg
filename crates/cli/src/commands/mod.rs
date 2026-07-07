@@ -15,8 +15,6 @@ pub mod spoke;
 pub mod sync;
 pub mod threads;
 pub mod unsync;
-pub mod watch;
-pub mod watch_hub;
 
 use std::path::{Path, PathBuf};
 
@@ -27,10 +25,10 @@ use crate::output;
 use crate::progress::with_spinner;
 
 /// Implements all commands: `config`, `list`, `folders`, `get`, `delete`, `send`,
-/// `contacts`, `threads`, `watch`, `sync`, `unsync`, `hub`, `spoke`, `broker`, and `daemon`.
+/// `contacts`, `threads`, `sync`, `unsync`, `hub`, `spoke`, `broker`, and `daemon`.
 /// All network-bound one-shot commands run under a [`with_spinner`] progress indicator; the result is printed via [`output::line`]
-/// after the spinner clears. `watch` and `hub` are streaming/blocking — they manage their own
-/// output and return `None` from [`run_command`].
+/// after the spinner clears. `hub` is streaming/blocking — it manages its own
+/// output and returns `None` from [`run_command`].
 ///
 /// Ensures the spoke [`transport::iroh::Endpoint`] is closed via
 /// [`transport::iroh::Endpoint::close`] on all exit paths — success, error, and early return —
@@ -53,8 +51,8 @@ pub(crate) async fn dispatch(cli: Cli) -> Result<()> {
     (result?).map_or_else(|| Ok(()), |out| output::line(&out))
 }
 
-/// Executes the selected command and returns its printable output, or `None` for streaming
-/// commands (`hub`, `watch`) that manage their own output.
+/// Executes the selected command and returns its printable output, or `None` for the
+/// streaming `hub` command, which manages its own output.
 ///
 /// All `?` propagation stays within this function so [`dispatch`] can close the spoke endpoint
 /// unconditionally after this returns, regardless of success or failure.
@@ -110,11 +108,6 @@ async fn run_command(
         Command::Threads => {
             let (cfg, db, bpath) = load_with_store(config_path).await?;
             Some(run_threads(&cfg, spoke, device, &db, bpath.as_deref()).await?)
-        }
-        Command::Watch => {
-            let (cfg, db, bpath) = load_with_store(config_path).await?;
-            watch::run(&cfg, spoke, device, bpath.as_deref(), &db).await?;
-            None
         }
         Command::Sync { folder } => {
             let (cfg, db, bpath) = load_with_store(config_path).await?;
