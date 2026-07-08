@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.3.0] - 2026-07-08
+
+### ⚠️ Breaking Changes
+
+- **cli:** Remove watch command in favor of daemon
+- **broker:** Close daemon-mode reliability gaps
+
+### Added
+
+- **daemon:** Idle-optional actor lifecycle, eager MNS start, event-to-store wiring
+- **daemon:** Persistent entry point and graceful shutdown coordinator
+- **cli:** Imsg daemon start/stop/status, detaching by default
+- **service:** Add imsg-service crate for OS service-manager integration
+- **cli:** Add imsg daemon install/uninstall
+- **cli:** Remove watch command in favor of daemon
+- **service:** Resolve real invoking user for --system daemon installs
+- **cli:** Resolve daemon install's default --device under --system
+- **cli:** Announce daemon connection status under --foreground
+
+### Changed
+
+- **service:** Flag start/stop/status as unwired and unverified
+- Document imsg daemon in the README
+
+### Fixed
+
+- **daemon:** Case-insensitive folder match, persist MNS events, always fan out
+- **daemon:** Retry the initial connect indefinitely in persistent mode
+- **cli:** Daemon start/stop/status log permissions and labeling
+- **session:** Re-fetch true status on ReadStatusChanged instead of assuming read
+- **broker:** Close daemon-mode reliability gaps
+- **service:** Stop the service before uninstalling
+- **broker:** Register MNS with BlueZ before enabling notifications, not after
+- **broker:** Close the daemon-stop race that resets in-flight connections
 ## [0.2.0] - 2026-06-27
 
 ### ⚠️ Breaking Changes

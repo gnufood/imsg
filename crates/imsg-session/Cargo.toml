@@ -13,22 +13,22 @@ anyhow = "1.0.102"
 bluer = { version = "0.17.4", features = ["rfcomm"] }
 bytes = "1"
 chrono = "0.4"
-config = { package = "imsg-config", version = "0.2.0", path = "../imsg-config" }
+config = { package = "imsg-config", version = "0.3.0", path = "../imsg-config" }
 futures = "0.3.32"
-map-core = { package = "imsg-map", version = "0.2.0", path = "../imsg-map" }
-pbap-core = { package = "imsg-pbap", version = "0.2.0", path = "../imsg-pbap" }
-store = { package = "imsg-store", version = "0.2.0", path = "../imsg-store" }
+map-core = { package = "imsg-map", version = "0.3.0", path = "../imsg-map" }
+pbap-core = { package = "imsg-pbap", version = "0.3.0", path = "../imsg-pbap" }
+store = { package = "imsg-store", version = "0.3.0", path = "../imsg-store" }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["full"] }
 tokio-retry = "0.3.1"
 tokio-util = "0.7.18"
 tracing = "0.1.44"
-transport = { package = "imsg-transport", version = "0.2.0", path = "../imsg-transport" }
+transport = { package = "imsg-transport", version = "0.3.0", path = "../imsg-transport" }
 uniffi = { version = "0.31.1", optional = true }
 
 [dev-dependencies]
 futures = "0.3.32"
-obex-core = { package = "imsg-obex", version = "0.2.0", path = "../imsg-obex" }
+obex-core = { package = "imsg-obex", version = "0.3.0", path = "../imsg-obex" }
 secrecy = "0.10"
 tempfile = "3"
 tokio = { version = "1.52.3", features = ["full"] }

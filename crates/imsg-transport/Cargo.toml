@@ -13,7 +13,7 @@ bluer = { version = "0.17.4", features = ["rfcomm", "bluetoothd"] }
 bytes = "1.11.1"
 futures = "0.3"
 iroh = "0.98"
-obex-core = { package = "imsg-obex", version = "0.2.0", path = "../imsg-obex" }
+obex-core = { package = "imsg-obex", version = "0.3.0", path = "../imsg-obex" }
 tokio = { version = "1.52.3", features = ["full"] }
 tracing = "0.1.44"
 uuid = { version = "1" }
