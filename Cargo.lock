@@ -2182,7 +2182,7 @@ dependencies = [
 
 [[package]]
 name = "imsg"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "bluer",
@@ -2214,7 +2214,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-broker"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "bluer",
@@ -2239,7 +2239,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-config"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bluer",
  "dirs 6.0.0",
@@ -2253,7 +2253,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-formats"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "calcard",
  "pretty_assertions",
@@ -2265,7 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-ipc"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2273,7 +2273,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-keyring"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "getrandom 0.4.2",
  "keyring-core",
@@ -2284,7 +2284,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-map"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bitflags",
  "bytes",
@@ -2299,7 +2299,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-obex"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bytes",
  "pretty_assertions",
@@ -2314,7 +2314,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-pbap"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bytes",
  "futures",
@@ -2328,7 +2328,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-service"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "nix",
  "service-manager",
@@ -2337,7 +2337,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-session"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "bluer",
@@ -2362,7 +2362,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-store"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "refinery",
  "rusqlite",
@@ -2375,7 +2375,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-transport"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bluer",
  "bytes",

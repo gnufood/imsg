@@ -13,21 +13,21 @@ anyhow       = "1.0.102"
 interprocess = { version = "2.4.2", features = ["tokio"] }
 bluer      = { version = "0.17.4", features = ["rfcomm"] }
 bytes      = "1"
-config     = { package = "imsg-config",    version = "0.3.0", path = "../imsg-config" }
+config     = { package = "imsg-config",    version = "0.3.1", path = "../imsg-config" }
 futures    = "0.3"
-ipc        = { package = "imsg-ipc",       version = "0.3.0", path = "../imsg-ipc" }
-map-core   = { package = "imsg-map",       version = "0.3.0", path = "../imsg-map" }
+ipc        = { package = "imsg-ipc",       version = "0.3.1", path = "../imsg-ipc" }
+map-core   = { package = "imsg-map",       version = "0.3.1", path = "../imsg-map" }
 serde_json = "1.0.150"
-session    = { package = "imsg-session",   version = "0.3.0", path = "../imsg-session" }
-store      = { package = "imsg-store",     version = "0.3.0", path = "../imsg-store" }
+session    = { package = "imsg-session",   version = "0.3.1", path = "../imsg-session" }
+store      = { package = "imsg-store",     version = "0.3.1", path = "../imsg-store" }
 tokio      = { version = "1.52.3", features = ["rt-multi-thread", "macros", "fs", "net", "sync", "signal", "time"] }
 tokio-util = { version = "0.7.18", features = ["codec"] }
 tracing              = "0.1.44"
 tracing-subscriber   = { version = "0.3.23", features = ["env-filter"] }
-transport  = { package = "imsg-transport", version = "0.3.0", path = "../imsg-transport" }
+transport  = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
 
 [dev-dependencies]
-obex-core = { package = "imsg-obex",  version = "0.3.0", path = "../imsg-obex" }
+obex-core = { package = "imsg-obex",  version = "0.3.1", path = "../imsg-obex" }
 secrecy   = "0.10"
 tempfile  = "3"
 

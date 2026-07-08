@@ -10,13 +10,13 @@ readme.workspace = true
 
 [dependencies]
 bytes = "1.11.1"
-formats = { package = "imsg-formats", version = "0.3.0", path = "../imsg-formats" }
+formats = { package = "imsg-formats", version = "0.3.1", path = "../imsg-formats" }
 futures = "0.3"
 quick-xml = "0.40"
-obex-core = { package = "imsg-obex", version = "0.3.0", path = "../imsg-obex" }
+obex-core = { package = "imsg-obex", version = "0.3.1", path = "../imsg-obex" }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["full"] }
-transport = { package = "imsg-transport", version = "0.3.0", path = "../imsg-transport" }
+transport = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
 
 [lints]
 workspace = true
