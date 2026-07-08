@@ -45,7 +45,7 @@ version = "0.3.1"
 edition = "2021"
 authors = ["Ethan <git@gnu.foo>"]
 license = "MIT"
-rust-version = "1.91.0"
+rust-version = "1.93.0"
 repository = "https://github.com/gnufood/imsg"
 readme = "README.md"
 
