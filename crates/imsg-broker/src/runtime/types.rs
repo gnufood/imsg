@@ -122,7 +122,7 @@ pub(in crate::runtime) enum DeviceOp {
     LiveSend {
         /// Recipient phone number.
         number: String,
-        /// Message body text.
+        /// UTF-8 message body.
         message: String,
         reply: oneshot::Sender<ipc::BrokerResponse>,
     },

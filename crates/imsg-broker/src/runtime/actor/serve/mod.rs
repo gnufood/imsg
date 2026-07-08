@@ -145,9 +145,18 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         let _ = reply.send(self.watch_tx.subscribe());
     }
 
-    /// Starts the MNS listener task; a failure is logged and leaves watch unavailable (local to the
-    /// watch subsystem — it does not affect the MAP session state).
+    /// Starts the MNS listener task, unless one is already running. A failure is logged and
+    /// leaves watch unavailable (local to the watch subsystem — it does not affect the MAP
+    /// session state).
+    ///
+    /// Idempotent so callers can call it unconditionally: the MNS profile must be registered
+    /// with `BlueZ` *before* the MAP session enables notifications (the phone connects back to
+    /// it as soon as it does), so it is started once up front and left running across MAP
+    /// reconnects rather than torn down and re-registered every time.
     pub(in crate::runtime::actor) async fn start_mns(&mut self) {
+        if self.mns_rx.is_some() {
+            return;
+        }
         match transport::rfcomm::listen_mns().await {
             Ok(listener) => {
                 let (cancel_tx, cancel_rx) = watch::channel(false);

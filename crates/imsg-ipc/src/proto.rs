@@ -27,7 +27,7 @@ pub enum BrokerRequest {
     Send {
         /// Recipient phone number.
         number: String,
-        /// Message body text.
+        /// UTF-8 message body.
         message: String,
     },
     /// Set the deleted flag on the device and remove the message from the local store.
@@ -77,7 +77,7 @@ pub enum BrokerRequest {
     SendLive {
         /// Recipient phone number.
         number: String,
-        /// Message body text.
+        /// UTF-8 message body.
         message: String,
     },
     /// Stream MAP notification events; broker sends zero or more [`BrokerResponse::WatchEvent`]

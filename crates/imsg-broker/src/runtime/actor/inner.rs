@@ -18,12 +18,19 @@ use crate::runtime::types::{ConnState, DeviceOp, TerminalReason};
 impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Runs the connect → serve → reconnect lifecycle until the broker exits.
     ///
-    /// Each iteration establishes the session (publishing `Active` and draining the outbox),
-    /// restarts MNS if subscribers remain, then serves until idle/shutdown (exit) or a session
-    /// drop. A drop with subscribers or in persistent mode reconnects (`Reconnecting`); otherwise
-    /// exits so the CLI respawns lazily. A failed connect goes terminal `Failed`. Publishes why it
-    /// stopped on the shutdown signal — see [`TerminalReason`].
+    /// Starts MNS first, if wanted, so the profile is already registered with `BlueZ` before the
+    /// MAP session ever enables notifications — the phone connects back to it as soon as that
+    /// happens, so registering it after the fact (as a prior version of this code did) means the
+    /// phone finds nothing there yet. Each iteration then establishes the session (publishing
+    /// `Active` and draining the outbox) and serves until idle/shutdown (exit) or a session drop.
+    /// A drop with subscribers or in persistent mode reconnects (`Reconnecting`) without touching
+    /// MNS, which stays up across reconnects; otherwise exits so the CLI respawns lazily. A
+    /// failed connect goes terminal `Failed`. Publishes why it stopped on the shutdown signal —
+    /// see [`TerminalReason`].
     pub(in crate::runtime::actor) async fn run(mut self) {
+        if wants_mns(self.watch_count, self.idle) {
+            self.start_mns().await;
+        }
         let reason = loop {
             let client = match self.try_connect().await {
                 Ok(c) => c,
@@ -40,8 +47,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         let _ = self.shutdown_tx.send(Some(reason));
     }
 
-    /// Serves one connected session: publishes `Active`, drains the outbox, restarts MNS for any
-    /// existing subscribers or persistent (daemon) mode, then serves until the session ends.
+    /// Serves one connected session: publishes `Active`, drains the outbox, then serves until the
+    /// session ends. MNS is not touched here — [`run`][Self::run] starts it once up front for
+    /// persistent mode, and [`handle_subscribe`][Self::handle_subscribe] starts it on demand for
+    /// ephemeral mode; either way it stays running across reconnects until no longer wanted.
     ///
     /// Returns `true` to reconnect (a recoverable drop while subscribers remain or in persistent
     /// mode) or `false` to exit the lifecycle (idle/shutdown, or a drop with no subscribers in
@@ -52,13 +61,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         if let Err(e) = session::outbox::drain_outbox(&mut client, &self.store, now).await {
             tracing::warn!("initial outbox drain failed: {e}");
         }
-        if wants_mns(self.watch_count, self.idle) {
-            self.start_mns().await;
-        }
         let outcome = self.serve_active(&mut client).await;
-        self.stop_mns();
         match outcome {
             ServeOutcome::Exit => {
+                self.stop_mns();
                 if let Err(e) = client.disconnect().await {
                     tracing::warn!("MAP disconnect on shutdown: {e}");
                 }
@@ -67,6 +73,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
             // Demand-gate: no subscribers and not persistent mode means no one needs the link —
             // exit, respawn lazily. Persistent mode (`idle: None`) always reconnects.
             ServeOutcome::Dropped if !wants_mns(self.watch_count, self.idle) => {
+                self.stop_mns();
                 self.fail_pending(&Reason::DeviceUnreachable);
                 false
             }
