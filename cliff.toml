@@ -37,12 +37,12 @@ conventional_commits = true
 filter_unconventional = true
 commit_parsers = [
   { message = "^feat", group = "Added" },
+  { body = ".*security", group = "Security" },
   { message = "^fix", group = "Fixed" },
   { message = "^refactor", group = "Changed" },
   { message = "^perf", group = "Changed" },
   { message = "^.*: remove", group = "Removed" },
   { message = "^.*: deprecate", group = "Deprecated" },
-  { body = ".*security", group = "Security" },
   { message = "^doc", group = "Changed" },
   { message = "^chore\\(release\\):", skip = true },
   { message = "^chore\\(deps.*\\)", skip = true },
