@@ -11,9 +11,11 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use config::Config;
+use ipc::SessionState;
 use store::Store;
 use tokio::process::Command;
 
@@ -90,7 +92,26 @@ fn default_device(config_path: Option<PathBuf>, system: bool) -> Result<String> 
 async fn start_foreground(cfg: Config, device: Option<String>, store: Store) -> Result<()> {
     store.set_meta("daemon_enabled", "true").await?;
     output::line("daemon starting — Ctrl-C to stop")?;
+    let addr = device.clone().unwrap_or_else(|| cfg.device.address().to_owned());
+    tokio::spawn(announce_when_connected(addr));
     imsg_broker::run_daemon(cfg, device, store).await
+}
+
+/// Polls the daemon's own IPC socket until the MAP session reports `Active`, then prints a
+/// one-time confirmation — `run_daemon` blocks forever with no feedback of its own once
+/// serving starts, so without this a healthy foreground daemon looks stuck on "starting".
+async fn announce_when_connected(addr: String) {
+    loop {
+        match broker::query_state(&addr).await {
+            Some(SessionState::Active) => {
+                let _ = output::line(&format!("daemon for {addr}: connected"));
+                return;
+            }
+            Some(SessionState::Failed) => return,
+            _ => {}
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
 }
 
 /// Spawns a detached child (own process group, log-file stdio) and waits for its socket to

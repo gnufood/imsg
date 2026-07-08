@@ -13,7 +13,7 @@ use anyhow::Result;
 use config::Config;
 use ipc::{BrokerRequest, BrokerResponse};
 
-pub(in crate::commands) use client::{query_persistent, run_status, run_stop};
+pub(in crate::commands) use client::{query_persistent, query_state, run_status, run_stop};
 pub(in crate::commands) use spawn::connect_retry;
 
 /// Sends `req` to the broker (auto-starting if necessary) and returns one response frame.

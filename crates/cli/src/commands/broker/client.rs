@@ -5,7 +5,7 @@ use bytes::Bytes;
 use config::Config;
 use futures::{SinkExt as _, StreamExt as _};
 use interprocess::local_socket::{tokio::Stream as LocalStream, ConnectOptions};
-use ipc::{BrokerRequest, BrokerResponse, MAX_FRAME_LEN};
+use ipc::{BrokerRequest, BrokerResponse, SessionState, MAX_FRAME_LEN};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 /// Sends `req` over a fresh connection and returns one response frame.
@@ -72,10 +72,31 @@ pub(in crate::commands) async fn run_status(
 /// answer a raw connect probe identically, so only the `Status` response's `persistent` field
 /// tells them apart.
 pub(in crate::commands) async fn query_persistent(addr: &str) -> Option<bool> {
+    let Ok(mut framed) = connect_raw(addr).await else {
+        tracing::debug!("broker: nothing reachable at {addr}");
+        return None;
+    };
+    send_frame(&mut framed, &BrokerRequest::Status).await.ok()?;
+    match recv_frame(&mut framed).await.ok()? {
+        BrokerResponse::StatusInfo { persistent, .. } => {
+            let kind = if persistent { "persistent daemon" } else { "ephemeral broker" };
+            tracing::debug!("broker: found {kind} already running at {addr}");
+            Some(persistent)
+        }
+        _ => None,
+    }
+}
+
+/// Returns the current session state of a reachable broker, or `None` if nothing answers at
+/// `addr` yet.
+///
+/// Used by `daemon start --foreground` to poll for the first `Active` transition and announce
+/// it — `run_daemon` itself blocks forever with no feedback once serving starts.
+pub(in crate::commands) async fn query_state(addr: &str) -> Option<SessionState> {
     let mut framed = connect_raw(addr).await.ok()?;
     send_frame(&mut framed, &BrokerRequest::Status).await.ok()?;
     match recv_frame(&mut framed).await.ok()? {
-        BrokerResponse::StatusInfo { persistent, .. } => Some(persistent),
+        BrokerResponse::StatusInfo { state, .. } => Some(state),
         _ => None,
     }
 }
