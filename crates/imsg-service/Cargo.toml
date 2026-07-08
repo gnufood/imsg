@@ -9,6 +9,7 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
+nix = { version = "0.29", default-features = false, features = ["user"] }
 service-manager = "0.11"
 thiserror = "2"
 

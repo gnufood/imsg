@@ -5,10 +5,14 @@
 //! Wraps the `service-manager` crate so callers (`cli`, the GUI) never need it as a
 //! direct dependency — every type in this crate's public API is local to it.
 
+// `pub mod` (not `mod`) is required: items inside are `pub(crate)`, and `pub(crate)` in a
+// private module trips `redundant_pub_crate` while `pub` trips `unreachable_pub`.
+pub mod identity;
+
 use std::env;
 use std::ffi::OsString;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use service_manager::{
     RestartPolicy, ServiceInstallCtx, ServiceLabel, ServiceLevel as SmServiceLevel,
@@ -77,6 +81,17 @@ pub enum Error {
     /// The service manager rejected an install/uninstall/start/stop/status request.
     #[error("service operation failed: {0}")]
     Operation(#[source] io::Error),
+    /// A `--system` install has no reliable "real user" to run as (e.g. a genuine root
+    /// login rather than `sudo`) — refused rather than silently installing a root-run
+    /// service that can't reach the installing user's config or keyring.
+    #[error("refusing to install a system service as root — run via `sudo` as your normal user")]
+    NoInvokingUser,
+    /// Looking up the resolved invoking user's passwd entry failed.
+    #[error("looking up invoking user: {0}")]
+    UserLookup(#[source] nix::errno::Errno),
+    /// The resolved invoking username has no passwd entry (deleted user, LDAP/SSSD hiccup).
+    #[error("invoking user {0:?} has no passwd entry")]
+    UnknownUser(String),
 }
 
 fn label() -> ServiceLabel {
@@ -109,31 +124,48 @@ fn start_foreground_args(device: Option<&str>, config_path: Option<&Path>) -> Ve
     args
 }
 
+/// Resolves the real invoking user's home directory for a `--system` install.
+///
+/// For a caller resolving other config (e.g. a default `--device`) so it can read *their*
+/// config instead of root's — the same resolution [`install`] itself uses for the service
+/// unit's `User=`/`HOME=`.
+///
+/// # Errors
+///
+/// Returns [`Error::NoInvokingUser`] outside a `sudo` invocation (or a bare root login), or
+/// [`Error::UserLookup`]/[`Error::UnknownUser`] if the resolved user's passwd entry can't be read.
+pub fn invoking_home() -> Result<PathBuf, Error> {
+    identity::invoking_user().map(|u| u.dir)
+}
+
 /// Registers the daemon with the native OS service manager, so it starts on boot
 /// (or user login, for [`ServiceLevel::User`]) and restarts on failure.
 ///
 /// `device`/`config_path` are forwarded as `--device`/`--config` to the service's
 /// `imsg daemon start --foreground` invocation, matching the flags `imsg daemon start`
-/// itself accepts.
+/// itself accepts. A [`ServiceLevel::System`] install additionally resolves the real
+/// `sudo`-invoking user (see [`identity`]) and runs the service as them.
 ///
 /// # Errors
 ///
-/// Returns an error if the current executable path can't be resolved, no native
-/// service manager is available, or the manager rejects the install.
+/// Returns an error if the current executable path can't be resolved, a `--system` install
+/// can't resolve a real invoking user, no native service manager is available, or the manager
+/// rejects the install.
 pub fn install(
     device: Option<&str>,
     config_path: Option<&Path>,
     level: ServiceLevel,
 ) -> Result<(), Error> {
     let program = env::current_exe().map_err(Error::CurrentExe)?;
+    let (username, working_directory, environment) = identity::system_identity(level)?;
     let ctx = ServiceInstallCtx {
         label: label(),
         program,
         args: start_foreground_args(device, config_path),
         contents: None,
-        username: None,
-        working_directory: None,
-        environment: None,
+        username,
+        working_directory,
+        environment,
         autostart: true,
         restart_policy: RestartPolicy::default(),
     };
@@ -185,46 +217,4 @@ pub fn status(level: ServiceLevel) -> Result<ServiceState, Error> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// `ExecStart` args always lead with the foreground subcommand, regardless of
-    /// which optional overrides are present.
-    #[test]
-    fn start_foreground_args_base_case() {
-        assert_eq!(
-            start_foreground_args(None, None),
-            vec![OsString::from("daemon"), OsString::from("start"), OsString::from("--foreground"),]
-        );
-    }
-
-    /// `--device`/`--config` are appended in order, matching `imsg daemon start`'s own
-    /// flag names so the installed service invokes the identical CLI surface.
-    #[test]
-    fn start_foreground_args_with_overrides() {
-        let args = start_foreground_args(Some("AA:BB:CC:DD:EE:FF"), Some(Path::new("/tmp/c.toml")));
-        assert_eq!(
-            args,
-            vec![
-                OsString::from("daemon"),
-                OsString::from("start"),
-                OsString::from("--foreground"),
-                OsString::from("--device"),
-                OsString::from("AA:BB:CC:DD:EE:FF"),
-                OsString::from("--config"),
-                OsString::from("/tmp/c.toml"),
-            ]
-        );
-    }
-
-    /// Round-trips through [`SmServiceStatus`] preserve the stopped-reason payload.
-    #[test]
-    fn service_state_from_status_preserves_stopped_reason() {
-        assert_eq!(ServiceState::from(SmServiceStatus::NotInstalled), ServiceState::NotInstalled);
-        assert_eq!(ServiceState::from(SmServiceStatus::Running), ServiceState::Running);
-        assert_eq!(
-            ServiceState::from(SmServiceStatus::Stopped(Some("crashed".to_owned()))),
-            ServiceState::Stopped(Some("crashed".to_owned()))
-        );
-    }
-}
+mod tests;

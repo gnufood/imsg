@@ -2354,6 +2354,7 @@ dependencies = [
 name = "imsg-service"
 version = "0.2.0"
 dependencies = [
+ "nix",
  "service-manager",
  "thiserror 2.0.18",
 ]
