@@ -12,7 +12,7 @@ readme.workspace = true
 bluer = { version = "0.17.4", features = ["rfcomm", "bluetoothd"] }
 bytes = "1.11.1"
 futures = "0.3"
-iroh = "0.98"
+iroh = "1.0"
 obex-core = { package = "imsg-obex", version = "0.3.0", path = "../imsg-obex" }
 tokio = { version = "1.52.3", features = ["full"] }
 tracing = "0.1.44"
@@ -21,7 +21,7 @@ zbus = "5.16.0"
 
 [dev-dependencies]
 futures  = "0.3"
-iroh     = "0.98"
+iroh     = "1.0"
 socket2  = "0.6.4"
 tempfile = "3.27.0"
 tokio    = { version = "1.52.3", features = ["full"] }

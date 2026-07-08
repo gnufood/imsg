@@ -56,11 +56,11 @@ jobs:
       - run: just test
 
   msrv:
-    name: MSRV (1.89.0)
+    name: MSRV (1.91.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.89.0
+      - uses: dtolnay/rust-toolchain@1.91.0
       - name: Install system dependencies
         run: sudo apt-get install -y libdbus-1-dev libbluetooth-dev
       - uses: Swatinem/rust-cache@v2

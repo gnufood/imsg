@@ -118,7 +118,7 @@ fn decode_name_str(data: &[u8]) -> Result<String, PacketError> {
     if data.is_empty() {
         return Ok(String::new());
     }
-    if data.len() % 2 != 0 {
+    if !data.len().is_multiple_of(2) {
         return Err(PacketError::InvalidName);
     }
     let body_len = data.len().checked_sub(2).ok_or(PacketError::InvalidName)?;
