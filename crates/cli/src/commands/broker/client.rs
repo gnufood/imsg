@@ -1,5 +1,7 @@
 //! IPC transport: connect to the broker abstract socket, send/receive length-delimited frames.
 
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use bytes::Bytes;
 use config::Config;
@@ -7,6 +9,11 @@ use futures::{SinkExt as _, StreamExt as _};
 use interprocess::local_socket::{tokio::Stream as LocalStream, ConnectOptions};
 use ipc::{BrokerRequest, BrokerResponse, SessionState, MAX_FRAME_LEN};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+
+/// Bound on how long `run_stop` waits, after a successful `Shutdown`, for the socket to become
+/// unreachable — bridges the daemon's own bounded drain so callers see a clean "not running"
+/// instead of racing a socket that answered `Ok` but hasn't actually torn down its listener yet.
+const STOP_CONFIRM_BOUND: Duration = Duration::from_secs(5);
 
 /// Sends `req` over a fresh connection and returns one response frame.
 ///
@@ -104,7 +111,10 @@ pub(in crate::commands) async fn query_state(addr: &str) -> Option<SessionState>
 /// Sends a graceful `Shutdown` request, or reports `"not running"` if unreachable.
 ///
 /// Idempotent by design — stopping something that isn't running is a no-op, not an error, and
-/// this never auto-starts the broker just to shut it back down.
+/// this never auto-starts the broker just to shut it back down. On a successful `Shutdown`, waits
+/// (bounded by [`STOP_CONFIRM_BOUND`]) for the socket to actually go unreachable before returning,
+/// so a command run immediately after `stop` doesn't race a daemon that answered but hasn't
+/// finished tearing down its listener — see `ensure_running`'s reachability probe.
 ///
 /// # Errors
 ///
@@ -115,10 +125,28 @@ pub(in crate::commands) async fn run_stop(cfg: &Config, device: Option<&str>) ->
         return Ok(format!("daemon for {addr}: not running"));
     };
     send_frame(&mut framed, &BrokerRequest::Shutdown).await?;
-    match recv_frame(&mut framed).await? {
-        BrokerResponse::Ok => Ok(format!("daemon for {addr}: stopping")),
+    let resp = recv_frame(&mut framed).await?;
+    drop(framed);
+    match resp {
+        BrokerResponse::Ok => {
+            await_unreachable(addr).await;
+            Ok(format!("daemon for {addr}: stopping"))
+        }
         BrokerResponse::Error(e) => Ok(format!("daemon for {addr}: {e}")),
         other => Ok(format!("unexpected response: {other:?}")),
+    }
+}
+
+/// Polls `addr` until nothing answers a raw connect, or [`STOP_CONFIRM_BOUND`] elapses.
+async fn await_unreachable(addr: &str) {
+    let Some(deadline) = tokio::time::Instant::now().checked_add(STOP_CONFIRM_BOUND) else {
+        return;
+    };
+    while tokio::time::Instant::now() < deadline {
+        if connect_raw(addr).await.is_err() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
     }
 }
 

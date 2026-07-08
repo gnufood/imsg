@@ -90,7 +90,7 @@ pub(in crate::runtime) async fn serve_daemon(
     let policy = build_daemon_policy(&cfg);
     let readiness_wait = cfg.broker.readiness_wait();
     let connector = make_connector(addr, channel, cfg.broker.bt_connected());
-    super::shutdown::run(connector, store, policy, &listener, device, readiness_wait).await
+    super::shutdown::run(connector, store, policy, listener, device, readiness_wait).await
 }
 
 /// Shared by [`serve`] and [`serve_daemon`]; `idle` is their only difference.

@@ -98,7 +98,7 @@ async fn cancel_stops_accept_and_drain_even_with_no_connections() -> anyhow::Res
     let task = tokio::spawn(async move {
         accept_and_drain(
             handles,
-            &listener,
+            listener,
             "test-device".to_owned(),
             Duration::from_millis(50),
             token,
@@ -127,7 +127,7 @@ async fn shutdown_request_is_served_then_drain_converges() -> anyhow::Result<()>
     let task = tokio::spawn(async move {
         accept_and_drain(
             handles,
-            &listener,
+            listener,
             "test-device".to_owned(),
             Duration::from_millis(50),
             token,
@@ -158,7 +158,7 @@ async fn permanent_connect_failure_surfaces_as_error() -> anyhow::Result<()> {
 
     let result = accept_and_drain(
         handles,
-        &listener,
+        listener,
         "test-device".to_owned(),
         Duration::from_millis(50),
         token,

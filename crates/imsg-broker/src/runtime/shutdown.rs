@@ -1,9 +1,11 @@
 //! Graceful shutdown coordinator for persistent (daemon) mode.
 //!
 //! An IPC `Shutdown` request and SIGTERM/SIGINT both cancel the same [`CancellationToken`],
-//! converging on one drain sequence: stop accepting connections, let in-flight ones finish
-//! (bounded), drop the actor handle so it disconnects and exits, confirm that exit (bounded).
-//! Not used by the ephemeral one-shot broker — see [`super::server::serve_daemon`].
+//! converging on one drain sequence: stop accepting connections and drop the listener immediately
+//! (so a connection racing the stop gets a clean refusal/reset right away instead of queuing into
+//! a backlog nobody will ever `accept()` again), let already-accepted connections finish (bounded),
+//! drop the actor handle so it disconnects and exits, confirm that exit (bounded). Not used by the
+//! ephemeral one-shot broker — see [`super::server::serve_daemon`].
 
 use std::time::Duration;
 
@@ -32,7 +34,7 @@ pub(in crate::runtime) async fn run<T>(
     connector: Connector<T>,
     store: Store,
     policy: ConnectPolicy,
-    listener: &IpcListener,
+    listener: IpcListener,
     device: String,
     readiness_wait: Duration,
 ) -> Result<()>
@@ -56,6 +58,11 @@ where
 /// Per-connection tasks run through a [`TaskTracker`] (not bare `tokio::spawn`, unlike the
 /// ephemeral broker's [`super::server`] accept loop) so shutdown can wait for them.
 ///
+/// `listener` is owned (not borrowed) so it can be dropped the instant this stops accepting,
+/// rather than staying bound for the whole bounded drain — otherwise a client that connects
+/// during that window queues into a backlog this loop will never `accept()` again, and only
+/// discovers that via a raw connection reset once the listener eventually drops.
+///
 /// # Errors
 ///
 /// Returns an error if `listener.accept()` fails fatally, or if the actor's connect phase
@@ -64,7 +71,7 @@ where
 /// unrecoverable failure instead of looking identical to a clean `imsg daemon stop`.
 async fn accept_and_drain(
     handles: ActorHandles,
-    listener: &IpcListener,
+    listener: IpcListener,
     device: String,
     readiness_wait: Duration,
     token: CancellationToken,
@@ -94,6 +101,12 @@ async fn accept_and_drain(
             }
         });
     }
+
+    // Drop the listener now, not when this function returns — a connection that manages to
+    // connect() into the kernel backlog after we stop accepting but before this drop would
+    // otherwise sit unread until the listener eventually goes away, then see a raw connection
+    // reset instead of a clean, immediate refusal.
+    drop(listener);
 
     // Dropping `handle` closes the actor's op channel once every in-flight clone above is also
     // gone (tracked by `tasks`); that's the actor's only lever to notice it should exit.
