@@ -16,6 +16,7 @@ pub const MAX_FRAME_LEN: usize = 64 * 1024;
 /// Sent as one length-delimited JSON frame. The broker processes one request at a time;
 /// concurrent CLI invocations queue in the kernel accept backlog.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum BrokerRequest {
     /// Drain the outbox then backfill MAP messages.
@@ -100,6 +101,7 @@ pub enum BrokerRequest {
 /// Adjacently tagged (`kind`/`data`) so newtype variants carrying a `String` or [`Reason`]
 /// serialise — internal tagging cannot represent a newtype wrapping a non-map value.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case")]
 pub enum BrokerResponse {
     /// Operation completed successfully with no textual result.
@@ -137,6 +139,7 @@ pub enum BrokerResponse {
 /// Mirrors `map_core::mns_event::MnsEvent`; fields absent in the `<event>` XML element
 /// are `None`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct WatchEvent {
     /// Canonical MAP 1.4 event type string (e.g. `"NewMessage"`, `"DeliverySuccess"`).
     ///

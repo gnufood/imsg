@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Serde mirror of `session::live::models::Direction`; the broker converts at the boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum Direction {
     /// Inbound — received from the peer.
@@ -20,6 +21,7 @@ pub enum Direction {
 
 /// One message row from a live `list`, mirroring `session::live::models::LiveMessage`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MessageDto {
     /// Opaque MAP message handle.
     pub handle: String,
@@ -39,6 +41,7 @@ pub struct MessageDto {
 ///
 /// Counts are approximate — aggregated over the device's listing window, not the full corpus.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct ThreadDto {
     /// Peer address grouping the thread.
     pub address: String,
@@ -54,6 +57,7 @@ pub struct ThreadDto {
 ///
 /// Carries no timestamp by design — a bMessage has no datetime.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct BodyDto {
     /// Opaque MAP message handle the body was fetched by.
     pub handle: String,

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 /// `Disconnected → Connecting → Active`, with `Active → Reconnecting → Active` on a recoverable
 /// drop and a terminal `Failed` when the connect budget is exhausted or a permanent error occurs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum SessionState {
     /// No connection attempted yet.
@@ -51,6 +52,7 @@ impl fmt::Display for SessionState {
 /// notification registration) is deliberately not encoded — it is diagnostic log detail, not a
 /// reason, because it does not change what the user should do.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "reason", content = "detail", rename_all = "snake_case")]
 pub enum Reason {
     /// The session was not `Active` before the request's deadline elapsed. Action: retry.

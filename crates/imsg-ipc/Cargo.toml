@@ -10,6 +10,14 @@ readme.workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+# specta-macros is a direct dep purely to force its `serde` feature on via unification with
+# specta's own (unconfigured) transitive pull — without it, specta::Type would not preserve
+# our enums' #[serde(tag/content/rename_all)] shape as runtime attributes for later export.
+specta        = { version = "2.0.0-rc.25", optional = true, features = ["derive"] }
+specta-macros = { version = "=2.0.0-rc.25", optional = true, features = ["serde"] }
+
+[features]
+specta = ["dep:specta", "dep:specta-macros"]
 
 [dev-dependencies]
 serde_json = "1"
