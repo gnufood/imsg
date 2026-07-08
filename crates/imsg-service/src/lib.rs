@@ -175,12 +175,19 @@ pub fn install(
 /// Unregisters the daemon service. A no-op (per the underlying service manager's
 /// behavior) if it was never installed.
 ///
+/// Stops the service first, best-effort: `uninstall` alone only removes the service
+/// definition, leaving an already-running instance behind as an orphaned,
+/// unsupervised process. A failed stop (e.g. nothing was running) doesn't block the
+/// uninstall itself.
+///
 /// # Errors
 ///
 /// Returns an error if no native service manager is available or it rejects the
 /// uninstall.
 pub fn uninstall(level: ServiceLevel) -> Result<(), Error> {
-    manager(level)?.uninstall(ServiceUninstallCtx { label: label() }).map_err(Error::Operation)
+    let mgr = manager(level)?;
+    let _ = mgr.stop(ServiceStopCtx { label: label() });
+    mgr.uninstall(ServiceUninstallCtx { label: label() }).map_err(Error::Operation)
 }
 
 /// Starts the installed daemon service.
