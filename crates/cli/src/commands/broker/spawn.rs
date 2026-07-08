@@ -29,9 +29,11 @@ pub(super) async fn ensure_running(
     let addr = device.unwrap_or_else(|| cfg.device.address());
 
     if probe(addr).await {
+        tracing::debug!("broker: reusing already-running broker/daemon for {addr}");
         return Ok(());
     }
 
+    tracing::debug!("broker: none reachable for {addr}, spawning ephemeral broker");
     let log_path = config::broker_log_path(addr);
     let mut child = spawn(cfg, device, config_path, &log_path).await?;
     connect_retry(

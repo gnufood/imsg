@@ -18,8 +18,14 @@ use crate::SessionError;
 pub async fn establish_map_session<T: AsyncRead + AsyncWrite + Unpin>(
     stream: T,
 ) -> Result<MapClient<T>, SessionError> {
-    let mut client = MapClient::connect(stream).await?;
-    client.set_notification_registration(true).await?;
+    let mut client = MapClient::connect(stream).await.inspect_err(|e| {
+        tracing::warn!("MAP session: OBEX CONNECT failed: {e}");
+    })?;
+    tracing::debug!("MAP session: OBEX CONNECT ok, registering notifications");
+    client.set_notification_registration(true).await.inspect_err(|e| {
+        tracing::warn!("MAP session: notification registration failed: {e}");
+    })?;
+    tracing::debug!("MAP session: notification registration ok");
     Ok(client)
 }
 

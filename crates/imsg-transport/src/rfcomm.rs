@@ -63,14 +63,20 @@ pub async fn connect(
     channel: u8,
     bt_gate: Duration,
 ) -> Result<Stream, TransportError> {
-    let stream = Stream::connect(SocketAddr::new(addr, channel)).await?;
+    tracing::debug!("rfcomm: dialing {addr} ch{channel}");
+    let stream = Stream::connect(SocketAddr::new(addr, channel)).await.inspect_err(|e| {
+        tracing::warn!("rfcomm: socket connect to {addr} ch{channel} failed: {e}");
+    })?;
     let deadline = tokio::time::Instant::now().checked_add(bt_gate).ok_or_else(|| {
         TransportError::Io(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "BT_CONNECTED deadline overflowed the monotonic clock",
         ))
     })?;
-    await_bt_connected(|| stream.peer_addr().is_ok(), deadline).await?;
+    await_bt_connected(|| stream.peer_addr().is_ok(), deadline).await.inspect_err(|e| {
+        tracing::warn!("rfcomm: {addr} ch{channel} never reached BT_CONNECTED: {e}");
+    })?;
+    tracing::debug!("rfcomm: {addr} ch{channel} BT_CONNECTED");
     Ok(stream)
 }
 
