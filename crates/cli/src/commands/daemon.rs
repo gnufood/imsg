@@ -51,9 +51,31 @@ pub(crate) async fn dispatch(
             let cfg = load(config_path)?;
             Ok(Some(broker::run_status(&cfg, device, "daemon").await?))
         }
-        DaemonCmd::Install { system } => Ok(Some(install(device, config_path.as_deref(), system)?)),
+        DaemonCmd::Install { system } => {
+            let addr = match device {
+                Some(d) => d.to_owned(),
+                None => default_device(config_path.clone(), system)?,
+            };
+            Ok(Some(install(&addr, config_path.as_deref(), system)?))
+        }
         DaemonCmd::Uninstall { system } => Ok(Some(uninstall(system)?)),
     }
+}
+
+/// Resolves the default `--device` for `daemon install` when it isn't passed explicitly.
+///
+/// Under `--system`, loading via this process's own `$HOME` finds nothing useful: plain `sudo`
+/// resets `HOME` to `/root` (only `sudo -E` preserves it, which operators won't reliably
+/// remember), so config lookup falls back to the real `sudo`-invoking user's `~/.config/imsg`
+/// instead of root's — the same directory [`service::install`] points the unit's own
+/// `XDG_CONFIG_HOME` at, so this stays consistent with what the running service will read.
+fn default_device(config_path: Option<PathBuf>, system: bool) -> Result<String> {
+    if system && config_path.is_none() {
+        let home = service::invoking_home().context("resolving config for --system install")?;
+        let explicit = home.join(".config/imsg/imsg.toml");
+        return Ok(load(Some(explicit))?.device.address().to_owned());
+    }
+    Ok(load(config_path)?.device.address().to_owned())
 }
 
 /// Runs the broker in this process until the shutdown coordinator converges — what the
@@ -169,15 +191,18 @@ const fn level(system: bool) -> service::ServiceLevel {
 }
 
 /// Registers the daemon with the native OS service manager via [`service::install`], so it
-/// starts on boot/login and restarts on failure. Forwards `--device`/`--config` to the
-/// service's `imsg daemon start --foreground` invocation.
+/// starts on boot/login and restarts on failure. Always bakes `--device <addr>` into the
+/// service's `imsg daemon start --foreground` invocation (resolved from config if not passed
+/// explicitly) — a `--system` service typically runs as root, which has no user config to fall
+/// back on at its own start time, so the address can't be left to runtime lookup. `--config` is
+/// only forwarded if given explicitly.
 ///
 /// # Errors
 ///
 /// Returns an error if no native service manager is available or it rejects the install.
-fn install(device: Option<&str>, config_path: Option<&Path>, system: bool) -> Result<String> {
+fn install(addr: &str, config_path: Option<&Path>, system: bool) -> Result<String> {
     let lvl = level(system);
-    service::install(device, config_path, lvl).context("installing daemon service")?;
+    service::install(Some(addr), config_path, lvl).context("installing daemon service")?;
     Ok(format!("daemon service installed ({lvl:?})"))
 }
 
