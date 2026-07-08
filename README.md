@@ -81,6 +81,11 @@ imsg threads                                  # conversations grouped by contact
 | `contacts` | Pull contacts via PBAP; `--list` handles, `--get <handle>`, `--lookup <number>`, `--limit`/`--page` for pagination, `--raw` to skip E.164 normalisation |
 | `threads` | Group inbox and sent into per-contact conversations |
 | `folders` | List the MAP folder tree on the device |
+| `daemon start [--foreground]` | Run the persistent background broker — keeps the MAP session connected and the local store fresh without a CLI command triggering it |
+| `daemon stop` | Request a graceful stop of the daemon; a no-op if nothing is running |
+| `daemon status` | Report whether the daemon is running and its MAP session connected |
+| `daemon install [--system]` | Register the daemon with the OS service manager (systemd/launchd/OpenRC/rc.d/sc.exe) so it starts on boot/login |
+| `daemon uninstall [--system]` | Unregister the daemon service |
 | `config show` | Print the resolved configuration |
 | `config set-device <MAC>` | Persist the paired device address |
 
@@ -110,6 +115,28 @@ imsg --hub send +15550001234 "hello from anywhere"
 
 The hub and spoke connect over QUIC via [iroh](https://iroh.computer/) — no port
 forwarding or VPN required. 
+
+---
+
+## Daemon (background sync)
+
+`imsg daemon start` runs a persistent background broker that keeps the MAP session connected
+to your paired phone and the local store fresh — replaces the old `imsg watch` command.
+
+```sh
+imsg daemon start              # detaches into the background; idempotent if already running
+imsg daemon status              # daemon for A1:B2:C3:D4:E5:F6: connected
+imsg daemon stop                # graceful stop; no-op if nothing is running
+```
+
+Run under a process supervisor (e.g. systemd) with `--foreground` instead, or let `imsg`
+register one for you:
+
+```sh
+imsg daemon install             # user-level systemd/launchd/... unit
+imsg daemon install --system    # system-wide (requires elevated privileges)
+imsg daemon uninstall [--system]
+```
 
 ---
 
