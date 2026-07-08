@@ -1,47 +1,16 @@
-//! IPC transport: connect to the broker abstract socket, send/receive length-delimited frames.
+//! Broker status/stop commands: format `imsg-broker-client`'s structured responses for display.
 
 use std::time::Duration;
 
-use anyhow::{Context, Result};
-use bytes::Bytes;
+use anyhow::Result;
+use broker_client::{probe, send_request};
 use config::Config;
-use futures::{SinkExt as _, StreamExt as _};
-use interprocess::local_socket::{tokio::Stream as LocalStream, ConnectOptions};
-use ipc::{BrokerRequest, BrokerResponse, SessionState, MAX_FRAME_LEN};
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use ipc::{BrokerRequest, BrokerResponse};
 
 /// Bound on how long `run_stop` waits, after a successful `Shutdown`, for the socket to become
 /// unreachable — bridges the daemon's own bounded drain so callers see a clean "not running"
 /// instead of racing a socket that answered `Ok` but hasn't actually torn down its listener yet.
 const STOP_CONFIRM_BOUND: Duration = Duration::from_secs(5);
-
-/// Sends `req` over a fresh connection and returns one response frame.
-///
-/// Does not auto-start the broker — callers must call `ensure_running` first.
-///
-/// # Errors
-///
-/// Returns an error if the connection fails or frame encoding/decoding fails.
-pub(super) async fn send_request(addr: &str, req: BrokerRequest) -> Result<BrokerResponse> {
-    let mut framed = connect_raw(addr).await?;
-    send_frame(&mut framed, &req).await?;
-    recv_frame(&mut framed).await
-}
-
-/// Returns a live `Framed` connection to the broker's abstract socket.
-///
-/// Does not auto-start the broker — callers must call `ensure_running` first.
-///
-/// # Errors
-///
-/// Returns an error if the abstract socket connect fails.
-async fn connect_raw(addr: &str) -> Result<Framed<LocalStream, LengthDelimitedCodec>> {
-    let name = config::broker_abstract_name(addr).context("building broker socket name")?;
-    let stream =
-        ConnectOptions::new().name(name).connect_tokio().await.context("connecting to broker")?;
-    let codec = LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec();
-    Ok(Framed::new(stream, codec))
-}
 
 /// Returns a one-line health summary, or `"not running"` if the broker is unreachable.
 ///
@@ -59,52 +28,14 @@ pub(in crate::commands) async fn run_status(
     label: &str,
 ) -> Result<String> {
     let addr = device.unwrap_or_else(|| cfg.device.address());
-    let Ok(mut framed) = connect_raw(addr).await else {
+    let Ok(resp) = send_request(addr, BrokerRequest::Status).await else {
         return Ok(format!("{label} for {addr}: not running"));
     };
-    send_frame(&mut framed, &BrokerRequest::Status).await?;
-    match recv_frame(&mut framed).await? {
+    match resp {
         BrokerResponse::StatusInfo { state, device: dev, .. } => {
             Ok(format!("{label} for {dev}: {state}"))
         }
         other => Ok(format!("unexpected response: {other:?}")),
-    }
-}
-
-/// Returns whether a reachable broker is running in persistent (daemon) mode, or `None` if no
-/// broker answers at `addr`.
-///
-/// Used by `daemon start`'s idempotency check to distinguish an already-running daemon from an
-/// ephemeral one-shot broker that merely happens to be holding the socket right now — both
-/// answer a raw connect probe identically, so only the `Status` response's `persistent` field
-/// tells them apart.
-pub(in crate::commands) async fn query_persistent(addr: &str) -> Option<bool> {
-    let Ok(mut framed) = connect_raw(addr).await else {
-        tracing::debug!("broker: nothing reachable at {addr}");
-        return None;
-    };
-    send_frame(&mut framed, &BrokerRequest::Status).await.ok()?;
-    match recv_frame(&mut framed).await.ok()? {
-        BrokerResponse::StatusInfo { persistent, .. } => {
-            let kind = if persistent { "persistent daemon" } else { "ephemeral broker" };
-            tracing::debug!("broker: found {kind} already running at {addr}");
-            Some(persistent)
-        }
-        _ => None,
-    }
-}
-
-/// Returns the current session state of a reachable broker, or `None` if nothing answers at
-/// `addr` yet.
-///
-/// Used by `daemon start --foreground` to poll for the first `Active` transition and announce
-/// it — `run_daemon` itself blocks forever with no feedback once serving starts.
-pub(in crate::commands) async fn query_state(addr: &str) -> Option<SessionState> {
-    let mut framed = connect_raw(addr).await.ok()?;
-    send_frame(&mut framed, &BrokerRequest::Status).await.ok()?;
-    match recv_frame(&mut framed).await.ok()? {
-        BrokerResponse::StatusInfo { state, .. } => Some(state),
-        _ => None,
     }
 }
 
@@ -114,19 +45,16 @@ pub(in crate::commands) async fn query_state(addr: &str) -> Option<SessionState>
 /// this never auto-starts the broker just to shut it back down. On a successful `Shutdown`, waits
 /// (bounded by [`STOP_CONFIRM_BOUND`]) for the socket to actually go unreachable before returning,
 /// so a command run immediately after `stop` doesn't race a daemon that answered but hasn't
-/// finished tearing down its listener — see `ensure_running`'s reachability probe.
+/// finished tearing down its listener.
 ///
 /// # Errors
 ///
 /// Returns an error if the connection succeeds but sending or receiving the frame fails.
 pub(in crate::commands) async fn run_stop(cfg: &Config, device: Option<&str>) -> Result<String> {
     let addr = device.unwrap_or_else(|| cfg.device.address());
-    let Ok(mut framed) = connect_raw(addr).await else {
+    let Ok(resp) = send_request(addr, BrokerRequest::Shutdown).await else {
         return Ok(format!("daemon for {addr}: not running"));
     };
-    send_frame(&mut framed, &BrokerRequest::Shutdown).await?;
-    let resp = recv_frame(&mut framed).await?;
-    drop(framed);
     match resp {
         BrokerResponse::Ok => {
             await_unreachable(addr).await;
@@ -143,38 +71,9 @@ async fn await_unreachable(addr: &str) {
         return;
     };
     while tokio::time::Instant::now() < deadline {
-        if connect_raw(addr).await.is_err() {
+        if !probe(addr).await {
             return;
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
-}
-
-/// Encodes `req` as JSON and writes one length-delimited frame.
-///
-/// # Errors
-///
-/// Returns an error if serialisation or the socket write fails.
-async fn send_frame<T: tokio::io::AsyncWrite + Unpin>(
-    framed: &mut Framed<T, LengthDelimitedCodec>,
-    req: &BrokerRequest,
-) -> Result<()> {
-    let bytes = Bytes::from(serde_json::to_vec(req).context("serialising request")?);
-    framed.send(bytes).await.context("sending request frame")
-}
-
-/// Reads one response frame and deserialises it.
-///
-/// # Errors
-///
-/// Returns an error if the connection closes unexpectedly or deserialisation fails.
-async fn recv_frame<T: tokio::io::AsyncRead + Unpin>(
-    framed: &mut Framed<T, LengthDelimitedCodec>,
-) -> Result<BrokerResponse> {
-    let frame = framed
-        .next()
-        .await
-        .ok_or_else(|| anyhow::anyhow!("broker closed connection without sending a response"))?
-        .context("reading response frame")?;
-    serde_json::from_slice(&frame).context("deserialising response")
 }

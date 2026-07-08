@@ -12,6 +12,7 @@ members = [
     "crates/imsg-session",
     "crates/imsg-ipc",
     "crates/imsg-broker",
+    "crates/imsg-broker-client",
     "crates/cli",
 ]
 resolver = "2"

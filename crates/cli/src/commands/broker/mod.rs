@@ -1,8 +1,9 @@
-//! Broker IPC client: auto-spawn, connect, send/receive frames, and `broker status`.
+//! Broker access for CLI commands: auto-spawn on demand, then talk to it via
+//! `imsg-broker-client`.
 //!
 //! Split into two sub-modules by concern:
-//! - [`client`] — IPC transport (frame encoding, abstract-socket connect, request/response)
-//! - [`spawn`] — process management (spawn subprocess, connect-retry readiness probe)
+//! - [`client`] — formats `imsg-broker-client`'s structured responses for `broker status`/`stop`
+//! - [`spawn`] — process management (spawn the ephemeral one-shot broker subprocess)
 
 mod client;
 mod spawn;
@@ -10,11 +11,12 @@ mod spawn;
 use std::path::Path;
 
 use anyhow::Result;
+use broker_client::send_request;
 use config::Config;
 use ipc::{BrokerRequest, BrokerResponse};
 
-pub(in crate::commands) use client::{query_persistent, query_state, run_status, run_stop};
-pub(in crate::commands) use spawn::connect_retry;
+pub(in crate::commands) use broker_client::{connect_retry, query_persistent, query_state};
+pub(in crate::commands) use client::{run_status, run_stop};
 
 /// Sends `req` to the broker (auto-starting if necessary) and returns one response frame.
 ///
@@ -33,5 +35,5 @@ pub(crate) async fn call(
 ) -> Result<BrokerResponse> {
     let addr = device.unwrap_or_else(|| cfg.device.address());
     spawn::ensure_running(cfg, device, config_path).await?;
-    client::send_request(addr, req).await
+    send_request(addr, req).await
 }

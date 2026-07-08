@@ -2192,6 +2192,7 @@ dependencies = [
  "fs2",
  "futures",
  "imsg-broker",
+ "imsg-broker-client",
  "imsg-config",
  "imsg-ipc",
  "imsg-keyring",
@@ -2235,6 +2236,22 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "imsg-broker-client"
+version = "0.3.1"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "futures",
+ "imsg-config",
+ "imsg-ipc",
+ "interprocess",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tracing",
 ]
 
 [[package]]

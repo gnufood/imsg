@@ -1,0 +1,24 @@
+[package]
+name = "imsg-broker-client"
+description = "Shared IPC client for the imsg broker/daemon abstract socket: transport, reachability, and status queries"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+anyhow       = "1.0.102"
+bytes        = "1"
+futures      = "0.3"
+interprocess = { version = "2.4.2", features = ["tokio"] }
+serde_json   = "1.0.150"
+tokio        = { version = "1.52.3", features = ["net", "process", "time"] }
+tokio-util   = { version = "0.7.18", features = ["codec"] }
+tracing      = "0.1.44"
+config       = { package = "imsg-config", version = "0.3.1", path = "../imsg-config" }
+ipc          = { package = "imsg-ipc",    version = "0.3.1", path = "../imsg-ipc" }
+
+[lints]
+workspace = true
