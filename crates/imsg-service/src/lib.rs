@@ -192,6 +192,11 @@ pub fn uninstall(level: ServiceLevel) -> Result<(), Error> {
 
 /// Starts the installed daemon service.
 ///
+/// Reserved for a future service-management caller (e.g. a GUI panel) — no CLI command wires
+/// this up yet, and it has only been exercised by the type-conversion unit tests in `tests.rs`,
+/// not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe` unit. Verify against a real
+/// service manager before adding the first caller.
+///
 /// # Errors
 ///
 /// Returns an error if no native service manager is available, the service isn't
@@ -202,6 +207,11 @@ pub fn start(level: ServiceLevel) -> Result<(), Error> {
 
 /// Stops the installed daemon service.
 ///
+/// Reserved for a future service-management caller (e.g. a GUI panel) — no CLI command wires
+/// this up yet, and it has only been exercised by the type-conversion unit tests in `tests.rs`,
+/// not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe` unit. Verify against a real
+/// service manager before adding the first caller.
+///
 /// # Errors
 ///
 /// Returns an error if no native service manager is available, the service isn't
@@ -211,6 +221,11 @@ pub fn stop(level: ServiceLevel) -> Result<(), Error> {
 }
 
 /// Returns the installed daemon service's current state.
+///
+/// Reserved for a future service-management caller (e.g. a GUI panel) — no CLI command wires
+/// this up yet, and it has only been exercised by the type-conversion unit tests in `tests.rs`,
+/// not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe` unit. Verify against a real
+/// service manager before adding the first caller.
 ///
 /// # Errors
 ///
