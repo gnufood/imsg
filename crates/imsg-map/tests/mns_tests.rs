@@ -86,3 +86,29 @@ fn mns_missing_event_element_returns_error() {
     let result = parse_event_report(MNS_NO_EVENT_XML);
     assert!(matches!(result, Err(MnsError::MissingEvent)));
 }
+
+#[test]
+fn event_type_display_and_from_str_roundtrip() -> Result<(), MnsError> {
+    let all = [
+        EventType::NewMessage,
+        EventType::DeliverySuccess,
+        EventType::SendingSuccess,
+        EventType::DeliveryFailure,
+        EventType::SendingFailure,
+        EventType::MessageDeleted,
+        EventType::MessageShift,
+        EventType::MemoryFull,
+        EventType::MemoryAvailable,
+        EventType::ReadStatusChanged,
+    ];
+    for variant in all {
+        assert_eq!(variant.to_string().parse::<EventType>()?, variant);
+    }
+    Ok(())
+}
+
+#[test]
+fn event_type_from_str_rejects_unknown_type() {
+    let result = "NewFax".parse::<EventType>();
+    assert!(matches!(result, Err(MnsError::UnknownEventType(_))));
+}

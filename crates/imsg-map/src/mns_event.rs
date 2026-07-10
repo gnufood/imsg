@@ -34,7 +34,7 @@ pub enum EventType {
 
 impl fmt::Display for EventType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Canonical MAP 1.4 event-type strings — must stay in sync with `event_type_from_str`.
+        // Canonical MAP 1.4 event-type strings — must stay in sync with `FromStr for EventType`.
         f.write_str(match self {
             Self::NewMessage => "NewMessage",
             Self::DeliverySuccess => "DeliverySuccess",
@@ -172,7 +172,7 @@ pub fn parse_event_report(xml: &[u8]) -> Result<MnsEvent, MnsError> {
                     }
                 }
                 let event_type = match raw_type {
-                    Some(ref s) => event_type_from_str(s)?,
+                    Some(ref s) => s.parse()?,
                     None => return Err(MnsError::MissingEventType),
                 };
                 return Ok(MnsEvent { event_type, handle, folder, old_folder, msg_type, datetime });
@@ -184,18 +184,22 @@ pub fn parse_event_report(xml: &[u8]) -> Result<MnsEvent, MnsError> {
     }
 }
 
-fn event_type_from_str(s: &str) -> Result<EventType, MnsError> {
-    match s {
-        "NewMessage" => Ok(EventType::NewMessage),
-        "DeliverySuccess" => Ok(EventType::DeliverySuccess),
-        "SendingSuccess" => Ok(EventType::SendingSuccess),
-        "DeliveryFailure" => Ok(EventType::DeliveryFailure),
-        "SendingFailure" => Ok(EventType::SendingFailure),
-        "MessageDeleted" => Ok(EventType::MessageDeleted),
-        "MessageShift" => Ok(EventType::MessageShift),
-        "MemoryFull" => Ok(EventType::MemoryFull),
-        "MemoryAvailable" => Ok(EventType::MemoryAvailable),
-        "ReadStatusChanged" => Ok(EventType::ReadStatusChanged),
-        other => Err(MnsError::UnknownEventType(other.to_owned())),
+impl std::str::FromStr for EventType {
+    type Err = MnsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "NewMessage" => Ok(Self::NewMessage),
+            "DeliverySuccess" => Ok(Self::DeliverySuccess),
+            "SendingSuccess" => Ok(Self::SendingSuccess),
+            "DeliveryFailure" => Ok(Self::DeliveryFailure),
+            "SendingFailure" => Ok(Self::SendingFailure),
+            "MessageDeleted" => Ok(Self::MessageDeleted),
+            "MessageShift" => Ok(Self::MessageShift),
+            "MemoryFull" => Ok(Self::MemoryFull),
+            "MemoryAvailable" => Ok(Self::MemoryAvailable),
+            "ReadStatusChanged" => Ok(Self::ReadStatusChanged),
+            other => Err(MnsError::UnknownEventType(other.to_owned())),
+        }
     }
 }
