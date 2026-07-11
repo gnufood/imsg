@@ -13,8 +13,14 @@ serde     = { version = "1", features = ["derive"] }
 thiserror = "2"
 # specta-macros is a direct dep purely to force its `serde` feature on via unification with
 # specta's own (unconfigured) transitive pull — mirrors imsg-ipc's rationale for the same pin.
-specta        = { version = "2.0.0-rc.25", features = ["derive"] }
+# "function" (on specta) is required for the `#[specta::specta]` attribute used on
+# `#[tauri::command]` handlers in `commands.rs`.
+specta        = { version = "2.0.0-rc.25", features = ["derive", "function"] }
 specta-macros = { version = "=2.0.0-rc.25", features = ["serde"] }
+# tauri's "specta" feature adds `FunctionArg` impls for `State`/`AppHandle`/etc. so they're
+# excluded from exported command signatures instead of failing to compile.
+tauri         = { version = "2.11.5", features = ["specta"] }
+tauri-specta  = { version = "2.0.0-rc.25", features = ["typescript"] }
 config        = { package = "imsg-config",  version = "0.3.1", path = "../imsg-config" }
 keyring       = { package = "imsg-keyring", version = "0.3.1", path = "../imsg-keyring" }
 store         = { package = "imsg-store",   version = "0.3.1", path = "../imsg-store" }
@@ -24,6 +30,9 @@ anyhow   = "1.0.102"
 secrecy  = "0.10"
 tempfile = "3"
 tokio    = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
+# Additive feature on the same `tauri` dependency (Cargo unifies it in for `cargo test` only) —
+# `tauri::test`'s `mock_app`/`MockRuntime` harness for exercising `commands.rs` with no mocks.
+tauri    = { version = "2.11.5", features = ["test"] }
 
 [lints]
 workspace = true

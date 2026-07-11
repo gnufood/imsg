@@ -4,5 +4,6 @@
 //! the broker) and will proxy device/write operations through `imsg-broker-client`. No domain
 //! logic lives here.
 
+pub mod commands;
 pub mod dto;
 pub mod reads;
