@@ -1,0 +1,132 @@
+//! Local-store-backed DTOs for the GUI's read path.
+//!
+//! Distinct from `imsg-ipc`'s `MessageDto`/`ThreadDto`: those mirror the live-device read
+//! path (`session::live::models`) and cross the broker socket; these mirror `imsg-store`'s
+//! own row types and never leave this process — the GUI opens its own `Store` connection,
+//! same as the CLI's local `list`/`get`/`threads`.
+
+use serde::{Deserialize, Serialize};
+
+/// Whether a message was received from the remote or sent by this device.
+///
+/// Mirrors `store::Direction`; kept as a separate type so a GUI-only frontend concern never
+/// forces a wire-shape change on the store's own row type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum Direction {
+    /// Received from the remote.
+    Received,
+    /// Sent by this device.
+    Sent,
+}
+
+impl From<store::Direction> for Direction {
+    fn from(d: store::Direction) -> Self {
+        match d {
+            store::Direction::Received => Self::Received,
+            store::Direction::Sent => Self::Sent,
+        }
+    }
+}
+
+/// Outbox delivery state of a locally-sent message; mirrors `store::OutgoingStatus`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum OutgoingStatus {
+    /// Outbox entry created; push not yet attempted.
+    Queued,
+    /// Push in progress.
+    Sending,
+    /// Device accepted the push; not yet confirmed by the Sent folder.
+    SentUnconfirmed,
+    /// Confirmed present in the device Sent folder via reconciliation.
+    SentConfirmed,
+    /// Push failed with a transient error; a retry is warranted.
+    FailedRetryable,
+    /// Push failed with a permanent error; no retry will be attempted.
+    FailedPermanent,
+    /// Connection dropped mid-push; outcome requires reconciliation to determine.
+    Unknown,
+}
+
+impl From<store::OutgoingStatus> for OutgoingStatus {
+    fn from(s: store::OutgoingStatus) -> Self {
+        match s {
+            store::OutgoingStatus::Queued => Self::Queued,
+            store::OutgoingStatus::Sending => Self::Sending,
+            store::OutgoingStatus::SentUnconfirmed => Self::SentUnconfirmed,
+            store::OutgoingStatus::SentConfirmed => Self::SentConfirmed,
+            store::OutgoingStatus::FailedRetryable => Self::FailedRetryable,
+            store::OutgoingStatus::FailedPermanent => Self::FailedPermanent,
+            store::OutgoingStatus::Unknown => Self::Unknown,
+        }
+    }
+}
+
+/// A single message row from the local store, shaped for the GUI's frontend.
+///
+/// Omits `rowid` (a `SQLite` implementation detail with no frontend meaning) and the raw
+/// `status` integer (collapsed into `read`), so the store's internal row shape can change
+/// without forcing a frontend/TS-binding change.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct MessageDto {
+    /// Opaque MAP message handle.
+    pub handle: String,
+    /// Milliseconds since Unix epoch.
+    pub timestamp_ms: i64,
+    /// MAP folder the message resides in (e.g. `telecom/msg/inbox`).
+    pub folder: String,
+    /// Received vs. sent.
+    pub direction: Direction,
+    /// Remote phone number or address.
+    pub address: String,
+    /// `true` unless the store's raw status marks the message unread.
+    pub read: bool,
+    /// Decoded message body text.
+    pub text: String,
+    /// Outbox delivery state; `None` for received messages.
+    pub outgoing_status: Option<OutgoingStatus>,
+}
+
+impl From<&store::MessageRow> for MessageDto {
+    fn from(row: &store::MessageRow) -> Self {
+        Self {
+            handle: row.map_handle.clone(),
+            timestamp_ms: row.timestamp_ms,
+            folder: row.folder.clone(),
+            direction: row.direction.into(),
+            address: row.address.clone(),
+            read: row.status != store::STATUS_UNREAD,
+            text: row.text.clone(),
+            outgoing_status: row.outgoing_status.map(Into::into),
+        }
+    }
+}
+
+/// A per-contact conversation thread summary from the local store, shaped for the GUI.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct ThreadDto {
+    /// Contact address.
+    pub address: String,
+    /// Milliseconds since Unix epoch of the most recent message in this thread.
+    pub latest_ms: i64,
+    /// Total message count across all folders for this address.
+    pub total: i64,
+    /// Count of unread received messages.
+    pub unread: i64,
+    /// Outbox delivery state of the most recent message; `None` when it was received.
+    pub latest_outgoing_status: Option<OutgoingStatus>,
+}
+
+impl From<&store::ThreadRow> for ThreadDto {
+    fn from(row: &store::ThreadRow) -> Self {
+        Self {
+            address: row.address.clone(),
+            latest_ms: row.latest_ms,
+            total: row.total,
+            unread: row.unread,
+            latest_outgoing_status: row.latest_outgoing_status.map(Into::into),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

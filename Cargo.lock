@@ -2287,6 +2287,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "imsg-gui"
+version = "0.3.1"
+dependencies = [
+ "anyhow",
+ "imsg-store",
+ "secrecy",
+ "serde",
+ "specta",
+ "specta-macros",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "imsg-ipc"
 version = "0.3.1"
 dependencies = [

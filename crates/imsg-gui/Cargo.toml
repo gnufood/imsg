@@ -1,0 +1,26 @@
+[package]
+name = "imsg-gui"
+description = "Tauri backend for the imsg GUI: adapter over imsg-store (local reads) and imsg-broker-client (device ops), no domain logic"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# specta-macros is a direct dep purely to force its `serde` feature on via unification with
+# specta's own (unconfigured) transitive pull — mirrors imsg-ipc's rationale for the same pin.
+specta        = { version = "2.0.0-rc.25", features = ["derive"] }
+specta-macros = { version = "=2.0.0-rc.25", features = ["serde"] }
+store         = { package = "imsg-store", version = "0.3.1", path = "../imsg-store" }
+
+[dev-dependencies]
+anyhow   = "1.0.102"
+secrecy  = "0.10"
+tempfile = "3"
+tokio    = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true
