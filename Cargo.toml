@@ -16,6 +16,26 @@ members = [
     "crates/imsg-gui",
     "crates/cli",
 ]
+# imsg-gui pulls in tauri's native webview stack (wry/tao/webkit2gtk on Linux) — excluded from
+# plain `cargo build`/`cargo test` (no `-p`/`--workspace` flag) so those stay fast and don't
+# require GTK/WebKit dev headers. `--workspace` invocations (justfile, CI) ignore this and must
+# pass `--exclude imsg-gui` explicitly if they want the same exclusion.
+default-members = [
+    "crates/imsg-obex",
+    "crates/imsg-transport",
+    "crates/imsg-formats",
+    "crates/imsg-map",
+    "crates/imsg-pbap",
+    "crates/imsg-config",
+    "crates/imsg-keyring",
+    "crates/imsg-service",
+    "crates/imsg-store",
+    "crates/imsg-session",
+    "crates/imsg-ipc",
+    "crates/imsg-broker",
+    "crates/imsg-broker-client",
+    "crates/cli",
+]
 resolver = "2"
 
 [workspace.lints.rust]

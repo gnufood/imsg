@@ -1,16 +1,18 @@
 default: build
 
+# imsg-gui needs tauri's GTK/WebKit dev headers, which this toolchain doesn't provision —
+# excluded from these workspace-wide recipes; build/test/lint it directly via `-p imsg-gui`.
 build:
-    cargo build --workspace --all-targets --all-features
+    cargo build --workspace --exclude imsg-gui --all-targets --all-features
 
 check:
-    cargo check --workspace --all-targets --all-features
+    cargo check --workspace --exclude imsg-gui --all-targets --all-features
 
 test:
-    cargo test --workspace --all-features
+    cargo test --workspace --exclude imsg-gui --all-features
 
 lint:
-    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    cargo clippy --workspace --exclude imsg-gui --all-targets --all-features -- -D warnings
 
 fmt:
     cargo fmt --all

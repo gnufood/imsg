@@ -66,4 +66,4 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: msrv
-      - run: cargo build --workspace --all-features
+      - run: cargo build --workspace --exclude imsg-gui --all-features
