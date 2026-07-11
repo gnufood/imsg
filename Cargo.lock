@@ -2291,12 +2291,15 @@ name = "imsg-gui"
 version = "0.3.1"
 dependencies = [
  "anyhow",
+ "imsg-config",
+ "imsg-keyring",
  "imsg-store",
  "secrecy",
  "serde",
  "specta",
  "specta-macros",
  "tempfile",
+ "thiserror 2.0.18",
  "tokio",
 ]
 
