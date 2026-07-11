@@ -134,6 +134,35 @@ pub enum BrokerResponse {
     },
 }
 
+/// MAP 1.4 MNS notification event type, mirroring `map_core::mns_event::EventType`.
+///
+/// Serialises as the bare variant-name string (e.g. `"NewMessage"`) — wire-compatible with
+/// any consumer that only ever read the raw string this field used to carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub enum EventType {
+    /// A new message arrived in a folder.
+    NewMessage,
+    /// An outgoing message was delivered to the peer.
+    DeliverySuccess,
+    /// An outgoing message left the device successfully (delivery to the peer not confirmed).
+    SendingSuccess,
+    /// An outgoing message failed to be delivered to the peer.
+    DeliveryFailure,
+    /// An outgoing message failed to leave the device.
+    SendingFailure,
+    /// A message was deleted from a folder.
+    MessageDeleted,
+    /// A message moved between folders.
+    MessageShift,
+    /// Device message memory is full; new messages may not be received.
+    MemoryFull,
+    /// Device message memory freed up after a prior `MemoryFull`.
+    MemoryAvailable,
+    /// A message's read/unread status changed on the device.
+    ReadStatusChanged,
+}
+
 /// A MAP notification event flattened for cross-process transport.
 ///
 /// Mirrors `map_core::mns_event::MnsEvent`; fields absent in the `<event>` XML element
@@ -141,11 +170,8 @@ pub enum BrokerResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct WatchEvent {
-    /// Canonical MAP 1.4 event type string (e.g. `"NewMessage"`, `"DeliverySuccess"`).
-    ///
-    /// Matches the `type` attribute of the `<event>` XML element exactly; stable across
-    /// crate versions and Rust releases.
-    pub event_type: String,
+    /// The notification's event type.
+    pub event_type: EventType,
     /// Opaque MAP message handle; absent for memory-state events.
     pub handle: Option<String>,
     /// Current folder path; absent for memory-state events.

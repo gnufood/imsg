@@ -81,6 +81,46 @@ fn live_request_variants_roundtrip() -> Result<(), serde_json::Error> {
     Ok(())
 }
 
+/// `EventType` must serialise as the bare variant-name string (e.g. `"NewMessage"`) — wire
+/// compatible with the raw `String` field it replaced, since any external consumer only ever
+/// read the string value.
+#[test]
+fn event_type_serialises_as_bare_string() -> Result<(), serde_json::Error> {
+    assert_eq!(serde_json::to_string(&EventType::NewMessage)?, "\"NewMessage\"");
+    assert_eq!(serde_json::to_string(&EventType::MessageShift)?, "\"MessageShift\"");
+    Ok(())
+}
+
+#[test]
+fn event_type_roundtrips_through_watch_event() -> Result<(), serde_json::Error> {
+    let all = [
+        EventType::NewMessage,
+        EventType::DeliverySuccess,
+        EventType::SendingSuccess,
+        EventType::DeliveryFailure,
+        EventType::SendingFailure,
+        EventType::MessageDeleted,
+        EventType::MessageShift,
+        EventType::MemoryFull,
+        EventType::MemoryAvailable,
+        EventType::ReadStatusChanged,
+    ];
+    for event_type in all {
+        let ev = WatchEvent {
+            event_type,
+            handle: Some("7".into()),
+            folder: None,
+            old_folder: None,
+            msg_type: None,
+            datetime: None,
+        };
+        let json = serde_json::to_string(&ev)?;
+        let back: WatchEvent = serde_json::from_str(&json)?;
+        assert_eq!(back.event_type, event_type);
+    }
+    Ok(())
+}
+
 #[test]
 fn status_info_carries_state() -> Result<(), serde_json::Error> {
     let resp = BrokerResponse::StatusInfo {

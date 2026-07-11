@@ -8,6 +8,6 @@ mod proto;
 mod rows;
 mod state;
 
-pub use proto::{BrokerRequest, BrokerResponse, WatchEvent, MAX_FRAME_LEN};
+pub use proto::{BrokerRequest, BrokerResponse, EventType, WatchEvent, MAX_FRAME_LEN};
 pub use rows::{BodyDto, Direction, MessageDto, ThreadDto};
 pub use state::{Reason, SessionState};

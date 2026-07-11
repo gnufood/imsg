@@ -63,7 +63,7 @@ async fn on_mns_event_writes_store_and_fans_out_watch_tx() -> anyhow::Result<()>
     assert!(matches!(outcome, OpOutcome::Continue));
     assert!(store.get_by_handle("H1").await?.is_none(), "MessageDeleted should remove the row");
     let got = watch_rx.try_recv()?;
-    assert_eq!(got.event_type, "MessageDeleted");
+    assert_eq!(got.event_type, ipc::EventType::MessageDeleted);
     Ok(())
 }
 
@@ -87,7 +87,36 @@ async fn on_mns_event_fans_out_even_on_fatal_error() -> anyhow::Result<()> {
 
     assert!(matches!(outcome, OpOutcome::SessionLost));
     let got = watch_rx.try_recv()?;
-    assert_eq!(got.event_type, "NewMessage");
+    assert_eq!(got.event_type, ipc::EventType::NewMessage);
+    Ok(())
+}
+
+/// `mns_to_watch` must map every `map_core::EventType` variant to its `ipc::EventType`
+/// counterpart — an exhaustive match with no wildcard arm, so a new `EventType` variant fails
+/// to compile here instead of silently falling through.
+#[test]
+fn mns_to_watch_maps_every_event_type() -> anyhow::Result<()> {
+    let cases = [
+        ("NewMessage", ipc::EventType::NewMessage),
+        ("DeliverySuccess", ipc::EventType::DeliverySuccess),
+        ("SendingSuccess", ipc::EventType::SendingSuccess),
+        ("DeliveryFailure", ipc::EventType::DeliveryFailure),
+        ("SendingFailure", ipc::EventType::SendingFailure),
+        ("MessageDeleted", ipc::EventType::MessageDeleted),
+        ("MessageShift", ipc::EventType::MessageShift),
+        ("MemoryFull", ipc::EventType::MemoryFull),
+        ("MemoryAvailable", ipc::EventType::MemoryAvailable),
+        ("ReadStatusChanged", ipc::EventType::ReadStatusChanged),
+    ];
+    for (wire_type, expected) in cases {
+        let ev = parse_event_report(
+            format!(
+                "<MAP-event-report version='1.0'><event type='{wire_type}'/></MAP-event-report>"
+            )
+            .as_bytes(),
+        )?;
+        assert_eq!(mns_to_watch(&ev).event_type, expected);
+    }
     Ok(())
 }
 

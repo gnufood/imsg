@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use ipc::{BrokerResponse, Reason, WatchEvent};
+use ipc::{BrokerResponse, EventType, Reason, WatchEvent};
 use map_core::client::MapClient;
 use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -196,10 +196,28 @@ async fn idle_sleep(idle: Option<Duration>) {
     }
 }
 
+/// Maps `session::EventType` (`map_core`) to the wire [`EventType`] — exhaustive, no wildcard
+/// arm, so a new `session::EventType` variant fails to compile here instead of silently
+/// dropping through as an unmapped event.
+const fn to_wire_event_type(ev: session::EventType) -> EventType {
+    match ev {
+        session::EventType::NewMessage => EventType::NewMessage,
+        session::EventType::DeliverySuccess => EventType::DeliverySuccess,
+        session::EventType::SendingSuccess => EventType::SendingSuccess,
+        session::EventType::DeliveryFailure => EventType::DeliveryFailure,
+        session::EventType::SendingFailure => EventType::SendingFailure,
+        session::EventType::MessageDeleted => EventType::MessageDeleted,
+        session::EventType::MessageShift => EventType::MessageShift,
+        session::EventType::MemoryFull => EventType::MemoryFull,
+        session::EventType::MemoryAvailable => EventType::MemoryAvailable,
+        session::EventType::ReadStatusChanged => EventType::ReadStatusChanged,
+    }
+}
+
 /// Flattens an [`session::MnsEvent`] into the wire [`WatchEvent`].
 fn mns_to_watch(ev: &session::MnsEvent) -> WatchEvent {
     WatchEvent {
-        event_type: ev.event_type().to_string(),
+        event_type: to_wire_event_type(ev.event_type()),
         handle: ev.handle().map(str::to_owned),
         folder: ev.folder().map(str::to_owned),
         old_folder: ev.old_folder().map(str::to_owned),
