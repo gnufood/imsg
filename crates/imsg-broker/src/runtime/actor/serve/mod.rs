@@ -77,7 +77,9 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 Self::finish_map(r, reply)
             }
             DeviceOp::Delete { msg_handle, folder, reply } => {
-                let r = dispatch::do_delete(client, &self.store, msg_handle, folder).await;
+                let r =
+                    dispatch::do_delete(client, &self.store, msg_handle, folder, &self.watch_tx)
+                        .await;
                 Self::finish_map(r, reply)
             }
             DeviceOp::LiveMarkRead { handle, reply } => {

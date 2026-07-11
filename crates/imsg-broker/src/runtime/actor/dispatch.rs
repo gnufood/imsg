@@ -4,16 +4,18 @@
 //! [`BrokerResponse`]. Fatal transport errors propagate as `Err` so the actor reconnects;
 //! application-level failures (server rejections, unknown handles) are returned as
 //! [`BrokerResponse::Failed`] with [`Reason::OperationFailed`]. This module is the boundary that
-//! maps `imsg-session` error types to the serde-only [`Reason`] enum.
+//! maps `imsg-session` error types to the serde-only [`Reason`] enum. [`do_delete`] additionally
+//! borrows the actor's `watch_tx` to fan its outcome out to `Watch` subscribers.
 
 use anyhow::Result;
-use ipc::{BrokerResponse, Reason};
+use ipc::{BrokerResponse, EventType, Reason, WatchEvent};
 use map_core::client::MapClient;
 use map_core::folders::Folder;
 use map_core::MessageStatus;
 use session::{Disposition, SessionError};
 use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::sync::broadcast;
 
 use super::dto::{to_body_dto, to_message_dto, to_thread_dto};
 
@@ -89,6 +91,10 @@ pub(in crate::runtime::actor) async fn do_send<T: AsyncRead + AsyncWrite + Unpin
 
 /// Deletes a MAP message by handle and folder name.
 ///
+/// On success, fans a `MessageDeleted` [`WatchEvent`] out to `Watch` subscribers — unlike `Send`,
+/// a delete has no MNS-driven confirmation to fall back on, so this is the only signal any other
+/// client gets that it happened.
+///
 /// # Errors
 ///
 /// Returns [`BrokerResponse::Failed`] for unknown folder names or non-fatal MAP
@@ -98,6 +104,7 @@ pub(in crate::runtime::actor) async fn do_delete<T: AsyncRead + AsyncWrite + Unp
     store: &Store,
     handle: String,
     folder: String,
+    watch_tx: &broadcast::Sender<WatchEvent>,
 ) -> Result<BrokerResponse> {
     let Some(folder_val) = parse_folder(&folder) else {
         return Ok(BrokerResponse::Failed(Reason::OperationFailed(format!(
@@ -112,7 +119,17 @@ pub(in crate::runtime::actor) async fn do_delete<T: AsyncRead + AsyncWrite + Unp
     }
     .await;
     match result {
-        Ok(()) => Ok(BrokerResponse::Text(format!("deleted {handle}"))),
+        Ok(()) => {
+            let _ = watch_tx.send(WatchEvent {
+                event_type: EventType::MessageDeleted,
+                handle: Some(handle.clone()),
+                folder: Some(folder),
+                old_folder: None,
+                msg_type: None,
+                datetime: None,
+            });
+            Ok(BrokerResponse::Text(format!("deleted {handle}")))
+        }
         Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
         Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
     }
@@ -246,3 +263,6 @@ fn parse_folder(s: &str) -> Option<Folder> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests;
