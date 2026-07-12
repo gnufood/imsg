@@ -5,5 +5,8 @@
 //! logic lives here.
 
 pub mod commands;
+pub mod config;
+pub mod daemon;
 pub mod dto;
 pub mod reads;
+pub mod unsync;

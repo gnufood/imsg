@@ -3000,11 +3000,20 @@ name = "imsg-gui"
 version = "0.3.1"
 dependencies = [
  "anyhow",
+ "bytes",
+ "figment",
+ "futures",
+ "imsg-broker-client",
  "imsg-config",
+ "imsg-ipc",
  "imsg-keyring",
+ "imsg-service",
  "imsg-store",
+ "interprocess",
  "secrecy",
  "serde",
+ "serde_json",
+ "serial_test",
  "specta",
  "specta-macros",
  "tauri",
@@ -3012,6 +3021,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -5469,7 +5479,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

@@ -128,5 +128,29 @@ impl From<&store::ThreadRow> for ThreadDto {
     }
 }
 
+/// Resolved local configuration (`imsg config show`'s data), shaped for the GUI.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct ConfigDto {
+    /// Bluetooth MAC address (`XX:XX:XX:XX:XX:XX`).
+    pub device_address: String,
+    /// RFCOMM channel for the MAP MAS profile.
+    pub map_channel: u8,
+    /// RFCOMM channel for the PBAP PSE profile.
+    pub pbap_channel: u8,
+    /// iroh hub node key; `None` until `imsg spoke add` has been run.
+    pub hub_node_key: Option<String>,
+}
+
+impl From<&config::Config> for ConfigDto {
+    fn from(cfg: &config::Config) -> Self {
+        Self {
+            device_address: cfg.device.address().to_owned(),
+            map_channel: cfg.device.map_channel,
+            pbap_channel: cfg.device.pbap_channel,
+            hub_node_key: cfg.hub.node_key.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests;

@@ -24,15 +24,25 @@ tauri-specta  = { version = "2.0.0-rc.25", features = ["typescript"] }
 config        = { package = "imsg-config",  version = "0.3.1", path = "../imsg-config" }
 keyring       = { package = "imsg-keyring", version = "0.3.1", path = "../imsg-keyring" }
 store         = { package = "imsg-store",   version = "0.3.1", path = "../imsg-store" }
+service       = { package = "imsg-service", version = "0.3.1", path = "../imsg-service" }
+broker-client = { package = "imsg-broker-client", version = "0.3.1", path = "../imsg-broker-client" }
+ipc           = { package = "imsg-ipc", version = "0.3.1", path = "../imsg-ipc", features = ["specta"] }
 
 [dev-dependencies]
-anyhow   = "1.0.102"
-secrecy  = "0.10"
-tempfile = "3"
-tokio    = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
+anyhow       = "1.0.102"
+secrecy      = "0.10"
+tempfile     = "3"
+tokio        = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
 # Additive feature on the same `tauri` dependency (Cargo unifies it in for `cargo test` only) —
 # `tauri::test`'s `mock_app`/`MockRuntime` harness for exercising `commands.rs` with no mocks.
-tauri    = { version = "2.11.5", features = ["test"] }
+tauri        = { version = "2.11.5", features = ["test"] }
+figment      = { version = "0.10.19", features = ["test"] }
+serial_test  = "3"
+bytes        = "1"
+futures      = "0.3"
+interprocess = { version = "2.4.2", features = ["tokio"] }
+tokio-util   = { version = "0.7.18", features = ["codec"] }
+serde_json   = "1.0.150"
 
 [lints]
 workspace = true

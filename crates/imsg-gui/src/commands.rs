@@ -1,21 +1,21 @@
-//! `#[tauri::command]` shims over `reads.rs`.
+//! `#[tauri::command]` shims — the invoke-handler boundary a `tauri_specta::Builder` wraps.
 //!
-//! This is the invoke-handler boundary a `tauri_specta::Builder` wraps (see `commands/tests.rs`
-//! for a `collect_commands!`/`MockRuntime` smoke test). Bodies stay thin: extract the managed
-//! `Store`, delegate to `reads`, map the error.
+//! Split by domain (`reads`, `config`, `unsync`, `daemon`) to stay under the 250-line module
+//! ceiling as the command surface grows; `CommandError` (shared across every domain) lives here.
+
+pub mod config;
+pub mod daemon;
+pub mod reads;
+pub mod unsync;
 
 use serde::Serialize;
 use specta::Type;
-use tauri::State;
 
-use crate::dto::{MessageDto, ThreadDto};
-use crate::reads;
-
-/// Failure surfaced to the frontend for any local-store read error.
+/// Failure surfaced to the frontend from any `#[tauri::command]` in this crate.
 ///
-/// Wraps `store::Error`'s `Display` text; those messages already avoid leaking secrets (no raw
-/// key material, no `SQLite` internals beyond a driver-level description), so reusing them here
-/// needs no extra redaction.
+/// Wraps the underlying error's `Display` text; none of the sources converted below leak
+/// secrets (no raw key material, no `SQLite`/service-manager internals beyond a driver-level
+/// description).
 #[derive(Debug, Serialize, Type, thiserror::Error)]
 #[error("{message}")]
 pub struct CommandError {
@@ -28,58 +28,24 @@ impl From<store::Error> for CommandError {
     }
 }
 
-/// Returns the message with the given MAP handle, or `None` if absent.
-///
-/// # Errors
-///
-/// Returns [`CommandError`] if the underlying local-store read fails.
-#[tauri::command]
-#[specta::specta]
-pub async fn get_by_handle(
-    store: State<'_, store::Store>,
-    handle: String,
-) -> Result<Option<MessageDto>, CommandError> {
-    Ok(reads::get_by_handle(&store, &handle).await?)
+// Fully qualified: this module's own `pub mod config;` shadows the `config` crate name for
+// unqualified references within this file.
+impl From<::config::ConfigError> for CommandError {
+    fn from(err: ::config::ConfigError) -> Self {
+        Self { message: err.to_string() }
+    }
 }
 
-/// Returns messages matching all supplied criteria, newest-first; see
-/// [`store::Store::list_messages`] for parameter semantics.
-///
-/// # Errors
-///
-/// Returns [`CommandError`] if the underlying local-store read fails.
-#[tauri::command]
-#[specta::specta]
-pub async fn list_messages(
-    store: State<'_, store::Store>,
-    folder: Option<String>,
-    unread_only: bool,
-    from: Option<String>,
-    since_ms: Option<i64>,
-    limit: u16,
-    offset: u16,
-) -> Result<Vec<MessageDto>, CommandError> {
-    Ok(reads::list_messages(
-        &store,
-        folder.as_deref(),
-        unread_only,
-        from.as_deref(),
-        since_ms,
-        limit,
-        offset,
-    )
-    .await?)
+impl From<service::Error> for CommandError {
+    fn from(err: service::Error) -> Self {
+        Self { message: err.to_string() }
+    }
 }
 
-/// Returns a per-address thread summary, most-recent-first.
-///
-/// # Errors
-///
-/// Returns [`CommandError`] if the underlying local-store read fails.
-#[tauri::command]
-#[specta::specta]
-pub async fn threads(store: State<'_, store::Store>) -> Result<Vec<ThreadDto>, CommandError> {
-    Ok(reads::threads(&store).await?)
+impl From<crate::daemon::StopError> for CommandError {
+    fn from(err: crate::daemon::StopError) -> Self {
+        Self { message: err.to_string() }
+    }
 }
 
 #[cfg(test)]
