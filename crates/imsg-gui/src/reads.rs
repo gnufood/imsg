@@ -63,6 +63,16 @@ pub async fn list_messages(
     Ok(rows.iter().map(MessageDto::from).collect())
 }
 
+/// Marks a message read in the local store. Device-side mark-read is deferred to the next
+/// sync — this never opens a Bluetooth connection.
+///
+/// # Errors
+///
+/// Returns [`store::Error`] if the underlying write fails.
+pub async fn mark_read(db: &store::Store, handle: &str) -> Result<(), store::Error> {
+    db.update_status(handle, store::STATUS_READ).await
+}
+
 /// Returns a per-address thread summary, most-recent-first.
 ///
 /// # Errors

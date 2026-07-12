@@ -64,6 +64,18 @@ async fn list_messages_returns_dtos_newest_first() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn mark_read_flips_status_to_read() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert(sample_message("H1", "+15550001")).await?;
+
+    mark_read(&db, "H1").await?;
+
+    let row = db.get_by_handle("H1").await?.ok_or_else(|| anyhow::anyhow!("row missing"))?;
+    assert_eq!(row.status, store::STATUS_READ);
+    Ok(())
+}
+
+#[tokio::test]
 async fn threads_aggregates_by_address() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
     db.upsert(sample_message("H1", "+15550001")).await?;

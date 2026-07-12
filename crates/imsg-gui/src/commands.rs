@@ -1,12 +1,14 @@
 //! `#[tauri::command]` shims — the invoke-handler boundary a `tauri_specta::Builder` wraps.
 //!
-//! Split by domain (`reads`, `config`, `unsync`, `daemon`) to stay under the 250-line module
-//! ceiling as the command surface grows; `CommandError` (shared across every domain) lives here.
+//! Split by domain (`reads`, `config`, `daemon`, `send`, `delete`) to stay under the
+//! 250-line module ceiling as the command surface grows; `CommandError` (shared across every
+//! domain) lives here.
 
 pub mod config;
 pub mod daemon;
+pub mod delete;
 pub mod reads;
-pub mod unsync;
+pub mod send;
 
 use serde::Serialize;
 use specta::Type;
@@ -44,6 +46,12 @@ impl From<service::Error> for CommandError {
 
 impl From<crate::daemon::StopError> for CommandError {
     fn from(err: crate::daemon::StopError) -> Self {
+        Self { message: err.to_string() }
+    }
+}
+
+impl From<broker_client::WriteError> for CommandError {
+    fn from(err: broker_client::WriteError) -> Self {
         Self { message: err.to_string() }
     }
 }

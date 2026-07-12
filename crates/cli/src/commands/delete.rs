@@ -4,7 +4,6 @@ use std::path::Path;
 
 use anyhow::Result;
 use config::Config;
-use ipc::BrokerRequest;
 use store::Store;
 use transport::iroh::Endpoint;
 
@@ -54,9 +53,7 @@ pub(crate) async fn run(
         return run_direct(cfg, endpoint, device, &handle, folder, store).await;
     }
     let folder_name = folder_of(folder).as_str().to_ascii_lowercase();
-    let req = BrokerRequest::Delete { handle: handle.clone(), folder: folder_name };
-    let resp = broker::call(cfg, device, config_path, req).await?;
-    broker_client::text_result(resp)?;
+    broker::delete(cfg, device, config_path, handle.clone(), folder_name).await?;
     Ok(confirmation(&handle, false))
 }
 

@@ -27,9 +27,7 @@ pub(crate) async fn run(
     config_path: Option<&Path>,
 ) -> Result<String> {
     if endpoint.is_none() {
-        let resp =
-            broker::call(cfg, device, config_path, BrokerRequest::Send { number, message }).await?;
-        return Ok(broker_client::text_result(resp)?);
+        return broker::send(cfg, device, config_path, number, message).await;
     }
 
     let now = session::util::now_ms();

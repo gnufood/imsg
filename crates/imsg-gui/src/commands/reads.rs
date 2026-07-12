@@ -51,6 +51,18 @@ pub async fn list_messages(
     .await?)
 }
 
+/// Marks a message read in the local store. Device-side mark-read is deferred to the next
+/// sync.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] if the underlying local-store write fails.
+#[tauri::command]
+#[specta::specta]
+pub async fn mark_read(store: State<'_, store::Store>, handle: String) -> Result<(), CommandError> {
+    Ok(reads::mark_read(&store, &handle).await?)
+}
+
 /// Returns a per-address thread summary, most-recent-first.
 ///
 /// # Errors

@@ -37,3 +37,41 @@ pub(crate) async fn call(
     spawn::ensure_running(cfg, device, config_path).await?;
     send_request(addr, req).await
 }
+
+/// Sends an SMS via the broker (auto-starting if necessary), sharing `imsg-broker-client`'s
+/// request-building and response-interpretation with the GUI's equivalent command.
+///
+/// # Errors
+///
+/// Returns an error if the broker cannot be started, or [`broker_client::WriteError`] if the
+/// connection or the request itself fails.
+pub(crate) async fn send(
+    cfg: &Config,
+    device: Option<&str>,
+    config_path: Option<&Path>,
+    number: String,
+    message: String,
+) -> Result<String> {
+    let addr = device.unwrap_or_else(|| cfg.device.address());
+    spawn::ensure_running(cfg, device, config_path).await?;
+    Ok(broker_client::send(addr, number, message).await?)
+}
+
+/// Deletes a message via the broker (auto-starting if necessary); see [`send`] for why this
+/// isn't inlined at each call site.
+///
+/// # Errors
+///
+/// Returns an error if the broker cannot be started, or [`broker_client::WriteError`] if the
+/// connection or the request itself fails.
+pub(crate) async fn delete(
+    cfg: &Config,
+    device: Option<&str>,
+    config_path: Option<&Path>,
+    handle: String,
+    folder: String,
+) -> Result<String> {
+    let addr = device.unwrap_or_else(|| cfg.device.address());
+    spawn::ensure_running(cfg, device, config_path).await?;
+    Ok(broker_client::delete(addr, handle, folder).await?)
+}

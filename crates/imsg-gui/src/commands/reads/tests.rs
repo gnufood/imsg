@@ -72,6 +72,24 @@ async fn list_messages_returns_dtos_newest_first() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn mark_read_flips_status_to_read() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert(sample_message("H1", "+15550001")).await?;
+    let app = tauri::test::mock_app();
+    app.manage(db);
+
+    mark_read(app.state::<Store>(), "H1".to_owned()).await?;
+
+    let row = app
+        .state::<Store>()
+        .get_by_handle("H1")
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("row missing"))?;
+    assert_eq!(row.status, store::STATUS_READ);
+    Ok(())
+}
+
+#[tokio::test]
 async fn threads_aggregates_by_address() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
     db.upsert(sample_message("H1", "+15550001")).await?;
