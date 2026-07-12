@@ -27,14 +27,9 @@ pub(crate) async fn run(
     config_path: Option<&Path>,
 ) -> Result<String> {
     if endpoint.is_none() {
-        return match broker::call(cfg, device, config_path, BrokerRequest::Send { number, message })
-            .await?
-        {
-            ipc::BrokerResponse::Text(s) => Ok(s),
-            ipc::BrokerResponse::Failed(reason) => Err(anyhow::anyhow!("{reason}")),
-            ipc::BrokerResponse::Error(e) => Err(anyhow::anyhow!("{e}")),
-            other => Err(anyhow::anyhow!("unexpected broker response: {other:?}")),
-        };
+        let resp =
+            broker::call(cfg, device, config_path, BrokerRequest::Send { number, message }).await?;
+        return Ok(broker_client::text_result(resp)?);
     }
 
     let now = session::util::now_ms();
@@ -64,19 +59,10 @@ pub(crate) async fn run_live(
     config_path: Option<&Path>,
 ) -> Result<String> {
     if endpoint.is_none() {
-        return match broker::call(
-            cfg,
-            device,
-            config_path,
-            BrokerRequest::SendLive { number, message },
-        )
-        .await?
-        {
-            ipc::BrokerResponse::Text(s) => Ok(s),
-            ipc::BrokerResponse::Failed(reason) => Err(anyhow::anyhow!("{reason}")),
-            ipc::BrokerResponse::Error(e) => Err(anyhow::anyhow!("{e}")),
-            other => Err(anyhow::anyhow!("unexpected broker response: {other:?}")),
-        };
+        let resp =
+            broker::call(cfg, device, config_path, BrokerRequest::SendLive { number, message })
+                .await?;
+        return Ok(broker_client::text_result(resp)?);
     }
 
     let mut client = conn::connect_map(cfg, endpoint, device).await?;

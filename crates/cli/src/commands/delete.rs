@@ -55,12 +55,9 @@ pub(crate) async fn run(
     }
     let folder_name = folder_of(folder).as_str().to_ascii_lowercase();
     let req = BrokerRequest::Delete { handle: handle.clone(), folder: folder_name };
-    match broker::call(cfg, device, config_path, req).await? {
-        ipc::BrokerResponse::Text(_) => Ok(confirmation(&handle, false)),
-        ipc::BrokerResponse::Failed(reason) => Err(anyhow::anyhow!("{reason}")),
-        ipc::BrokerResponse::Error(e) => Err(anyhow::anyhow!("{e}")),
-        other => Err(anyhow::anyhow!("unexpected broker response: {other:?}")),
-    }
+    let resp = broker::call(cfg, device, config_path, req).await?;
+    broker_client::text_result(resp)?;
+    Ok(confirmation(&handle, false))
 }
 
 /// Direct MAP delete used on the hub path.
