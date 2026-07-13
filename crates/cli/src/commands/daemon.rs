@@ -10,14 +10,12 @@
 //! management involved, and neither auto-starts it.
 
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use config::Config;
 use ipc::SessionState;
 use store::Store;
-use tokio::process::Command;
 
 use crate::cli::DaemonCmd;
 use crate::commands::{broker, load, open_store};
@@ -138,7 +136,15 @@ async fn start_background(
     }
 
     let log_path = config::daemon_log_path(&addr);
-    let mut child = spawn_detached(&addr, config_path.as_deref(), &log_path).await?;
+    let mut child = imsg_proc::respawn_self(
+        &["daemon", "start", "--foreground"],
+        &addr,
+        config_path.as_deref(),
+        &log_path,
+        true,
+        true,
+    )
+    .await?;
     broker::connect_retry(
         &addr,
         &mut child,
@@ -148,49 +154,6 @@ async fn start_background(
     )
     .await?;
     Ok(format!("daemon for {addr}: started (log: {})", log_path.display()))
-}
-
-/// Re-execs the current binary as `daemon start --foreground` in its own process group, stdio
-/// redirected to `log_path` — the `setsid()`-style detachment effect without forking the live
-/// (already multi-threaded, Tokio-driven) process. `--device`/`--config` are passed explicitly
-/// so the child targets the exact address this process resolved, regardless of config drift.
-///
-/// # Errors
-///
-/// Returns an error if the current executable path can't be resolved, the log file can't be
-/// opened, or spawning fails.
-async fn spawn_detached(
-    addr: &str,
-    config_path: Option<&Path>,
-    log_path: &Path,
-) -> Result<tokio::process::Child> {
-    let exe = std::env::current_exe().context("resolving current executable path")?;
-
-    if let Some(parent) = log_path.parent() {
-        tokio::fs::create_dir_all(parent).await.context("creating daemon log directory")?;
-    }
-    let mut open_opts = tokio::fs::OpenOptions::new();
-    open_opts.create(true).write(true).truncate(true);
-    #[cfg(unix)]
-    open_opts.mode(0o600); // daemon log outlives this process — keep it off-limits to other users
-    let log_file = open_opts
-        .open(log_path)
-        .await
-        .with_context(|| format!("opening daemon log: {}", log_path.display()))?
-        .into_std()
-        .await;
-
-    let mut cmd = Command::new(exe);
-    cmd.args(["daemon", "start", "--foreground", "--device", addr]);
-    if let Some(p) = config_path {
-        cmd.args(["--config", p.to_str().context("config path is not valid UTF-8")?]);
-    }
-    cmd.stdin(Stdio::null());
-    cmd.stdout(Stdio::from(log_file.try_clone().context("duplicating daemon log handle")?));
-    cmd.stderr(Stdio::from(log_file));
-    #[cfg(unix)]
-    cmd.process_group(0);
-    cmd.spawn().context("spawning detached daemon subprocess")
 }
 
 /// Sends a graceful `Shutdown` request; a no-op if nothing is running.

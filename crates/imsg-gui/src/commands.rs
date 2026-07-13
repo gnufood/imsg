@@ -56,5 +56,38 @@ impl From<broker_client::WriteError> for CommandError {
     }
 }
 
+/// Registers every `#[tauri::command]` in this crate on a fresh `tauri_specta::Builder`.
+///
+/// Single source of truth for the exported command surface — reused by the `bindings.ts`
+/// export step (`examples/export_bindings.rs`) and by `main.rs`'s own `invoke_handler`/
+/// `mount_events` wiring once that exists, so the list is never hand-duplicated.
+///
+/// `i64`/`u64` fields (e.g. `MessageDto::timestamp_ms`) export as lossless JS `bigint` via
+/// semantic types — `specta_typescript` otherwise hard-forbids exporting them at all
+/// (precision loss past 2^53 in a plain JS `number`). Only the generated `bindings.ts`
+/// wrappers apply the runtime conversion; calling raw `invoke()` bypasses it.
+#[must_use]
+pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
+    tauri_specta::Builder::<R>::new()
+        .commands(tauri_specta::collect_commands![
+            reads::get_by_handle,
+            reads::list_messages,
+            reads::mark_read,
+            reads::threads,
+            config::config_show,
+            config::config_set_device,
+            daemon::daemon_install,
+            daemon::daemon_uninstall,
+            daemon::daemon_status,
+            daemon::daemon_stop,
+            daemon::broker_status,
+            send::send,
+            delete::delete,
+        ])
+        .semantic_types(
+            specta_typescript::semantic::Configuration::default().enable_lossless_bigints(),
+        )
+}
+
 #[cfg(test)]
 mod tests;

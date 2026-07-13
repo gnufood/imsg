@@ -1,10 +1,11 @@
 //! Shared IPC client for the imsg broker/daemon abstract socket.
 //!
 //! Transport, reachability, and response-interpretation primitives reused by every
-//! consumer of the broker protocol (`imsg-ipc`) — the CLI today, the GUI eventually.
-//! Presentation formatting (human-readable display strings) and process-spawn mechanics
-//! (the ephemeral broker's `current_exe()` self-spawn) stay in each binary; this crate
-//! only returns structured data.
+//! consumer of the broker protocol (`imsg-ipc`) — the CLI and the GUI. Presentation
+//! formatting (human-readable display strings) stays in each binary. Process-spawn
+//! mechanics (the ephemeral broker's/daemon's/headless GUI's `current_exe()` self-spawn)
+//! don't belong here either — that's a different concern from talking to an already-running
+//! broker over IPC — but they are shared, in `imsg-proc`.
 
 // `pub mod` (not `mod`) is required: `transport` has `pub(crate)` items, and `pub(crate)`
 // in a private module trips `redundant_pub_crate` while `pub` trips `unreachable_pub`.

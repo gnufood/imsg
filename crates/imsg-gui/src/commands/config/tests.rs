@@ -13,7 +13,7 @@ fn config_show_returns_resolved_config() {
         let home = jail.directory().to_path_buf();
         jail.set_env("HOME", home.to_str().unwrap_or_default());
 
-        let dto = config_show().map_err(|e| figment::Error::from(e.to_string()))?;
+        let dto = config_show(None).map_err(|e| figment::Error::from(e.to_string()))?;
         assert_eq!(dto.device_address, "AA:BB:CC:DD:EE:FF");
         Ok(())
     });
@@ -29,7 +29,7 @@ fn config_set_device_persists() {
         config_set_device("11:22:33:44:55:66".to_owned())
             .map_err(|e| figment::Error::from(e.to_string()))?;
 
-        let dto = config_show().map_err(|e| figment::Error::from(e.to_string()))?;
+        let dto = config_show(None).map_err(|e| figment::Error::from(e.to_string()))?;
         assert_eq!(dto.device_address, "11:22:33:44:55:66");
         Ok(())
     });

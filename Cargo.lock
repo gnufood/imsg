@@ -2912,6 +2912,7 @@ dependencies = [
  "imsg-keyring",
  "imsg-map",
  "imsg-pbap",
+ "imsg-proc",
  "imsg-service",
  "imsg-session",
  "imsg-store",
@@ -3003,10 +3004,12 @@ dependencies = [
  "bytes",
  "figment",
  "futures",
+ "imsg-broker",
  "imsg-broker-client",
  "imsg-config",
  "imsg-ipc",
  "imsg-keyring",
+ "imsg-proc",
  "imsg-service",
  "imsg-store",
  "interprocess",
@@ -3016,6 +3019,7 @@ dependencies = [
  "serial_test",
  "specta",
  "specta-macros",
+ "specta-typescript",
  "tauri",
  "tauri-specta",
  "tempfile",
@@ -3086,6 +3090,15 @@ dependencies = [
  "imsg-transport",
  "quick-xml 0.40.1",
  "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "imsg-proc"
+version = "0.3.1"
+dependencies = [
+ "anyhow",
+ "tempfile",
  "tokio",
 ]
 

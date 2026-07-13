@@ -13,6 +13,7 @@ members = [
     "crates/imsg-ipc",
     "crates/imsg-broker",
     "crates/imsg-broker-client",
+    "crates/imsg-proc",
     "crates/imsg-gui",
     "crates/cli",
 ]
@@ -34,6 +35,7 @@ default-members = [
     "crates/imsg-ipc",
     "crates/imsg-broker",
     "crates/imsg-broker-client",
+    "crates/imsg-proc",
     "crates/cli",
 ]
 resolver = "2"

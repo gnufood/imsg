@@ -1,0 +1,20 @@
+[package]
+name = "imsg-proc"
+description = "Self-respawn: detach the current binary as a background child, argv/log-redirect mechanics shared by every daemon-spawning call site"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+anyhow = "1.0.102"
+tokio  = { version = "1.52.3", features = ["process", "fs"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio    = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

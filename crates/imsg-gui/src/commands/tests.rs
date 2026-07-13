@@ -6,7 +6,6 @@
 
 use secrecy::SecretBox;
 use store::Store;
-use tauri_specta::{collect_commands, Builder};
 
 use super::CommandError;
 
@@ -54,26 +53,28 @@ fn write_error_maps_to_command_error() {
     assert!(!command_err.message.is_empty());
 }
 
-/// Proves the actual wiring every command in this crate is built for — `collect_commands!` +
-/// `Builder::invoke_handler` — type-checks and constructs against real command paths, on
-/// Tauri's `MockRuntime`. Full IPC-frame dispatch (`tauri::test::assert_ipc_response`) is left
-/// for the `main.rs` integration once that's wired up; this only guards the registration seam.
+/// Proves the actual wiring every command in this crate is built for — `super::builder`'s
+/// `collect_commands!` + `Builder::invoke_handler` — type-checks and constructs against real
+/// command paths, on Tauri's `MockRuntime`. Full IPC-frame dispatch
+/// (`tauri::test::assert_ipc_response`) is left for the `main.rs` integration once that's
+/// wired up; this only guards the registration seam.
 #[test]
 fn commands_register_with_tauri_specta_builder() {
-    let builder = Builder::<tauri::test::MockRuntime>::new().commands(collect_commands![
-        super::reads::get_by_handle,
-        super::reads::list_messages,
-        super::reads::mark_read,
-        super::reads::threads,
-        super::config::config_show,
-        super::config::config_set_device,
-        super::daemon::daemon_install,
-        super::daemon::daemon_uninstall,
-        super::daemon::daemon_status,
-        super::daemon::daemon_stop,
-        super::daemon::broker_status,
-        super::send::send,
-        super::delete::delete,
-    ]);
+    let builder = super::builder::<tauri::test::MockRuntime>();
     let _invoke_handler = builder.invoke_handler();
+}
+
+/// Regression guard for `super::builder`'s `.semantic_types(...)` call: without it,
+/// `i64` fields (`MessageDto::timestamp_ms` etc.) fail to export at all (specta forbids
+/// BigInt-style types by default). Exercises the real export path — same one
+/// `examples/export_bindings.rs` uses — end to end, not just that the `Builder` type-checks.
+#[test]
+fn export_uses_lossless_bigint_for_i64_fields() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let out = dir.path().join("bindings.ts");
+    super::builder::<tauri::Wry>().export(specta_typescript::Typescript::default(), &out)?;
+    let ts = std::fs::read_to_string(&out)?;
+    assert!(ts.contains("timestamp_ms: bigint"), "MessageDto::timestamp_ms should be bigint");
+    assert!(ts.contains("total: bigint"), "ThreadDto::total should be bigint");
+    Ok(())
 }

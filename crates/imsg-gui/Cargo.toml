@@ -11,6 +11,10 @@ readme.workspace = true
 [dependencies]
 serde     = { version = "1", features = ["derive"] }
 thiserror = "2"
+# Only used at the imsg-broker-client/imsg-broker API boundary (both return anyhow::Result) —
+# wrapped into this crate's own thiserror enums via `#[from]`, mirroring
+# `imsg-broker-client::write::WriteError`'s own `Connect(#[from] anyhow::Error)` variant.
+anyhow    = "1.0.102"
 # specta-macros is a direct dep purely to force its `serde` feature on via unification with
 # specta's own (unconfigured) transitive pull — mirrors imsg-ipc's rationale for the same pin.
 # "function" (on specta) is required for the `#[specta::specta]` attribute used on
@@ -21,15 +25,25 @@ specta-macros = { version = "=2.0.0-rc.25", features = ["serde"] }
 # excluded from exported command signatures instead of failing to compile.
 tauri         = { version = "2.11.5", features = ["specta"] }
 tauri-specta  = { version = "2.0.0-rc.25", features = ["typescript"] }
+# Pinned to the exact version tauri-specta 2.0.0-rc.25 itself depends on (its "typescript"
+# feature above already pulls this in transitively) — declared directly since
+# `examples/export_bindings.rs` names `specta_typescript::Typescript` itself.
+specta-typescript = "0.0.12"
 config        = { package = "imsg-config",  version = "0.3.1", path = "../imsg-config" }
 keyring       = { package = "imsg-keyring", version = "0.3.1", path = "../imsg-keyring" }
 store         = { package = "imsg-store",   version = "0.3.1", path = "../imsg-store" }
 service       = { package = "imsg-service", version = "0.3.1", path = "../imsg-service" }
 broker-client = { package = "imsg-broker-client", version = "0.3.1", path = "../imsg-broker-client" }
+# The daemon runtime itself (`run_daemon`) — needed for self-provisioning's headless mode,
+# which runs the broker in-process rather than talking to one over IPC like every other
+# imsg-gui command. See `daemon/provision.rs`.
+imsg-broker   = { version = "0.3.1", path = "../imsg-broker" }
 ipc           = { package = "imsg-ipc", version = "0.3.1", path = "../imsg-ipc", features = ["specta"] }
+# `respawn_self` — the headless-child spawn/log-redirect mechanics `daemon/provision.rs` shares
+# with the CLI's own two spawn sites.
+imsg-proc     = { version = "0.3.1", path = "../imsg-proc" }
 
 [dev-dependencies]
-anyhow       = "1.0.102"
 secrecy      = "0.10"
 tempfile     = "3"
 tokio        = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }

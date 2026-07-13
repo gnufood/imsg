@@ -1,11 +1,14 @@
 //! Daemon control: OS service registration (`imsg-service`, no broker) plus status/stop.
 //!
 //! Status/stop reuse `imsg-broker-client`'s already-generic status query — no domain-specific
-//! request shape to extract, unlike `send`/`delete`/etc.
+//! request shape to extract, unlike `send`/`delete`/etc. Self-provisioning (checking for and, if
+//! needed, launching a daemon) is a separate concern with its own module, [`provision`].
 
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+
+pub mod provision;
 
 /// Maps the GUI's `system` flag to the underlying [`service::ServiceLevel`].
 const fn level(system: bool) -> service::ServiceLevel {
