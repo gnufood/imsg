@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  "plugins": [
+    "eslint",
+    "typescript",
+    "react",
+    "react-perf",
+    "unicorn",
+    "import",
+    "jsx-a11y",
+    "promise",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "deny",
+    "suspicious": "deny",
+    "pedantic": "deny",
+    "perf": "deny",
+    "style": "deny",
+    "nursery": "warn"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    // Automatic JSX runtime ("jsx": "react-jsx" in tsconfig) never needs `React` in scope —
+    // this rule assumes the classic runtime and is a false positive here.
+    "react/react-in-jsx-scope": "off",
+    // Real UI markup nests well past 2 levels; still capped, just not at the react plugin's
+    // near-zero default.
+    "react/jsx-max-depth": ["error", { "max": 8 }],
+    // React/Vite convention is PascalCase component filenames; allow both that and kebab-case
+    // for non-component files (main.tsx, vite-env.d.ts) instead of forcing one scheme.
+    "unicorn/filename-case": ["error", { "cases": { "pascalCase": true, "kebabCase": true } }],
+    // CSS/asset side-effect imports (`import "./index.css"`) are idiomatic in Vite, not a bug.
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    "no-magic-numbers": [
+      "error",
+      { "ignoreArrayIndexes": true, "ignoreDefaultValues": true, "ignore": [0, 1, -1] }
+    ]
+  }
+}

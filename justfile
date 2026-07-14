@@ -20,6 +20,19 @@ fmt:
 fmt-check:
     cargo fmt --all -- --check
 
+# crates/imsg-gui/frontend — kept separate from the Rust recipes above; no GTK/WebKit
+# headers needed for these, just Node.
+gui-typecheck:
+    cd crates/imsg-gui/frontend && npm run typecheck
+
+gui-lint:
+    cd crates/imsg-gui/frontend && npm run lint
+
+gui-build:
+    cd crates/imsg-gui/frontend && npm run build
+
+gui-ci: gui-typecheck gui-lint gui-build
+
 pre-commit: fmt check lint
 
 pre-push: fmt-check check lint test
