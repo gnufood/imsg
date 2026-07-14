@@ -6,7 +6,7 @@ mod write;
 pub use broker::BrokerConfig;
 pub use write::{
     broker_abstract_name, broker_log_path, daemon_log_path, db_path, hub_key_path, hub_lock_path,
-    set_device, set_hub_key,
+    set_device, set_hub_key, set_map_channel, set_pbap_channel,
 };
 
 use std::path::PathBuf;
@@ -165,18 +165,18 @@ pub(crate) fn validate(cfg: &Config) -> Result<(), ConfigError> {
         .address
         .parse::<bluer::Address>()
         .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
-    for (field, channel) in [
-        ("device.map_channel", cfg.device.map_channel),
-        ("device.pbap_channel", cfg.device.pbap_channel),
-    ] {
-        if channel == 0 || channel > 30 {
-            return Err(ConfigError::Invalid {
-                field,
-                msg: format!("{channel} is not in [1, 30]"),
-            });
-        }
-    }
+    validate_channel("device.map_channel", cfg.device.map_channel)?;
+    validate_channel("device.pbap_channel", cfg.device.pbap_channel)?;
     cfg.broker.validate()
+}
+
+/// Shared by [`validate`] (load-time) and `write::{set_map_channel,set_pbap_channel}`
+/// (pre-write, same bound so a saved value never fails the next load).
+pub(crate) fn validate_channel(field: &'static str, channel: u8) -> Result<(), ConfigError> {
+    if channel == 0 || channel > 30 {
+        return Err(ConfigError::Invalid { field, msg: format!("{channel} is not in [1, 30]") });
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -10,13 +10,20 @@ use super::ConfigError;
 /// Opens (or creates) `~/.config/imsg/imsg.toml`, sets `[section].key = value`, writes back.
 ///
 /// All other keys and sections are preserved. Parent directories are created if absent.
+/// `value` is written with its real TOML type (e.g. a bare integer for `impl Into<Value>`'s
+/// `i64` impl) — callers must pass the type the config struct actually deserializes into, or
+/// the next load will fail (a quoted string never coerces into a typed numeric field).
 ///
 /// # Errors
 ///
 /// Returns [`ConfigError::Io`] when the config directory cannot be determined or on FS failure.
 /// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
 /// Returns [`ConfigError::Invalid`] when the section already exists but is not a TOML table.
-fn patch_config(section: &'static str, key: &str, value: &str) -> Result<(), ConfigError> {
+fn patch_config(
+    section: &'static str,
+    key: &str,
+    value: impl Into<toml_edit::Value>,
+) -> Result<(), ConfigError> {
     let config_dir = dirs::config_dir().ok_or_else(|| {
         io::Error::new(io::ErrorKind::NotFound, "cannot determine user config directory")
     })?;
@@ -63,6 +70,36 @@ pub fn set_device(address: &str) -> Result<(), ConfigError> {
         .parse::<bluer::Address>()
         .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
     patch_config("device", "address", address)
+}
+
+/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+///
+/// All other keys preserved. Validates `channel` is in `[1, 30]` before any I/O.
+///
+/// # Errors
+///
+/// Returns [`ConfigError::Invalid`] when `channel` is `0` or greater than `30`.
+/// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory
+/// cannot be determined.
+/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
+pub fn set_map_channel(channel: u8) -> Result<(), ConfigError> {
+    crate::validate_channel("device.map_channel", channel)?;
+    patch_config("device", "map_channel", i64::from(channel))
+}
+
+/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+///
+/// All other keys preserved. Validates `channel` is in `[1, 30]` before any I/O.
+///
+/// # Errors
+///
+/// Returns [`ConfigError::Invalid`] when `channel` is `0` or greater than `30`.
+/// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory
+/// cannot be determined.
+/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
+pub fn set_pbap_channel(channel: u8) -> Result<(), ConfigError> {
+    crate::validate_channel("device.pbap_channel", channel)?;
+    patch_config("device", "pbap_channel", i64::from(channel))
 }
 
 /// `{data_dir}/imsg/hub.key`; `None` in minimal containers where `dirs::data_dir()` is unavailable.
@@ -181,6 +218,58 @@ mod tests {
             // crate::figment(None) includes DEFAULTS + user file at HOME/.config/imsg/imsg.toml
             let cfg: crate::Config = crate::figment(None).extract()?;
             assert_eq!(cfg.hub.node_key.as_deref(), Some(key));
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn set_map_channel_rejects_out_of_bounds() {
+        for bad in [0_u8, 31_u8] {
+            let result = set_map_channel(bad);
+            assert!(
+                matches!(result, Err(ConfigError::Invalid { field: "device.map_channel", .. })),
+                "expected Invalid for map_channel={bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn set_pbap_channel_rejects_out_of_bounds() {
+        for bad in [0_u8, 31_u8] {
+            let result = set_pbap_channel(bad);
+            assert!(
+                matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })),
+                "expected Invalid for pbap_channel={bad}"
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn set_map_channel_roundtrip_as_typed_integer() {
+        figment::Jail::expect_with(|jail| {
+            let tmp = jail.directory().to_path_buf();
+            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+            jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+            set_map_channel(9).map_err(|e| figment::Error::from(e.to_string()))?;
+            // Typed extraction into `u8` fails if this was written as a quoted TOML string
+            // instead of a bare integer, so this also proves `patch_config`'s generalization.
+            let cfg: crate::Config = crate::figment(None).extract()?;
+            assert_eq!(cfg.device.map_channel, 9_u8);
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn set_pbap_channel_roundtrip_as_typed_integer() {
+        figment::Jail::expect_with(|jail| {
+            let tmp = jail.directory().to_path_buf();
+            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+            jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+            set_pbap_channel(21).map_err(|e| figment::Error::from(e.to_string()))?;
+            let cfg: crate::Config = crate::figment(None).extract()?;
+            assert_eq!(cfg.device.pbap_channel, 21_u8);
             Ok(())
         });
     }

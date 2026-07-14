@@ -37,5 +37,29 @@ pub fn config_set_device(address: String) -> Result<(), CommandError> {
     Ok(crate::config::set_device(&address)?)
 }
 
+/// Persists the MAP RFCOMM channel to the user config file.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] if `channel` is not in `[1, 30]`, or the config file can't be
+/// written.
+#[tauri::command]
+#[specta::specta]
+pub fn config_set_map_channel(channel: u8) -> Result<(), CommandError> {
+    Ok(crate::config::set_map_channel(channel)?)
+}
+
+/// Persists the PBAP RFCOMM channel to the user config file.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] if `channel` is not in `[1, 30]`, or the config file can't be
+/// written.
+#[tauri::command]
+#[specta::specta]
+pub fn config_set_pbap_channel(channel: u8) -> Result<(), CommandError> {
+    Ok(crate::config::set_pbap_channel(channel)?)
+}
+
 #[cfg(test)]
 mod tests;

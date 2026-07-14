@@ -25,5 +25,25 @@ pub fn set_device(address: &str) -> Result<(), config::ConfigError> {
     config::set_device(address)
 }
 
+/// Persists the MAP RFCOMM channel to the user config file (`~/.config/imsg/imsg.toml`).
+///
+/// # Errors
+///
+/// Returns [`config::ConfigError`] if `channel` is not in `[1, 30]`, or the config file can't
+/// be written.
+pub fn set_map_channel(channel: u8) -> Result<(), config::ConfigError> {
+    config::set_map_channel(channel)
+}
+
+/// Persists the PBAP RFCOMM channel to the user config file (`~/.config/imsg/imsg.toml`).
+///
+/// # Errors
+///
+/// Returns [`config::ConfigError`] if `channel` is not in `[1, 30]`, or the config file can't
+/// be written.
+pub fn set_pbap_channel(channel: u8) -> Result<(), config::ConfigError> {
+    config::set_pbap_channel(channel)
+}
+
 #[cfg(test)]
 mod tests;

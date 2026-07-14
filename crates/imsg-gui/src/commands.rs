@@ -76,6 +76,8 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             reads::threads,
             config::config_show,
             config::config_set_device,
+            config::config_set_map_channel,
+            config::config_set_pbap_channel,
             daemon::daemon_install,
             daemon::daemon_uninstall,
             daemon::daemon_status,
