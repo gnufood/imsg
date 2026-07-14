@@ -43,6 +43,9 @@ ipc           = { package = "imsg-ipc", version = "0.3.1", path = "../imsg-ipc",
 # with the CLI's own two spawn sites.
 imsg-proc     = { version = "0.3.1", path = "../imsg-proc" }
 
+[build-dependencies]
+tauri-build = "2.6.3"
+
 [dev-dependencies]
 secrecy      = "0.10"
 tempfile     = "3"
@@ -57,6 +60,8 @@ futures      = "0.3"
 interprocess = { version = "2.4.2", features = ["tokio"] }
 tokio-util   = { version = "0.7.18", features = ["codec"] }
 serde_json   = "1.0.150"
+# `cargo tauri icon` — generates the Linux icon set from assets/imsg.png.
+tauri-cli    = "2.11.4"
 
 [lints]
 workspace = true
