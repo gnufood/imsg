@@ -1,5 +1,5 @@
-//! Real-socket tests for [`super::send`] / [`super::delete`], same fake-broker approach as
-//! `query/tests.rs`.
+//! Real-socket tests for [`super::send`] / [`super::delete`] / [`super::sync`], same fake-broker
+//! approach as `query/tests.rs`.
 
 use bytes::Bytes;
 use futures::{SinkExt as _, StreamExt as _};
@@ -9,7 +9,7 @@ use interprocess::local_socket::ListenerOptions;
 use ipc::{BrokerRequest, BrokerResponse, Reason, MAX_FRAME_LEN};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-use super::{delete, send, WriteError};
+use super::{delete, send, sync, WriteError};
 use crate::CallError;
 
 fn bind_for(addr: &str) -> anyhow::Result<Listener> {
@@ -101,6 +101,44 @@ async fn delete_maps_unreachable_broker_to_connect_error() -> anyhow::Result<()>
     let Err(err) =
         delete("TE:ST:00:00:03:06", "H1".to_owned(), "telecom/msg/inbox".to_owned()).await
     else {
+        return Err(anyhow::anyhow!("expected an error when nothing is listening"));
+    };
+    assert!(matches!(err, WriteError::Connect(_)));
+    Ok(())
+}
+
+#[tokio::test]
+async fn sync_returns_text_on_success() -> anyhow::Result<()> {
+    let addr = "TE:ST:00:00:03:07";
+    let listener = bind_for(addr)?;
+    let server =
+        tokio::spawn(serve_one(listener, BrokerResponse::Text("sync complete".to_owned())));
+
+    let got = sync(addr, None).await?;
+
+    assert_eq!(got, "sync complete");
+    server.await??;
+    Ok(())
+}
+
+#[tokio::test]
+async fn sync_maps_failed_response_to_call_error() -> anyhow::Result<()> {
+    let addr = "TE:ST:00:00:03:08";
+    let listener = bind_for(addr)?;
+    let server =
+        tokio::spawn(serve_one(listener, BrokerResponse::Failed(Reason::DeviceUnreachable)));
+
+    let Err(err) = sync(addr, Some("telecom/msg/inbox".to_owned())).await else {
+        return Err(anyhow::anyhow!("expected an error for a Failed response"));
+    };
+    assert!(matches!(err, WriteError::Call(CallError::Failed(Reason::DeviceUnreachable))));
+    server.await??;
+    Ok(())
+}
+
+#[tokio::test]
+async fn sync_maps_unreachable_broker_to_connect_error() -> anyhow::Result<()> {
+    let Err(err) = sync("TE:ST:00:00:03:09", None).await else {
         return Err(anyhow::anyhow!("expected an error when nothing is listening"));
     };
     assert!(matches!(err, WriteError::Connect(_)));

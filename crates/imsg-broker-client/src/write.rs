@@ -1,4 +1,4 @@
-//! Write requests that must reach the live device (`Send`, `Delete`) — the daemon holds the
+//! Requests that must reach the live device (`Send`, `Delete`, `Sync`) — the daemon holds the
 //! sole `MapClient`, so these always go over IPC regardless of any client-side read cache.
 
 use ipc::BrokerRequest;
@@ -37,6 +37,18 @@ pub async fn send(addr: &str, number: String, message: String) -> Result<String,
 /// it rejects the request.
 pub async fn delete(addr: &str, handle: String, folder: String) -> Result<String, WriteError> {
     let resp = send_request(addr, BrokerRequest::Delete { handle, folder }).await?;
+    Ok(text_result(resp)?)
+}
+
+/// Backfills MAP folders since their per-folder cursor anchors. `folder` limits the backfill to
+/// one MAP path; `None` syncs all four standard folders.
+///
+/// # Errors
+///
+/// Returns [`WriteError::Connect`] if the broker can't be reached, or [`WriteError::Call`] if
+/// it rejects the request.
+pub async fn sync(addr: &str, folder: Option<String>) -> Result<String, WriteError> {
+    let resp = send_request(addr, BrokerRequest::Sync { folder }).await?;
     Ok(text_result(resp)?)
 }
 

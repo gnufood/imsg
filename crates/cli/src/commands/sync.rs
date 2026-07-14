@@ -4,7 +4,6 @@ use std::path::Path;
 
 use anyhow::Result;
 use config::Config;
-use ipc::BrokerRequest;
 use map_core::folders::Folder;
 use store::Store;
 use transport::iroh::Endpoint;
@@ -39,16 +38,9 @@ pub(crate) async fn run(
     });
 
     if spoke.is_none() {
-        let req = BrokerRequest::Sync { folder: folder_name };
-        return match broker::call(cfg, device, config_path, req).await? {
-            ipc::BrokerResponse::Text(s) => {
-                store.set_meta("sync_enabled", "true").await?;
-                Ok(s)
-            }
-            ipc::BrokerResponse::Failed(reason) => Err(anyhow::anyhow!("{reason}")),
-            ipc::BrokerResponse::Error(e) => Err(anyhow::anyhow!("{e}")),
-            other => Err(anyhow::anyhow!("unexpected broker response: {other:?}")),
-        };
+        let text = broker::sync(cfg, device, config_path, folder_name).await?;
+        store.set_meta("sync_enabled", "true").await?;
+        return Ok(text);
     }
 
     // Hub path: direct MAP connection.
