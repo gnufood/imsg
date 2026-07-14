@@ -19,13 +19,15 @@ use super::*;
 /// Loads a real minimal `Config` inside an env-isolated `figment::Jail` — `device.address` is
 /// required with no default, but unused by the branches under test (`ensure_running` is always
 /// called with an explicit `device`, short-circuiting the `cfg.device.address()` fallback).
-// `figment::Error` is what `Jail::expect_with`'s closure return type is fixed to — not ours to box.
-#[allow(clippy::result_large_err)]
-fn load_test_config(jail: &mut figment::Jail) -> Result<Config, figment::Error> {
+///
+/// Returns `config`'s own (small, already-boxed) error rather than `figment::Error` —
+/// `Jail::expect_with`'s closure return type is fixed to the latter and it's large by figment's
+/// own design, so callers convert at that boundary instead of this function carrying it.
+fn load_test_config(jail: &mut figment::Jail) -> Result<Config, config::ConfigError> {
     let home = jail.directory().to_path_buf();
     jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
     jail.set_env("HOME", home.to_str().unwrap_or_default());
-    config::load(None).map_err(|e| figment::Error::from(e.to_string()))
+    config::load(None)
 }
 
 fn bind_for(addr: &str) -> anyhow::Result<Listener> {
@@ -53,14 +55,12 @@ fn status_info(persistent: bool) -> BrokerResponse {
     }
 }
 
-/// Runs `fut` on a fresh runtime and translates its `anyhow::Error` into a `figment::Error` —
-/// `Jail::expect_with`'s closure isn't async and its `Ok`/`Err` type is fixed to `figment`'s.
-#[allow(clippy::result_large_err)]
-fn run<F: std::future::Future<Output = anyhow::Result<()>>>(fut: F) -> Result<(), figment::Error> {
-    tokio::runtime::Runtime::new()
-        .map_err(|e| figment::Error::from(e.to_string()))?
-        .block_on(fut)
-        .map_err(|e| figment::Error::from(e.to_string()))
+/// Runs `fut` on a fresh runtime — `Jail::expect_with`'s closure isn't async, so tests need
+/// their own runtime to drive one. Callers convert the `anyhow::Error` into the closure's
+/// required `figment::Error` themselves (see `load_test_config`'s doc for why this stays out of
+/// the signature here).
+fn run<F: std::future::Future<Output = anyhow::Result<()>>>(fut: F) -> anyhow::Result<()> {
+    tokio::runtime::Runtime::new()?.block_on(fut)
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn classify_maps_unreachable_to_unreachable() {
 #[serial]
 fn ensure_running_is_ok_when_daemon_already_running() {
     figment::Jail::expect_with(|jail| {
-        let cfg = load_test_config(jail)?;
+        let cfg = load_test_config(jail).map_err(|e| figment::Error::from(e.to_string()))?;
         run(async move {
             let addr = "TE:ST:00:00:03:01";
             let listener = bind_for(addr)?;
@@ -93,6 +93,7 @@ fn ensure_running_is_ok_when_daemon_already_running() {
             server.await??;
             Ok(())
         })
+        .map_err(|e| figment::Error::from(e.to_string()))
     });
 }
 
@@ -100,7 +101,7 @@ fn ensure_running_is_ok_when_daemon_already_running() {
 #[serial]
 fn ensure_running_errors_on_ephemeral_conflict() {
     figment::Jail::expect_with(|jail| {
-        let cfg = load_test_config(jail)?;
+        let cfg = load_test_config(jail).map_err(|e| figment::Error::from(e.to_string()))?;
         run(async move {
             let addr = "TE:ST:00:00:03:02";
             let listener = bind_for(addr)?;
@@ -117,5 +118,6 @@ fn ensure_running_errors_on_ephemeral_conflict() {
             server.await??;
             Ok(())
         })
+        .map_err(|e| figment::Error::from(e.to_string()))
     });
 }

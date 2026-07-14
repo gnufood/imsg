@@ -50,6 +50,12 @@ impl From<crate::daemon::StopError> for CommandError {
     }
 }
 
+impl From<crate::daemon::provision::ProvisionError> for CommandError {
+    fn from(err: crate::daemon::provision::ProvisionError) -> Self {
+        Self { message: err.to_string() }
+    }
+}
+
 impl From<broker_client::WriteError> for CommandError {
     fn from(err: broker_client::WriteError) -> Self {
         Self { message: err.to_string() }
@@ -82,6 +88,7 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             daemon::daemon_uninstall,
             daemon::daemon_status,
             daemon::daemon_stop,
+            daemon::daemon_restart,
             daemon::broker_status,
             send::send,
             delete::delete,

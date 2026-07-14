@@ -69,5 +69,24 @@ pub async fn daemon_stop(addr: String) -> Result<crate::daemon::StopOutcome, Com
     Ok(crate::daemon::stop(&addr).await?)
 }
 
+/// Ensures a daemon is reachable at `addr`, self-provisioning one if none answers — the GUI's
+/// only way to bring the daemon back after [`daemon_stop`], since `main.rs`'s own
+/// self-provisioning (`ensure_running`) only ever runs once, at startup.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] if `addr` is held by an ephemeral broker instead of a daemon, the
+/// config can't be loaded, or spawning fails / the socket never becomes reachable.
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command]
+#[specta::specta]
+pub async fn daemon_restart(
+    addr: String,
+    config_path: Option<PathBuf>,
+) -> Result<(), CommandError> {
+    let cfg = config::load(config_path.clone())?;
+    Ok(crate::daemon::provision::ensure_running(&cfg, Some(&addr), config_path).await?)
+}
+
 #[cfg(test)]
 mod tests;
