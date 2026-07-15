@@ -54,6 +54,9 @@ pub(crate) enum ConfigCmd {
         /// Bluetooth MAC address (`XX:XX:XX:XX:XX:XX`).
         address: String,
     },
+    /// Interactively pick a paired device, resolve its MAP/PBAP channels over SDP, and persist
+    /// address + both channels together.
+    Setup,
 }
 
 /// `spoke` actions.

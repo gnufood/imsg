@@ -131,3 +131,31 @@ async fn message_dto_reflects_real_store_row() -> anyhow::Result<()> {
     assert_eq!(dto.outgoing_status, Some(OutgoingStatus::SentConfirmed));
     Ok(())
 }
+
+#[test]
+fn paired_device_dto_formats_address_and_keeps_name() -> anyhow::Result<()> {
+    let device = transport::discover::PairedDevice {
+        address: "AA:BB:CC:DD:EE:FF".parse()?,
+        name: Some("Test Phone".to_owned()),
+    };
+    let dto = PairedDeviceDto::from(&device);
+    assert_eq!(dto.address, "AA:BB:CC:DD:EE:FF");
+    assert_eq!(dto.name.as_deref(), Some("Test Phone"));
+    Ok(())
+}
+
+#[test]
+fn paired_device_dto_keeps_missing_name_absent() -> anyhow::Result<()> {
+    let device =
+        transport::discover::PairedDevice { address: "00:00:00:00:00:00".parse()?, name: None };
+    assert_eq!(PairedDeviceDto::from(&device).name, None);
+    Ok(())
+}
+
+#[test]
+fn channels_dto_preserves_found_and_missing_channels() {
+    let channels = transport::discover::Channels { map: Some(2), pbap: None };
+    let dto = ChannelsDto::from(channels);
+    assert_eq!(dto.map, Some(2));
+    assert_eq!(dto.pbap, None);
+}

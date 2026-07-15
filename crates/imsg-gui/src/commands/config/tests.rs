@@ -84,3 +84,43 @@ fn config_set_pbap_channel_maps_out_of_bounds_to_command_error() {
     let result = config_set_pbap_channel(31);
     assert!(result.is_err());
 }
+
+#[test]
+#[serial]
+fn config_is_device_configured_false_then_true() {
+    figment::Jail::expect_with(|jail| {
+        let home = jail.directory().to_path_buf();
+        jail.set_env("HOME", home.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", home.to_str().unwrap_or_default());
+
+        assert!(!config_is_device_configured());
+        config_set_device_and_channels("AA:BB:CC:DD:EE:FF".to_owned(), 5, 17)
+            .map_err(|e| figment::Error::from(e.to_string()))?;
+        assert!(config_is_device_configured());
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
+fn config_set_device_and_channels_persists() {
+    figment::Jail::expect_with(|jail| {
+        let home = jail.directory().to_path_buf();
+        jail.set_env("HOME", home.to_str().unwrap_or_default());
+
+        config_set_device_and_channels("11:22:33:44:55:66".to_owned(), 4, 19)
+            .map_err(|e| figment::Error::from(e.to_string()))?;
+
+        let dto = config_show(None).map_err(|e| figment::Error::from(e.to_string()))?;
+        assert_eq!(dto.device_address, "11:22:33:44:55:66");
+        assert_eq!(dto.map_channel, 4);
+        assert_eq!(dto.pbap_channel, 19);
+        Ok(())
+    });
+}
+
+#[test]
+fn config_set_device_and_channels_maps_invalid_mac_to_command_error() {
+    let result = config_set_device_and_channels("not-a-mac".to_owned(), 2, 13);
+    assert!(result.is_err());
+}

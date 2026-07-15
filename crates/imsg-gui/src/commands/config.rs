@@ -61,5 +61,34 @@ pub fn config_set_pbap_channel(channel: u8) -> Result<(), CommandError> {
     Ok(crate::config::set_pbap_channel(channel)?)
 }
 
+/// `true` if the user has configured a device address yet — the device-config startup gate's
+/// pre-check.
+#[tauri::command]
+#[specta::specta]
+#[must_use]
+pub fn config_is_device_configured() -> bool {
+    crate::config::is_device_configured()
+}
+
+/// Persists `address`, `map_channel`, and `pbap_channel` together, e.g. after the device-config
+/// gate's discovery flow resolves them.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] if `address` is not a valid MAC, either channel is outside
+/// `[1, 30]`, or the config file can't be written.
+// `String`, not `&str`: `#[tauri::command]` arguments are deserialized from the frontend's IPC
+// call and must be owned.
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command]
+#[specta::specta]
+pub fn config_set_device_and_channels(
+    address: String,
+    map_channel: u8,
+    pbap_channel: u8,
+) -> Result<(), CommandError> {
+    Ok(crate::config::set_device_and_channels(&address, map_channel, pbap_channel)?)
+}
+
 #[cfg(test)]
 mod tests;

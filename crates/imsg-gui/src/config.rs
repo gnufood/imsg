@@ -45,5 +45,32 @@ pub fn set_pbap_channel(channel: u8) -> Result<(), config::ConfigError> {
     config::set_pbap_channel(channel)
 }
 
+/// `true` if the user has configured a device address yet.
+///
+/// Cheap pre-check for the device-config startup gate — distinguishes "no device configured
+/// yet" from every other config error, which [`show`] can't (see
+/// [`config::is_device_configured`]).
+#[must_use]
+pub fn is_device_configured() -> bool {
+    config::is_device_configured(None)
+}
+
+/// Persists `address`, `map_channel`, and `pbap_channel` together.
+///
+/// The write the device-config gate's automatic discovery flow needs, since a resolved channel
+/// has no "not found" representation in config (see [`config::set_device_and_channels`]).
+///
+/// # Errors
+///
+/// Returns [`config::ConfigError`] if `address` is not a valid MAC, either channel is outside
+/// `[1, 30]`, or the config file can't be written.
+pub fn set_device_and_channels(
+    address: &str,
+    map_channel: u8,
+    pbap_channel: u8,
+) -> Result<(), config::ConfigError> {
+    config::set_device_and_channels(address, map_channel, pbap_channel)
+}
+
 #[cfg(test)]
 mod tests;

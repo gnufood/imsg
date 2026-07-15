@@ -42,6 +42,8 @@ ipc           = { package = "imsg-ipc", version = "0.3.1", path = "../imsg-ipc",
 # `respawn_self` — the headless-child spawn/log-redirect mechanics `daemon/provision.rs` shares
 # with the CLI's own two spawn sites.
 imsg-proc     = { version = "0.3.1", path = "../imsg-proc" }
+# `discover::{list_paired_devices, resolve_channels}` — the device-config gate's data source.
+transport     = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
 
 [build-dependencies]
 tauri-build = "2.6.3"

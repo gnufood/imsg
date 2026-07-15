@@ -7,6 +7,7 @@
 pub mod config;
 pub mod daemon;
 pub mod delete;
+pub mod discover;
 pub mod reads;
 pub mod send;
 
@@ -62,6 +63,12 @@ impl From<broker_client::WriteError> for CommandError {
     }
 }
 
+impl From<transport::discover::DiscoverError> for CommandError {
+    fn from(err: transport::discover::DiscoverError) -> Self {
+        Self { message: err.to_string() }
+    }
+}
+
 /// Registers every `#[tauri::command]` in this crate on a fresh `tauri_specta::Builder`.
 ///
 /// Single source of truth for the exported command surface — reused by the `bindings.ts`
@@ -84,6 +91,10 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             config::config_set_device,
             config::config_set_map_channel,
             config::config_set_pbap_channel,
+            config::config_is_device_configured,
+            config::config_set_device_and_channels,
+            discover::discover_list_paired_devices,
+            discover::discover_resolve_channels,
             daemon::daemon_install,
             daemon::daemon_uninstall,
             daemon::daemon_status,

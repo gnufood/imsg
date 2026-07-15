@@ -41,6 +41,7 @@ map-core             = { package = "imsg-map", version = "0.3.1", path = "../ims
 pbap-core            = { package = "imsg-pbap", version = "0.3.1", path = "../imsg-pbap" }
 bytes                = "1"
 fs2                  = "0.4"
+dialoguer            = "0.12"
 
 [dev-dependencies]
 serial_test          = "3"

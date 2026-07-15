@@ -152,5 +152,42 @@ impl From<&config::Config> for ConfigDto {
     }
 }
 
+/// A Bluetooth device paired on the default adapter, shaped for the GUI's device-picker gate.
+///
+/// Distinct from `imsg-transport::discover::PairedDevice` so a `specta::Type`/frontend-contract
+/// concern never forces a wire-shape change on that crate's domain type — same reasoning as
+/// `MessageDto`/`ThreadDto` vs. `imsg-store`'s row types.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct PairedDeviceDto {
+    /// Bluetooth MAC address (`XX:XX:XX:XX:XX:XX`).
+    pub address: String,
+    /// The remote-advertised friendly name, if `BlueZ` has one cached.
+    pub name: Option<String>,
+}
+
+impl From<&transport::discover::PairedDevice> for PairedDeviceDto {
+    fn from(device: &transport::discover::PairedDevice) -> Self {
+        Self { address: device.address.to_string(), name: device.name.clone() }
+    }
+}
+
+/// RFCOMM channels resolved over SDP for the MAP and PBAP services.
+///
+/// A `None` field means the device has no service record for that profile — not a failure. See
+/// [`PairedDeviceDto`] for why this isn't `imsg-transport::discover::Channels` directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct ChannelsDto {
+    /// MAP (Message Access Profile) RFCOMM channel.
+    pub map: Option<u8>,
+    /// PBAP (Phone Book Access Profile) RFCOMM channel.
+    pub pbap: Option<u8>,
+}
+
+impl From<transport::discover::Channels> for ChannelsDto {
+    fn from(channels: transport::discover::Channels) -> Self {
+        Self { map: channels.map, pbap: channels.pbap }
+    }
+}
+
 #[cfg(test)]
 mod tests;

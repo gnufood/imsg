@@ -102,6 +102,37 @@ pub fn set_pbap_channel(channel: u8) -> Result<(), ConfigError> {
     patch_config("device", "pbap_channel", i64::from(channel))
 }
 
+/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+///
+/// Writes `address`, `map_channel`, and `pbap_channel` together — the combined write automatic
+/// device discovery needs, since a resolved channel has no "not found" representation in config
+/// (the schema requires `u8`, not `Option<u8>`); callers must resolve or reject a missing SDP
+/// record themselves before calling this. All three inputs are validated before any I/O, so a
+/// rejected channel never leaves a partially-written `address`.
+///
+/// # Errors
+///
+/// Returns [`ConfigError::Invalid`] if `address` is not a valid Bluetooth MAC, or if either
+/// channel is `0` or greater than `30`.
+/// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory cannot
+/// be determined.
+/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
+pub fn set_device_and_channels(
+    address: &str,
+    map_channel: u8,
+    pbap_channel: u8,
+) -> Result<(), ConfigError> {
+    address
+        .parse::<bluer::Address>()
+        .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
+    crate::validate_channel("device.map_channel", map_channel)?;
+    crate::validate_channel("device.pbap_channel", pbap_channel)?;
+
+    set_device(address)?;
+    set_map_channel(map_channel)?;
+    set_pbap_channel(pbap_channel)
+}
+
 /// `{data_dir}/imsg/hub.key`; `None` in minimal containers where `dirs::data_dir()` is unavailable.
 /// Callers must not substitute a fallback silently.
 #[must_use]
@@ -188,89 +219,4 @@ pub fn set_hub_key(key: &str) -> Result<(), ConfigError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use serial_test::serial;
-
-    use super::*;
-
-    #[test]
-    fn broker_abstract_name_produces_valid_name() -> Result<(), ConfigError> {
-        broker_abstract_name("AA:BB:CC:DD:EE:FF")?;
-        broker_abstract_name("00:00:00:00:00:00")?;
-        Ok(())
-    }
-
-    #[test]
-    fn set_hub_key_rejects_empty() {
-        let result = set_hub_key("");
-        assert!(matches!(result, Err(ConfigError::Invalid { field: "hub.node_key", .. })));
-    }
-
-    #[test]
-    #[serial]
-    fn set_hub_key_roundtrip() {
-        figment::Jail::expect_with(|jail| {
-            let tmp = jail.directory().to_path_buf();
-            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-            jail.set_env("HOME", tmp.to_str().unwrap_or_default());
-            let key = "fakehubkey456";
-            set_hub_key(key).map_err(|e| figment::Error::from(e.to_string()))?;
-            // crate::figment(None) includes DEFAULTS + user file at HOME/.config/imsg/imsg.toml
-            let cfg: crate::Config = crate::figment(None).extract()?;
-            assert_eq!(cfg.hub.node_key.as_deref(), Some(key));
-            Ok(())
-        });
-    }
-
-    #[test]
-    fn set_map_channel_rejects_out_of_bounds() {
-        for bad in [0_u8, 31_u8] {
-            let result = set_map_channel(bad);
-            assert!(
-                matches!(result, Err(ConfigError::Invalid { field: "device.map_channel", .. })),
-                "expected Invalid for map_channel={bad}"
-            );
-        }
-    }
-
-    #[test]
-    fn set_pbap_channel_rejects_out_of_bounds() {
-        for bad in [0_u8, 31_u8] {
-            let result = set_pbap_channel(bad);
-            assert!(
-                matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })),
-                "expected Invalid for pbap_channel={bad}"
-            );
-        }
-    }
-
-    #[test]
-    #[serial]
-    fn set_map_channel_roundtrip_as_typed_integer() {
-        figment::Jail::expect_with(|jail| {
-            let tmp = jail.directory().to_path_buf();
-            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-            jail.set_env("HOME", tmp.to_str().unwrap_or_default());
-            set_map_channel(9).map_err(|e| figment::Error::from(e.to_string()))?;
-            // Typed extraction into `u8` fails if this was written as a quoted TOML string
-            // instead of a bare integer, so this also proves `patch_config`'s generalization.
-            let cfg: crate::Config = crate::figment(None).extract()?;
-            assert_eq!(cfg.device.map_channel, 9_u8);
-            Ok(())
-        });
-    }
-
-    #[test]
-    #[serial]
-    fn set_pbap_channel_roundtrip_as_typed_integer() {
-        figment::Jail::expect_with(|jail| {
-            let tmp = jail.directory().to_path_buf();
-            jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-            jail.set_env("HOME", tmp.to_str().unwrap_or_default());
-            set_pbap_channel(21).map_err(|e| figment::Error::from(e.to_string()))?;
-            let cfg: crate::Config = crate::figment(None).extract()?;
-            assert_eq!(cfg.device.pbap_channel, 21_u8);
-            Ok(())
-        });
-    }
-}
+mod tests;

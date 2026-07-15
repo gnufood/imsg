@@ -8,6 +8,8 @@ pub mod commands;
 pub mod config;
 pub mod daemon;
 pub mod delete;
+pub mod discover;
 pub mod dto;
 pub mod reads;
 pub mod send;
+pub mod sync;

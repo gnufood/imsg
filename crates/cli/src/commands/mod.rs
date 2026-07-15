@@ -67,7 +67,7 @@ async fn run_command(
     config_path: Option<PathBuf>,
 ) -> Result<Option<String>> {
     let out = match command {
-        Command::Config { cmd } => Some(run_config(cmd, config_path)?),
+        Command::Config { cmd } => Some(run_config(cmd, config_path).await?),
         Command::Hub => {
             hub::run(&load(config_path)?).await?;
             None
@@ -139,11 +139,13 @@ async fn load_with_store(
     Ok((cfg, db, bpath))
 }
 
-/// Executes a `config` subcommand — no network I/O, no store access.
-fn run_config(cmd: ConfigCmd, config_path: Option<PathBuf>) -> Result<String> {
+/// Executes a `config` subcommand. `Setup` is the only variant that touches the network
+/// (Bluetooth SDP); the rest are local-file-only.
+async fn run_config(cmd: ConfigCmd, config_path: Option<PathBuf>) -> Result<String> {
     match cmd {
         ConfigCmd::Show => config::run_show(config_path),
         ConfigCmd::SetDevice { address } => config::run_set_device(&address),
+        ConfigCmd::Setup => config::run_setup().await,
     }
 }
 
