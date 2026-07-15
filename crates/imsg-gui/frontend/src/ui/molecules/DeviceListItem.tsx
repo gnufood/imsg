@@ -1,0 +1,33 @@
+import { CirclePlus } from 'lucide-react'
+import type { PairedDeviceDto } from '@/bindings.ts'
+import { useCallback } from 'react'
+
+interface DeviceListItemProps {
+  device: PairedDeviceDto
+  onSelect: (address: string) => void
+}
+
+// Expects a `<ul>`/`<ol>` ancestor — DeviceList owns the list semantics, this is just the `<li>`.
+const DeviceListItem = ({ device, onSelect }: DeviceListItemProps): React.JSX.Element => {
+  const handleClick = useCallback(() => {
+    onSelect(device.address)
+  }, [device.address, onSelect])
+
+  return (
+    <li>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink hover:bg-ink/5"
+        onClick={handleClick}
+      >
+        <span className="flex flex-col items-start">
+          <span>{device.name ?? device.address}</span>
+          {device.name !== null && <span className="text-xs text-muted">{device.address}</span>}
+        </span>
+        <CirclePlus className="size-4 shrink-0 text-muted" aria-hidden="true" />
+      </button>
+    </li>
+  )
+}
+
+export default DeviceListItem

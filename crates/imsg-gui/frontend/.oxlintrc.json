@@ -41,5 +41,16 @@
       "error",
       { "ignoreArrayIndexes": true, "ignoreDefaultValues": true, "ignore": [0, 1, -1] }
     ]
-  }
+  },
+  "overrides": [
+    {
+      // Vite/Tauri config files run in Node, not the browser — the top-level `env.browser`
+      // above is for app source only.
+      "files": ["vite.config.ts"],
+      "env": { "node": true },
+      "rules": {
+        "import/no-nodejs-modules": "off"
+      }
+    }
+  ]
 }
