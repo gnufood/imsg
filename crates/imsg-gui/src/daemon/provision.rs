@@ -123,8 +123,82 @@ pub async fn run_headless(
     store: Store,
 ) -> Result<(), ProvisionError> {
     store.set_meta("daemon_enabled", "true").await?;
+    let addr = device.clone().unwrap_or_else(|| cfg.device.address().to_owned());
+    tauri::async_runtime::spawn(announce_when_connected(addr));
     imsg_broker::run_daemon(cfg, device, store).await?;
     Ok(())
+}
+
+/// Polls the daemon's own IPC socket until the MAP session reports `Active`, then logs a
+/// one-time confirmation — `run_daemon` blocks forever with no feedback of its own once serving
+/// starts. Mirrors the CLI daemon's `announce_when_connected` so a self-provisioned daemon's
+/// captured log records the same "connected" line a CLI-started daemon's does.
+async fn announce_when_connected(addr: String) {
+    loop {
+        match broker_client::query_state(&addr).await {
+            Some(ipc::SessionState::Active) => {
+                tracing::info!("daemon for {addr}: connected");
+                return;
+            }
+            Some(ipc::SessionState::Failed) => return,
+            _ => {}
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+}
+
+/// What `main.rs` should do based on the process's argv.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Launch {
+    /// Normal GUI launch — [`HEADLESS_ARG`] wasn't present.
+    Gui,
+    /// A self-respawned headless child (see [`ensure_running`]'s spawn).
+    Headless(HeadlessArgs),
+}
+
+/// `--device`/`--config` values extracted from a headless launch's argv — the inverse of
+/// `imsg_proc`'s `respawn_args`' `[HEADLESS_ARG, "--device", addr, ("--config", path)?]` shape.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeadlessArgs {
+    /// The device address `ensure_running`'s spawn passed via `--device`.
+    pub device: String,
+    /// The `--config` path, if one was passed.
+    pub config_path: Option<PathBuf>,
+}
+
+/// [`classify_launch`] couldn't make sense of a headless invocation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum HeadlessArgsError {
+    /// [`HEADLESS_ARG`] was present without a `--device` value — `respawn_args`'s contract
+    /// broken; should never happen outside a bug in this crate, since only our own spawn ever
+    /// sets [`HEADLESS_ARG`].
+    #[error("headless launch missing --device")]
+    MissingDevice,
+}
+
+/// Classifies process argv (`std::env::args()`, element 0 the executable path) as a normal GUI
+/// launch or a self-respawned headless one, extracting `--device`/`--config` in the latter case.
+///
+/// # Errors
+///
+/// Returns [`HeadlessArgsError::MissingDevice`] if [`HEADLESS_ARG`] is present without
+/// `--device`.
+pub fn classify_launch(args: &[String]) -> Result<Launch, HeadlessArgsError> {
+    if !args.iter().any(|a| a == HEADLESS_ARG) {
+        return Ok(Launch::Gui);
+    }
+    let device = flag_value(args, "--device").ok_or(HeadlessArgsError::MissingDevice)?;
+    let config_path = flag_value(args, "--config").map(PathBuf::from);
+    Ok(Launch::Headless(HeadlessArgs { device, config_path }))
+}
+
+/// Returns the value following the first occurrence of `flag` in `args`, if any.
+fn flag_value(args: &[String], flag: &str) -> Option<String> {
+    args.iter()
+        .position(|a| a == flag)
+        .and_then(|i| i.checked_add(1))
+        .and_then(|i| args.get(i))
+        .cloned()
 }
 
 #[cfg(test)]

@@ -1,9 +1,9 @@
-//! `classify` is pure and tested directly. `ensure_running`'s `AlreadyRunning`/
-//! `EphemeralConflict` branches return before ever spawning, so they're real-socket tested the
-//! same way as `daemon/tests.rs`'s `status`/`stop` tests — real `Config` via `figment::Jail`
-//! (same isolation approach `config/tests.rs` uses, `#[serial]` since `Jail` mutates
-//! process-global env vars). The `Unreachable` (spawn) branch isn't — the spawn itself is now
-//! `imsg_proc::respawn_self`, tested there.
+//! `classify` and `classify_launch` are pure and tested directly. `ensure_running`'s
+//! `AlreadyRunning`/`EphemeralConflict` branches return before ever spawning, so they're
+//! real-socket tested the same way as `daemon/tests.rs`'s `status`/`stop` tests — real `Config`
+//! via `figment::Jail` (same isolation approach `config/tests.rs` uses, `#[serial]` since `Jail`
+//! mutates process-global env vars). The `Unreachable` (spawn) branch isn't — the spawn itself is
+//! now `imsg_proc::respawn_self`, tested there.
 
 use bytes::Bytes;
 use futures::{SinkExt as _, StreamExt as _};
@@ -53,6 +53,10 @@ fn status_info(persistent: bool) -> BrokerResponse {
         device: "irrelevant".into(),
         persistent,
     }
+}
+
+fn session_status(state: SessionState) -> BrokerResponse {
+    BrokerResponse::StatusInfo { state, device: "irrelevant".into(), persistent: true }
 }
 
 /// Runs `fut` on a fresh runtime — `Jail::expect_with`'s closure isn't async, so tests need
@@ -120,4 +124,85 @@ fn ensure_running_errors_on_ephemeral_conflict() {
         })
         .map_err(|e| figment::Error::from(e.to_string()))
     });
+}
+
+#[test]
+fn announce_when_connected_returns_once_session_is_active() -> anyhow::Result<()> {
+    run(async {
+        let addr = "TE:ST:00:00:04:01";
+        let listener = bind_for(addr)?;
+        let server = tokio::spawn(serve_one(listener, session_status(SessionState::Active)));
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(15),
+            announce_when_connected(addr.to_owned()),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("announce_when_connected never returned"))?;
+
+        server.await??;
+        Ok(())
+    })
+}
+
+#[test]
+fn announce_when_connected_gives_up_on_failed_session() -> anyhow::Result<()> {
+    run(async {
+        let addr = "TE:ST:00:00:04:02";
+        let listener = bind_for(addr)?;
+        let server = tokio::spawn(serve_one(listener, session_status(SessionState::Failed)));
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(15),
+            announce_when_connected(addr.to_owned()),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("announce_when_connected never returned"))?;
+
+        server.await??;
+        Ok(())
+    })
+}
+
+#[test]
+fn classify_launch_returns_gui_when_headless_arg_absent() {
+    let args: Vec<String> = vec!["imsg-gui".to_owned()];
+    assert_eq!(classify_launch(&args), Ok(Launch::Gui));
+}
+
+#[test]
+fn classify_launch_extracts_device_and_config() {
+    let args: Vec<String> =
+        ["imsg-gui", HEADLESS_ARG, "--device", "AA:BB:CC:DD:EE:FF", "--config", "/tmp/imsg.toml"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+    assert_eq!(
+        classify_launch(&args),
+        Ok(Launch::Headless(HeadlessArgs {
+            device: "AA:BB:CC:DD:EE:FF".to_owned(),
+            config_path: Some("/tmp/imsg.toml".into()),
+        }))
+    );
+}
+
+#[test]
+fn classify_launch_extracts_device_without_config() {
+    let args: Vec<String> = ["imsg-gui", HEADLESS_ARG, "--device", "AA:BB:CC:DD:EE:FF"]
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(
+        classify_launch(&args),
+        Ok(Launch::Headless(HeadlessArgs {
+            device: "AA:BB:CC:DD:EE:FF".to_owned(),
+            config_path: None,
+        }))
+    );
+}
+
+#[test]
+fn classify_launch_errors_when_device_missing() {
+    let args: Vec<String> = ["imsg-gui", HEADLESS_ARG].into_iter().map(str::to_owned).collect();
+    assert_eq!(classify_launch(&args), Err(HeadlessArgsError::MissingDevice));
 }

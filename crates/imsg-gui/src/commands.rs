@@ -8,6 +8,7 @@ pub mod config;
 pub mod daemon;
 pub mod delete;
 pub mod discover;
+pub mod gate;
 pub mod reads;
 pub mod send;
 
@@ -95,6 +96,8 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             config::config_set_device_and_channels,
             discover::discover_list_paired_devices,
             discover::discover_resolve_channels,
+            gate::gate_status,
+            gate::gate_proceed,
             daemon::daemon_install,
             daemon::daemon_uninstall,
             daemon::daemon_status,

@@ -44,6 +44,13 @@ ipc           = { package = "imsg-ipc", version = "0.3.1", path = "../imsg-ipc",
 imsg-proc     = { version = "0.3.1", path = "../imsg-proc" }
 # `discover::{list_paired_devices, resolve_channels}` — the device-config gate's data source.
 transport     = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
+# `watch`/`Notify` for the startup gate's status/proceed signalling (`gate.rs`); `time` for
+# the headless child's connected-announcement poll (`daemon/provision.rs`).
+tokio         = { version = "1.52.3", features = ["sync", "time"] }
+tracing       = "0.1.44"
+# `main.rs` only: same subscriber setup as the CLI's `init_tracing`, so the headless daemon
+# child's tracing output reaches its captured log file.
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 [build-dependencies]
 tauri-build = "2.6.3"

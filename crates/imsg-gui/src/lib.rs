@@ -10,6 +10,7 @@ pub mod daemon;
 pub mod delete;
 pub mod discover;
 pub mod dto;
+pub mod gate;
 pub mod reads;
 pub mod send;
 pub mod sync;

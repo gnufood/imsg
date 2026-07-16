@@ -3,13 +3,21 @@
   "productName": "imsg",
   "identifier": "foo.gnu.imsg",
   "build": {
-    "frontendDist": "../frontend/dist",
+    "frontendDist": "frontend/dist",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": { "script": "npm run dev", "cwd": "frontend" },
     "beforeBuildCommand": { "script": "npm run build", "cwd": "frontend" }
   },
   "app": {
-    "windows": []
+    "windows": [
+      {
+        "title": "imsg",
+        "maximized": true,
+        "resizable": true,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ]
   },
   "bundle": {
     "icon": [
