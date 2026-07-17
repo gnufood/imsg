@@ -10,6 +10,13 @@ const preview: Preview = {
       },
     },
     layout: 'centered',
+    // Alphabetical default puts `pages` before `templates`; this enforces the atomic-design tier
+    // Order (`GUI_ATOMIC_DESIGN.md`) instead. Stories within a tier still sort alphabetically.
+    options: {
+      storySort: {
+        order: ['atoms', 'molecules', 'organisms', 'templates', 'pages'],
+      },
+    },
   },
 }
 
