@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import Gate from '@/gate/pages/Gate.tsx'
+import Text from '@/ui/atoms/Text.tsx'
 import { fn } from 'storybook/test'
 
 const meta = {
   args: {
-    deviceSetupSlot: <p className="text-sm text-muted">Device setup fixture</p>,
+    deviceSetupSlot: <Text tone="muted">Device setup fixture</Text>,
     onProceed: fn(),
     onReady: fn(),
     onResumePolling: fn(),

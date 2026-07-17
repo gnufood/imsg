@@ -3,6 +3,7 @@ import DeviceList from '@/gate/organisms/DeviceList.tsx'
 import type DeviceSetupState from '@/gate/templates/DeviceSetupTemplate.types.ts'
 import ErrorState from '@/ui/molecules/ErrorState.tsx'
 import LoadingState from '@/ui/molecules/LoadingState.tsx'
+import Text from '@/ui/atoms/Text.tsx'
 
 const screen = (children: React.ReactNode): React.JSX.Element => <CenteredScreen>{children}</CenteredScreen>
 
@@ -32,7 +33,7 @@ const DeviceSetupTemplate = ({
     case 'picking': {
       return screen(
         <div className="flex w-full max-w-sm flex-col gap-4">
-          <h1 className="text-sm text-muted">Choose a device</h1>
+          <Text as="h1" tone="muted">Choose a device</Text>
           <DeviceList devices={devices} onSelect={onSelectDevice} />
         </div>,
       )

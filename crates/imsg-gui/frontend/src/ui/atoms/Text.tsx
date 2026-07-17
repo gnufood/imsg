@@ -17,8 +17,8 @@ const SIZE_CLASS: Record<TextSize, string> = {
 interface TextProps {
   children: ReactNode
   // 'span' for text nested inside a `<button>` (e.g. DeviceListItem) — `<p>` isn't valid
-  // Phrasing content there.
-  as?: 'p' | 'span'
+  // Phrasing content there. 'h1'/'h2' for section/screen headings (e.g. SettingsTemplate).
+  as?: 'p' | 'span' | 'h1' | 'h2'
   size?: TextSize
   tone?: TextTone
 }
