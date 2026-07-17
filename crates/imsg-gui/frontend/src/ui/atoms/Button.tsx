@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import interactiveStyles from '@/ui/atoms/interactive-styles.ts'
 
 interface ButtonProps {
   onClick: () => void
@@ -13,7 +14,7 @@ const Button = ({ onClick, icon: Icon, disabled = false, children }: ButtonProps
   <button
     type="button"
     disabled={disabled}
-    className="inline-flex items-center gap-2 rounded-md border border-line px-3.5 py-2 text-sm text-ink hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+    className={`inline-flex items-center gap-2 rounded-md border border-line px-3.5 py-2 text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus} ${interactiveStyles.disabled} ${interactiveStyles.disabledHoverReset}`}
     onClick={onClick}
   >
     {Icon !== undefined && <Icon className="size-4" />}

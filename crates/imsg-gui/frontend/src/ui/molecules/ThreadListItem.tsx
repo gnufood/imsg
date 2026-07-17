@@ -3,6 +3,7 @@ import Badge from '@/ui/atoms/Badge.tsx'
 import { MessageSquareDot } from 'lucide-react'
 import Text from '@/ui/atoms/Text.tsx'
 import type { ThreadDto } from '@/bindings.ts'
+import interactiveStyles from '@/ui/atoms/interactive-styles.ts'
 import { useCallback } from 'react'
 
 interface ThreadListItemProps {
@@ -24,7 +25,7 @@ const ThreadListItem = ({ thread, onSelect }: ThreadListItemProps): React.JSX.El
     <li>
       <button
         type="button"
-        className="flex w-full items-center gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink hover:bg-ink/5"
+        className={`flex w-full items-center gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus}`}
         onClick={handleClick}
       >
         <Avatar />

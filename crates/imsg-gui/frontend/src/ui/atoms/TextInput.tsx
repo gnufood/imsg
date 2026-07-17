@@ -1,3 +1,4 @@
+import interactiveStyles from '@/ui/atoms/interactive-styles.ts'
 import { useCallback } from 'react'
 
 interface TextInputProps {
@@ -27,7 +28,7 @@ const TextInput = ({ value, onChange, disabled = false, id, onKeyDown, placehold
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full rounded-md border border-line bg-transparent px-3.5 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+      className={`w-full rounded-md border border-line bg-transparent px-3.5 py-2 text-sm text-ink placeholder:text-muted ${interactiveStyles.focus} ${interactiveStyles.disabled}`}
     />
   )
 }

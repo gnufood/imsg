@@ -1,6 +1,7 @@
 import { CirclePlus } from 'lucide-react'
 import type { PairedDeviceDto } from '@/bindings.ts'
 import Text from '@/ui/atoms/Text.tsx'
+import interactiveStyles from '@/ui/atoms/interactive-styles.ts'
 import { useCallback } from 'react'
 
 interface DeviceListItemProps {
@@ -18,7 +19,7 @@ const DeviceListItem = ({ device, onSelect }: DeviceListItemProps): React.JSX.El
     <li>
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink hover:bg-ink/5"
+        className={`flex w-full items-center justify-between gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus}`}
         onClick={handleClick}
       >
         <span className="flex flex-col items-start">
