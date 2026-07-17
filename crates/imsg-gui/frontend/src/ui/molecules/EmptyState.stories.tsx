@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import EmptyState from './EmptyState.tsx'
+import EmptyState from '@/ui/molecules/EmptyState.tsx'
 
 const meta = {
   args: {

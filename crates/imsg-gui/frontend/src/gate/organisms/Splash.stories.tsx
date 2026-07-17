@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import Splash from './Splash.tsx'
+import Splash from '@/gate/organisms/Splash.tsx'
 import { fn } from 'storybook/test'
 
 const meta = {

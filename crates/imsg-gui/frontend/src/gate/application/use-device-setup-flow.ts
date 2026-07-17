@@ -1,24 +1,9 @@
-import { type PairedDeviceDto, commands } from '@/bindings.ts'
 import { useCallback, useEffect, useReducer } from 'react'
+import type UseDeviceSetupFlowResult from '@/gate/application/use-device-setup-flow.types.ts'
+import { commands } from '@/bindings.ts'
 
-export type DeviceSetupStage =
-  | 'listing'
-  | 'listError'
-  | 'picking'
-  | 'resolving'
-  | 'resolveError'
-  | 'unsupported'
-  | 'persisting'
-  | 'persistError'
-
-export interface DeviceSetupState {
-  address: string | undefined
-  devices: PairedDeviceDto[]
-  errorMessage: string | undefined
-  mapChannel: number | undefined
-  pbapChannel: number | undefined
-  stage: DeviceSetupStage
-}
+type DeviceSetupState = UseDeviceSetupFlowResult['state']
+type DeviceSetupStage = DeviceSetupState['stage']
 
 const initialState: DeviceSetupState = {
   address: undefined,
@@ -33,7 +18,7 @@ const initialState: DeviceSetupState = {
 // (list/resolve/persist) into one case — keeps `reduce` under this repo's max-statements limit.
 type Action =
   | { stage: 'listing' | 'persisting' | 'resolving'; type: 'retry' }
-  | { devices: PairedDeviceDto[]; type: 'devicesLoaded' }
+  | { devices: DeviceSetupState['devices']; type: 'devicesLoaded' }
   | { message: string; type: 'listFailed' }
   | { address: string; type: 'deviceSelected' }
   | { mapChannel: number; pbapChannel: number; type: 'channelsResolved' }
@@ -189,17 +174,9 @@ const usePersistDevice = ({ address, dispatch, mapChannel, onComplete, pbapChann
   }, [stage, address, mapChannel, pbapChannel, dispatch, onComplete])
 }
 
-export interface UseDeviceSetupFlowResult {
-  retryList: () => void
-  retryPersist: () => void
-  retryResolve: () => void
-  selectDevice: (address: string) => void
-  state: DeviceSetupState
-}
-
 // Application boundary for the device-setup feature slice (see internal/GUI_ATOMIC_DESIGN.md)
 // — the only file here allowed to import `bindings.ts`.
-export const useDeviceSetupFlow = (onComplete: () => void): UseDeviceSetupFlowResult => {
+const useDeviceSetupFlow = (onComplete: () => void): UseDeviceSetupFlowResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
   const { stage, address, mapChannel, pbapChannel } = state
 
@@ -225,3 +202,5 @@ export const useDeviceSetupFlow = (onComplete: () => void): UseDeviceSetupFlowRe
 
   return { retryList, retryPersist, retryResolve, selectDevice, state }
 }
+
+export default useDeviceSetupFlow

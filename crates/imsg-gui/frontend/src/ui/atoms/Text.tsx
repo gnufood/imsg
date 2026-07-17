@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 
-type TextTone = 'ink' | 'muted'
+type TextTone = 'ink' | 'muted' | 'surface'
 type TextSize = 'sm' | 'xs'
 
 const TONE_CLASS: Record<TextTone, string> = {
   ink: 'text-ink',
   muted: 'text-muted',
+  surface: 'text-surface',
 }
 
 const SIZE_CLASS: Record<TextSize, string> = {

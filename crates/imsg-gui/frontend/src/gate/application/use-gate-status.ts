@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useReducer } from 'react'
+import type UseGateStatusResult from '@/gate/application/use-gate-status.types.ts'
 import { commands } from '@/bindings.ts'
-
-export type GateStatus = Awaited<ReturnType<typeof commands.gateStatus>>
 
 // Backend owns all sequencing (`gate::run` in Rust, spawned once by main.rs). This hook only
 // Mirrors its status and can poke it to re-evaluate — polling is the decided mechanism
 // (authoritative at any time, no listener-mount race; see GUI.md).
 const POLL_MS = 250
 
+type Status = UseGateStatusResult['status']
+
 interface State {
   pollFailed: boolean
-  status: GateStatus | undefined
+  status: Status
 }
 
 const initialState: State = { pollFailed: false, status: undefined }
 
-type Action = { status: GateStatus; type: 'statusReceived' } | { type: 'pollFailed' } | { type: 'resumePolling' }
+type Action = { status: NonNullable<Status>; type: 'statusReceived' } | { type: 'pollFailed' } | { type: 'resumePolling' }
 
 // Pure — every transition names the state it lands on explicitly.
 const reduce = (state: State, action: Action): State => {
@@ -77,17 +78,10 @@ const usePollStatus = (active: boolean, dispatch: React.Dispatch<Action>): void 
   }, [active, dispatch])
 }
 
-export interface UseGateStatusResult {
-  pollFailed: boolean
-  proceed: () => void
-  resumePolling: () => void
-  status: GateStatus | undefined
-}
-
 // Application boundary for the gate feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
 // Only file here allowed to import `bindings.ts`. Converts the polled backend status into the
 // State/actions `Gate` (the page) renders.
-export const useGateStatus = (): UseGateStatusResult => {
+const useGateStatus = (): UseGateStatusResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
   const { pollFailed, status } = state
 
@@ -103,3 +97,5 @@ export const useGateStatus = (): UseGateStatusResult => {
 
   return { pollFailed, proceed, resumePolling, status }
 }
+
+export default useGateStatus

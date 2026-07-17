@@ -1,6 +1,6 @@
 import DeviceSetupConnected from '@/gate/connected/DeviceSetupConnected.tsx'
 import Gate from '@/gate/pages/Gate.tsx'
-import { useGateStatus } from '@/gate/application/use-gate-status.ts'
+import useGateStatus from '@/gate/application/use-gate-status.ts'
 import { useMemo } from 'react'
 
 interface GateConnectedProps {

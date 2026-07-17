@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import ErrorState from './ErrorState.tsx'
+import ErrorState from '@/ui/molecules/ErrorState.tsx'
 import { fn } from 'storybook/test'
 
 const meta = {

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import LoadingState from './LoadingState.tsx'
+import LoadingState from '@/ui/molecules/LoadingState.tsx'
 
 const meta = {
   args: {

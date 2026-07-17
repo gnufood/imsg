@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import DeviceSetupTemplate from './DeviceSetupTemplate.tsx'
+import DeviceSetupTemplate from '@/gate/templates/DeviceSetupTemplate.tsx'
 import { fn } from 'storybook/test'
 
 const meta = {

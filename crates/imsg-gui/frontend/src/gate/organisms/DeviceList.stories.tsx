@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import DeviceList from './DeviceList.tsx'
+import DeviceList from '@/gate/organisms/DeviceList.tsx'
 import { fn } from 'storybook/test'
 
 const meta = {

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import Button from './Button.tsx'
+import Button from '@/ui/atoms/Button.tsx'
 import { CirclePlus } from 'lucide-react'
 import { fn } from 'storybook/test'
 

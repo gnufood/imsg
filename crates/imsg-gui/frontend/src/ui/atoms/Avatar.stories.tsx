@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import Spinner from '@/ui/atoms/Spinner.tsx'
+import Avatar from '@/ui/atoms/Avatar.tsx'
 
 const meta = {
-  component: Spinner,
-  title: 'atoms/Spinner',
-} satisfies Meta<typeof Spinner>
+  component: Avatar,
+  title: 'atoms/Avatar',
+} satisfies Meta<typeof Avatar>
 
 export default meta
 type Story = StoryObj<typeof meta>

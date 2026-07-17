@@ -1,6 +1,6 @@
 import CenteredScreen from '@/ui/templates/CenteredScreen.tsx'
 import ErrorState from '@/ui/molecules/ErrorState.tsx'
-import type { GateStatus } from '@/gate/application/use-gate-status.ts'
+import type { GateStatus } from '@/bindings.ts'
 import LoadingState from '@/ui/molecules/LoadingState.tsx'
 import Preparing from '@/gate/organisms/Preparing.tsx'
 import Splash from '@/gate/organisms/Splash.tsx'

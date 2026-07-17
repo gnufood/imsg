@@ -1,4 +1,4 @@
-import type { DeviceSetupState } from '@/gate/application/use-device-setup-flow.ts'
+import type DeviceSetupState from '@/gate/templates/DeviceSetupTemplate.types.ts'
 import DeviceSetupTemplate from '@/gate/templates/DeviceSetupTemplate.tsx'
 
 interface DeviceSetupProps {

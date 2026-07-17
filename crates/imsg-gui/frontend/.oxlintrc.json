@@ -68,18 +68,12 @@
       }
     },
     {
-      // Application-boundary hooks (see internal/GUI_ATOMIC_DESIGN.md) — each one legitimately
-      // exports both a hook function and its port-shaped result/state types, the same
-      // single-default-export conflict as the CSF override above. They're also the only files
-      // allowed to import `bindings.ts`, which forces inline `type`-modifier named imports
-      // (splitting into a separate top-level `import type` re-triggers `no-duplicate-imports`
-      // against the same module's value import).
-      "files": ["**/gate/application/*.ts"],
+      // `commands.listMessages`'s `folder`/`sinceMs` params are `string | null`/`... | null`
+      // (specta's mirror of Rust's `Option<T>`) — "no filter" is only expressible as the literal
+      // `null`, not `undefined`. Same forced-wire-contract exception as the CSF override above.
+      "files": ["**/messages/application/use-conversation.ts"],
       "rules": {
-        "import/no-named-export": "off",
-        "import/exports-last": "off",
-        "import/group-exports": "off",
-        "import/consistent-type-specifier-style": "off"
+        "unicorn/no-null": "off"
       }
     }
   ]

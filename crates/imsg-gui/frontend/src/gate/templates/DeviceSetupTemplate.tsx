@@ -1,6 +1,6 @@
 import CenteredScreen from '@/ui/templates/CenteredScreen.tsx'
 import DeviceList from '@/gate/organisms/DeviceList.tsx'
-import type { DeviceSetupState } from '@/gate/application/use-device-setup-flow.ts'
+import type DeviceSetupState from '@/gate/templates/DeviceSetupTemplate.types.ts'
 import ErrorState from '@/ui/molecules/ErrorState.tsx'
 import LoadingState from '@/ui/molecules/LoadingState.tsx'
 

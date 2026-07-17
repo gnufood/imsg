@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { GateStatus } from '@/gate/application/use-gate-status.ts'
+import type { GateStatus } from '@/bindings.ts'
 import GateTemplate from '@/gate/templates/GateTemplate.tsx'
 
 interface GateProps {

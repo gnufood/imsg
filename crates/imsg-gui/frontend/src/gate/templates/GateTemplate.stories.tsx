@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import GateTemplate from './GateTemplate.tsx'
+import GateTemplate from '@/gate/templates/GateTemplate.tsx'
 import { fn } from 'storybook/test'
 
 const meta = {

@@ -1,5 +1,5 @@
 import DeviceSetup from '@/gate/pages/DeviceSetup.tsx'
-import { useDeviceSetupFlow } from '@/gate/application/use-device-setup-flow.ts'
+import useDeviceSetupFlow from '@/gate/application/use-device-setup-flow.ts'
 
 interface DeviceSetupConnectedProps {
   onComplete: () => void
