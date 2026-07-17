@@ -1,0 +1,66 @@
+import { ColorItem, ColorPalette, Meta } from '@storybook/addon-docs/blocks'
+import { Settings } from 'lucide-react'
+import Button from './atoms/Button.tsx'
+import Checkbox from './atoms/Checkbox.tsx'
+import IconButton from './atoms/IconButton.tsx'
+import StatusDot from './atoms/StatusDot.tsx'
+import Text from './atoms/Text.tsx'
+
+<Meta title="tokens" />
+
+# Design tokens
+
+Renders the actual atoms and CSS custom properties from `src/` — nothing on this page is a
+copied value, so it can't drift from `index.css` (colors), the `Text` atom (typography), or
+`ui/atoms/interactive-styles.ts` (states).
+
+## Colors
+
+<ColorPalette>
+  <ColorItem colors={{ default: 'var(--color-surface)' }} subtitle="--color-surface" title="surface" />
+  <ColorItem colors={{ default: 'var(--color-ink)' }} subtitle="--color-ink" title="ink" />
+  <ColorItem colors={{ default: 'var(--color-accent)' }} subtitle="--color-accent" title="accent" />
+  <ColorItem colors={{ default: 'var(--color-muted)' }} subtitle="--color-muted" title="muted" />
+  <ColorItem colors={{ default: 'var(--color-line)' }} subtitle="--color-line" title="line" />
+</ColorPalette>
+
+`surface`/`ink`/`muted`/`line` swap for dark mode (`prefers-color-scheme`); `accent` is fixed.
+Swatches above follow whichever mode your system is currently in.
+
+## Typography
+
+Every text node goes through the `Text` atom: `size` (`sm`/`xs`) × `tone` (`ink`/`muted`/`surface`).
+No `--font-sans` override lives in `index.css`, so the one font family in use everywhere is
+Tailwind's built-in default, applied globally by Preflight — no component ever reaches for a
+`font-*` utility.
+
+<div className="flex flex-col gap-3 rounded-md border border-line p-4 font-sans">
+  <Text size="sm" tone="ink">The quick brown fox jumps over the lazy dog</Text>
+  <Text size="xs" tone="ink">The quick brown fox jumps over the lazy dog</Text>
+</div>
+
+<div className="flex flex-col gap-2">
+  <Text size="sm" tone="ink">sm / ink — default body text</Text>
+  <Text size="sm" tone="muted">sm / muted — secondary text</Text>
+  <Text size="xs" tone="ink">xs / ink — small labels</Text>
+  <Text size="xs" tone="muted">xs / muted — timestamps, captions</Text>
+</div>
+
+## States
+
+Hover/focus/disabled classes are centralized in `ui/atoms/interactive-styles.ts` — every
+clickable/focusable atom below reuses the same tokens instead of hand-rolled duplicates. Tab
+through this page to see the shared focus ring; hover/click for the rest.
+
+<div className="flex flex-wrap items-center gap-4">
+  <Button onClick={() => {}}>Enabled</Button>
+  <Button disabled onClick={() => {}}>Disabled</Button>
+  <IconButton icon={Settings} label="Settings" onClick={() => {}} />
+  <IconButton disabled icon={Settings} label="Settings" onClick={() => {}} />
+  <Checkbox checked={false} label="Enabled" onChange={() => {}} />
+  <Checkbox checked={false} disabled label="Disabled" onChange={() => {}} />
+  <StatusDot tone="active" />
+  <StatusDot tone="pending" />
+  <StatusDot tone="idle" />
+  <StatusDot tone="error" />
+</div>

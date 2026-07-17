@@ -14,7 +14,7 @@ const preview: Preview = {
     // Order (`GUI_ATOMIC_DESIGN.md`) instead. Stories within a tier still sort alphabetically.
     options: {
       storySort: {
-        order: ['atoms', 'molecules', 'organisms', 'templates', 'pages'],
+        order: ['tokens', 'atoms', 'molecules', 'organisms', 'templates', 'pages'],
       },
     },
   },
