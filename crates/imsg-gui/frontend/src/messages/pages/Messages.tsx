@@ -7,7 +7,10 @@ interface MessagesProps {
   onResumeConversationPolling: () => void
   onResumeThreadsPolling: () => void
   onSelectThread: (address: string) => void
+  onSendMessage: (text: string) => void
   selectedAddress: string | undefined
+  sendError: string | undefined
+  sendPending: boolean
   threads: ThreadDto[] | undefined
   threadsPollFailed: boolean
 }
@@ -18,7 +21,10 @@ const Messages = ({
   onResumeConversationPolling,
   onResumeThreadsPolling,
   onSelectThread,
+  onSendMessage,
   selectedAddress,
+  sendError,
+  sendPending,
   threads,
   threadsPollFailed,
 }: MessagesProps): React.JSX.Element => (
@@ -28,7 +34,10 @@ const Messages = ({
     onResumeConversationPolling={onResumeConversationPolling}
     onResumeThreadsPolling={onResumeThreadsPolling}
     onSelectThread={onSelectThread}
+    onSendMessage={onSendMessage}
     selectedAddress={selectedAddress}
+    sendError={sendError}
+    sendPending={sendPending}
     threads={threads}
     threadsPollFailed={threadsPollFailed}
   />

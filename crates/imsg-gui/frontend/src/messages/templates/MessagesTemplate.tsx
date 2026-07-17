@@ -4,6 +4,7 @@ import ConversationView from '@/messages/organisms/ConversationView.tsx'
 import EmptyState from '@/ui/molecules/EmptyState.tsx'
 import ErrorState from '@/ui/molecules/ErrorState.tsx'
 import LoadingState from '@/ui/molecules/LoadingState.tsx'
+import MessageComposer from '@/ui/molecules/MessageComposer.tsx'
 import ThreadList from '@/messages/organisms/ThreadList.tsx'
 
 const screen = (children: React.ReactNode): React.JSX.Element => <CenteredScreen>{children}</CenteredScreen>
@@ -40,7 +41,10 @@ interface MessagesTemplateProps {
   onResumeConversationPolling: () => void
   onResumeThreadsPolling: () => void
   onSelectThread: (address: string) => void
+  onSendMessage: (text: string) => void
   selectedAddress: string | undefined
+  sendError: string | undefined
+  sendPending: boolean
   threads: ThreadDto[] | undefined
   threadsPollFailed: boolean
 }
@@ -51,7 +55,10 @@ const MessagesTemplate = ({
   onResumeConversationPolling,
   onResumeThreadsPolling,
   onSelectThread,
+  onSendMessage,
   selectedAddress,
+  sendError,
+  sendPending,
   threads,
   threadsPollFailed,
 }: MessagesTemplateProps): React.JSX.Element => {
@@ -68,13 +75,16 @@ const MessagesTemplate = ({
         <h1 className="text-sm text-muted">Conversations</h1>
         <ThreadList threads={threads} onSelect={onSelectThread} />
       </div>
-      <div className="flex-1 overflow-hidden">
-        {renderConversationPane({
-          messages: conversationMessages,
-          onResumePolling: onResumeConversationPolling,
-          pollFailed: conversationPollFailed,
-          selectedAddress,
-        })}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1">
+          {renderConversationPane({
+            messages: conversationMessages,
+            onResumePolling: onResumeConversationPolling,
+            pollFailed: conversationPollFailed,
+            selectedAddress,
+          })}
+        </div>
+        {selectedAddress !== undefined && <MessageComposer error={sendError} onSend={onSendMessage} pending={sendPending} />}
       </div>
     </div>
   )
