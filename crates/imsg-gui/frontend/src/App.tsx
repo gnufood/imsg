@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import Gate from '@/gate/pages/Gate.tsx'
+import GateConnected from '@/gate/connected/GateConnected.tsx'
 
 // Gate mirrors the backend's startup sequence (device config → daemon → sync, owned by
 // `gate::run` in Rust) and hands off once it reports Ready. The post-gate main app isn't
@@ -12,7 +12,7 @@ const App = (): React.JSX.Element => {
   }, [])
 
   if (!ready) {
-    return <Gate onReady={handleReady} />
+    return <GateConnected onReady={handleReady} />
   }
 
   return <p className="p-6 text-sm text-muted">imsg is ready — main app not built yet.</p>

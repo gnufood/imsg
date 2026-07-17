@@ -1,5 +1,6 @@
 import { CirclePlus } from 'lucide-react'
 import type { PairedDeviceDto } from '@/bindings.ts'
+import Text from '@/ui/atoms/Text.tsx'
 import { useCallback } from 'react'
 
 interface DeviceListItemProps {
@@ -21,8 +22,12 @@ const DeviceListItem = ({ device, onSelect }: DeviceListItemProps): React.JSX.El
         onClick={handleClick}
       >
         <span className="flex flex-col items-start">
-          <span>{device.name ?? device.address}</span>
-          {device.name !== null && <span className="text-xs text-muted">{device.address}</span>}
+          <Text as="span">{device.name ?? device.address}</Text>
+          {device.name !== null && (
+            <Text as="span" size="xs" tone="muted">
+              {device.address}
+            </Text>
+          )}
         </span>
         <CirclePlus className="size-4 shrink-0 text-muted" aria-hidden="true" />
       </button>

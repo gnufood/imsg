@@ -1,0 +1,29 @@
+import type { ReactNode } from 'react'
+
+type TextTone = 'ink' | 'muted'
+type TextSize = 'sm' | 'xs'
+
+const TONE_CLASS: Record<TextTone, string> = {
+  ink: 'text-ink',
+  muted: 'text-muted',
+}
+
+const SIZE_CLASS: Record<TextSize, string> = {
+  sm: 'text-sm',
+  xs: 'text-xs',
+}
+
+interface TextProps {
+  children: ReactNode
+  // 'span' for text nested inside a `<button>` (e.g. DeviceListItem) — `<p>` isn't valid
+  // Phrasing content there.
+  as?: 'p' | 'span'
+  size?: TextSize
+  tone?: TextTone
+}
+
+const Text = ({ children, as: Tag = 'p', size = 'sm', tone = 'ink' }: TextProps): React.JSX.Element => (
+  <Tag className={`${SIZE_CLASS[size]} ${TONE_CLASS[tone]}`}>{children}</Tag>
+)
+
+export default Text
