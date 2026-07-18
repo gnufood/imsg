@@ -14,7 +14,7 @@ const Button = ({ onClick, icon: Icon, disabled = false, children }: ButtonProps
   <button
     type="button"
     disabled={disabled}
-    className={`inline-flex items-center gap-2 rounded-md border border-line px-3.5 py-2 text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus} ${interactiveStyles.disabled} ${interactiveStyles.disabledHoverReset}`}
+    className={`inline-flex items-center gap-2 rounded-md border border-line px-3.5 py-1.5 text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus} ${interactiveStyles.disabled} ${interactiveStyles.disabledHoverReset}`}
     onClick={onClick}
   >
     {Icon !== undefined && <Icon className="size-4" />}
