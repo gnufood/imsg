@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { AnimatePresence } from 'motion/react'
 import Button from '@/ui/atoms/Button.tsx'
 import Checkbox from '@/ui/atoms/Checkbox.tsx'
 import ConfirmDialog from '@/ui/molecules/ConfirmDialog.tsx'
@@ -84,17 +85,19 @@ const renderInstallActions = ({
         {uninstallError}
       </Text>
     )}
-    {confirmUninstallOpen && (
-      <ConfirmDialog
-        confirmLabel="Uninstall"
-        error={undefined}
-        message="Uninstall the daemon service? You can reinstall it later from this screen."
-        onCancel={onCancelUninstall}
-        onConfirm={onConfirmUninstall}
-        pending={uninstalling}
-        title="Uninstall daemon service?"
-      />
-    )}
+    <AnimatePresence>
+      {confirmUninstallOpen && (
+        <ConfirmDialog
+          confirmLabel="Uninstall"
+          error={undefined}
+          message="Uninstall the daemon service? You can reinstall it later from this screen."
+          onCancel={onCancelUninstall}
+          onConfirm={onConfirmUninstall}
+          pending={uninstalling}
+          title="Uninstall daemon service?"
+        />
+      )}
+    </AnimatePresence>
   </>
 )
 
