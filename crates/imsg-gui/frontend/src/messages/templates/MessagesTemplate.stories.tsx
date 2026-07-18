@@ -42,8 +42,6 @@ const meta = {
     onSelectThread: fn(),
     onSendMessage: fn(),
     onToggleLeft: fn(),
-    onToggleRight: fn(),
-    rightCollapsed: false,
     selectedAddress: undefined,
     sendError: undefined,
     sendPending: false,
@@ -84,8 +82,4 @@ export const ConversationReady: Story = {
 
 export const LeftCollapsed: Story = {
   args: { conversationMessages: [...MESSAGES], leftCollapsed: true, selectedAddress: THREADS[0].address, threads: [...THREADS] },
-}
-
-export const RightCollapsed: Story = {
-  args: { conversationMessages: [...MESSAGES], rightCollapsed: true, selectedAddress: THREADS[0].address, threads: [...THREADS] },
 }

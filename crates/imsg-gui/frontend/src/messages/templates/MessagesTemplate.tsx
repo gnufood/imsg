@@ -18,8 +18,6 @@ interface MessagesTemplateProps {
   onSelectThread: (address: string) => void
   onSendMessage: (text: string) => void
   onToggleLeft: () => void
-  onToggleRight: () => void
-  rightCollapsed: boolean
   selectedAddress: string | undefined
   sendError: string | undefined
   sendPending: boolean
@@ -38,8 +36,6 @@ const MessagesTemplate = ({
   onSelectThread,
   onSendMessage,
   onToggleLeft,
-  onToggleRight,
-  rightCollapsed,
   selectedAddress,
   sendError,
   sendPending,
@@ -57,13 +53,11 @@ const MessagesTemplate = ({
     <div className="flex h-screen w-full bg-surface text-ink">
       <ThreadListPane collapsed={leftCollapsed} onSelect={onSelectThread} onToggle={onToggleLeft} threads={threads} />
       <ConversationPane
-        collapsed={rightCollapsed}
         deleting={deleting}
         messages={conversationMessages}
         onDelete={onRequestDelete}
         onResumePolling={onResumeConversationPolling}
         onSendMessage={onSendMessage}
-        onToggle={onToggleRight}
         pollFailed={conversationPollFailed}
         selectedAddress={selectedAddress}
         sendError={sendError}

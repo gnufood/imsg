@@ -1,5 +1,6 @@
 import type { MessageDto, ThreadDto } from '@/bindings.ts'
 import { useCallback, useState } from 'react'
+import { AnimatePresence } from 'motion/react'
 import ConfirmDialog from '@/ui/molecules/ConfirmDialog.tsx'
 import MessagesTemplate from '@/messages/templates/MessagesTemplate.tsx'
 
@@ -25,26 +26,19 @@ const renderDeleteDialog = ({ deleteError, deleting, onCancelDelete, onConfirmDe
 
 interface PaneCollapseState {
   leftCollapsed: boolean
-  rightCollapsed: boolean
   toggleLeft: () => void
-  toggleRight: () => void
 }
 
 // Pulled out of the component so `Messages` itself stays under this repo's max-lines-per-function
 // Limit — still page-owned, presentation-only state, just packaged as a local hook.
 const usePaneCollapse = (): PaneCollapseState => {
   const [leftCollapsed, setLeftCollapsed] = useState(false)
-  const [rightCollapsed, setRightCollapsed] = useState(false)
 
   const toggleLeft = useCallback(() => {
     setLeftCollapsed((collapsed) => !collapsed)
   }, [])
 
-  const toggleRight = useCallback(() => {
-    setRightCollapsed((collapsed) => !collapsed)
-  }, [])
-
-  return { leftCollapsed, rightCollapsed, toggleLeft, toggleRight }
+  return { leftCollapsed, toggleLeft }
 }
 
 interface MessagesProps {
@@ -90,7 +84,7 @@ const Messages = ({
   threads,
   threadsPollFailed,
 }: MessagesProps): React.JSX.Element => {
-  const { leftCollapsed, rightCollapsed, toggleLeft, toggleRight } = usePaneCollapse()
+  const { leftCollapsed, toggleLeft } = usePaneCollapse()
 
   return (
     <>
@@ -105,15 +99,15 @@ const Messages = ({
         onSelectThread={onSelectThread}
         onSendMessage={onSendMessage}
         onToggleLeft={toggleLeft}
-        onToggleRight={toggleRight}
-        rightCollapsed={rightCollapsed}
         selectedAddress={selectedAddress}
         sendError={sendError}
         sendPending={sendPending}
         threads={threads}
         threadsPollFailed={threadsPollFailed}
       />
-      {deleteConfirmOpen && renderDeleteDialog({ deleteError, deleting, onCancelDelete, onConfirmDelete, selectedAddress })}
+      <AnimatePresence>
+        {deleteConfirmOpen && renderDeleteDialog({ deleteError, deleting, onCancelDelete, onConfirmDelete, selectedAddress })}
+      </AnimatePresence>
     </>
   )
 }

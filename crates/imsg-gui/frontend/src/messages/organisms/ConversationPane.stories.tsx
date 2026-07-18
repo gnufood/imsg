@@ -4,7 +4,6 @@ import { fn } from 'storybook/test'
 
 const meta = {
   args: {
-    collapsed: false,
     deleting: false,
     messages: [
       {
@@ -31,7 +30,6 @@ const meta = {
     onDelete: fn(),
     onResumePolling: fn(),
     onSendMessage: fn(),
-    onToggle: fn(),
     pollFailed: false,
     selectedAddress: '00:11:22:33:44:55',
     sendError: undefined,
@@ -57,10 +55,6 @@ export const Loading: Story = {
 
 export const Failed: Story = {
   args: { pollFailed: true },
-}
-
-export const Collapsed: Story = {
-  args: { collapsed: true },
 }
 
 export const Deleting: Story = {

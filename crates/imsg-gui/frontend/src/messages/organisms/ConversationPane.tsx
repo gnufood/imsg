@@ -1,5 +1,3 @@
-import { PanelRightClose, PanelRightOpen, Trash2 } from 'lucide-react'
-import CollapsedRail from '@/ui/molecules/CollapsedRail.tsx'
 import ConversationView from '@/messages/organisms/ConversationView.tsx'
 import EmptyState from '@/ui/molecules/EmptyState.tsx'
 import ErrorState from '@/ui/molecules/ErrorState.tsx'
@@ -8,6 +6,7 @@ import LoadingState from '@/ui/molecules/LoadingState.tsx'
 import MessageComposer from '@/ui/molecules/MessageComposer.tsx'
 import type { MessageDto } from '@/bindings.ts'
 import Text from '@/ui/atoms/Text.tsx'
+import { Trash2 } from 'lucide-react'
 
 const paneCenter = (children: React.ReactNode): React.JSX.Element => <div className="grid h-full place-items-center p-6">{children}</div>
 
@@ -36,13 +35,11 @@ const renderContent = ({ messages, onResumePolling, pollFailed, selectedAddress 
 }
 
 interface ConversationPaneProps {
-  collapsed: boolean
   deleting: boolean
   messages: MessageDto[] | undefined
   onDelete: () => void
   onResumePolling: () => void
   onSendMessage: (text: string) => void
-  onToggle: () => void
   pollFailed: boolean
   selectedAddress: string | undefined
   sendError: string | undefined
@@ -50,41 +47,27 @@ interface ConversationPaneProps {
 }
 
 const ConversationPane = ({
-  collapsed,
   deleting,
   messages,
   onDelete,
   onResumePolling,
   onSendMessage,
-  onToggle,
   pollFailed,
   selectedAddress,
   sendError,
   sendPending,
-}: ConversationPaneProps): React.JSX.Element => {
-  if (collapsed) {
-    return (
-      <div className="flex w-12 shrink-0 flex-col">
-        <CollapsedRail expandIcon={PanelRightOpen} expandLabel="Expand conversation panel" onExpand={onToggle} />
-      </div>
-    )
-  }
-  return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line p-4">
-        <Text as="span" tone="muted">
-          Conversation
-        </Text>
-        <div className="flex items-center gap-1">
-          {/* Only offer delete once a conversation is actually selected — nothing to delete otherwise. */}
-          {selectedAddress !== undefined && <IconButton disabled={deleting} icon={Trash2} label="Delete conversation" onClick={onDelete} />}
-          <IconButton icon={PanelRightClose} label="Collapse conversation panel" onClick={onToggle} />
-        </div>
-      </div>
-      <div className="min-h-0 flex-1">{renderContent({ messages, onResumePolling, pollFailed, selectedAddress })}</div>
-      {selectedAddress !== undefined && <MessageComposer error={sendError} onSend={onSendMessage} pending={sendPending} />}
+}: ConversationPaneProps): React.JSX.Element => (
+  <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex items-center justify-between border-b border-line p-4">
+      <Text as="span" tone="muted">
+        Conversation
+      </Text>
+      {/* Only offer delete once a conversation is actually selected — nothing to delete otherwise. */}
+      {selectedAddress !== undefined && <IconButton disabled={deleting} icon={Trash2} label="Delete conversation" onClick={onDelete} />}
     </div>
-  )
-}
+    <div className="min-h-0 flex-1">{renderContent({ messages, onResumePolling, pollFailed, selectedAddress })}</div>
+    {selectedAddress !== undefined && <MessageComposer error={sendError} onSend={onSendMessage} pending={sendPending} />}
+  </div>
+)
 
 export default ConversationPane
