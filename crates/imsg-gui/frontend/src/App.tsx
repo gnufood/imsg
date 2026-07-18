@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import AppNav from '@/ui/molecules/AppNav.tsx'
-import AppShellTemplate from '@/ui/templates/AppShellTemplate.tsx'
+import AppTemplate from '@/ui/templates/AppTemplate.tsx'
 import GateConnected from '@/gate/connected/GateConnected.tsx'
 import MessagesConnected from '@/messages/connected/MessagesConnected.tsx'
 import SettingsConnected from '@/settings/connected/SettingsConnected.tsx'
@@ -18,21 +17,16 @@ const App = (): React.JSX.Element => {
     setReady(true)
   }, [])
 
-  // Wrapped in `useMemo` — same reason as `GateConnected`'s `deviceSetupSlot`: avoids
-  // Remounting `AppNav` (and the screen beneath it doesn't depend on this identity anyway) on
-  // Every unrelated re-render.
-  const nav = useMemo(() => <AppNav activeScreen={screen} onSelectScreen={setScreen} />, [screen])
+  // Both slots mount once `ready` and never depend on anything that changes afterward — same
+  // `deviceSetupSlot` precedent as `GateConnected`, just with empty deps instead of one.
+  const messagesSlot = useMemo(() => <MessagesConnected />, [])
+  const settingsSlot = useMemo(() => <SettingsConnected />, [])
 
   if (!ready) {
     return <GateConnected onReady={handleReady} />
   }
 
-  return (
-    <AppShellTemplate nav={nav}>
-      {screen === 'messages' && <MessagesConnected />}
-      {screen === 'settings' && <SettingsConnected />}
-    </AppShellTemplate>
-  )
+  return <AppTemplate messagesSlot={messagesSlot} onSelectScreen={setScreen} screen={screen} settingsSlot={settingsSlot} />
 }
 
 export default App
