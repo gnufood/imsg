@@ -22,10 +22,13 @@ copied value, so it can't drift from `index.css` (colors), the `Text` atom (typo
   <ColorItem colors={{ default: 'var(--color-accent)' }} subtitle="--color-accent" title="accent" />
   <ColorItem colors={{ default: 'var(--color-muted)' }} subtitle="--color-muted" title="muted" />
   <ColorItem colors={{ default: 'var(--color-line)' }} subtitle="--color-line" title="line" />
+  <ColorItem colors={{ default: 'var(--color-success)' }} subtitle="--color-success" title="success" />
+  <ColorItem colors={{ default: 'var(--color-info)' }} subtitle="--color-info" title="info" />
 </ColorPalette>
 
 `surface`/`ink`/`muted`/`line` swap for dark mode (`prefers-color-scheme`); `accent` is fixed.
-Swatches above follow whichever mode your system is currently in.
+`success`/`info` (status-only, used by `StatusDot`) swap for dark mode too. Swatches above follow
+whichever mode your system is currently in.
 
 ## Typography
 

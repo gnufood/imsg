@@ -101,6 +101,7 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             daemon::daemon_install,
             daemon::daemon_uninstall,
             daemon::daemon_status,
+            daemon::daemon_service_status,
             daemon::daemon_stop,
             daemon::daemon_restart,
             daemon::broker_status,

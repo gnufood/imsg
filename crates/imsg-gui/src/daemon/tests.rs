@@ -38,6 +38,22 @@ fn level_maps_system_flag() {
     assert_eq!(level(false), service::ServiceLevel::User);
 }
 
+#[test]
+fn service_install_state_mirrors_service_state() {
+    assert_eq!(
+        ServiceInstallState::from(service::ServiceState::NotInstalled),
+        ServiceInstallState::NotInstalled
+    );
+    assert_eq!(
+        ServiceInstallState::from(service::ServiceState::Running),
+        ServiceInstallState::Running
+    );
+    assert_eq!(
+        ServiceInstallState::from(service::ServiceState::Stopped(Some("exited".to_owned()))),
+        ServiceInstallState::Stopped(Some("exited".to_owned())),
+    );
+}
+
 #[tokio::test]
 async fn status_reports_session_state() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:02:01";

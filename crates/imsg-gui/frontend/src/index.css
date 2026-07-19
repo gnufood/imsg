@@ -9,6 +9,10 @@
   --color-accent: #786635;
   --color-muted: #6b6b6b;
   --color-line: rgb(0 0 0 / 12%);
+  /* Status-only hues (StatusDot) — not sampled from imsg.png like the rest, since "installed"/
+     "in progress" need to read as genuinely different colors, not shades of the same brand tone. */
+  --color-success: #2f7a4a;
+  --color-info: #2f6fa8;
 }
 
 /* Pre-gate fallback (Gate/Splash/DeviceSetup): `useThemePreference` (see
@@ -22,6 +26,8 @@
     --color-accent: #a68d49;
     --color-muted: rgb(245 245 243 / 58%);
     --color-line: rgb(245 245 243 / 12%);
+    --color-success: #6fc28f;
+    --color-info: #6ba9d9;
   }
 }
 
@@ -34,6 +40,8 @@
   --color-accent: #a68d49;
   --color-muted: rgb(245 245 243 / 58%);
   --color-line: rgb(245 245 243 / 12%);
+  --color-success: #6fc28f;
+  --color-info: #6ba9d9;
 }
 
 body {

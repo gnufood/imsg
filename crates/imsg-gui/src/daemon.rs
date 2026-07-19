@@ -45,6 +45,38 @@ pub async fn status(addr: &str) -> Option<ipc::SessionState> {
     broker_client::query_state(addr).await
 }
 
+/// Registration/run state of the daemon service at a given [`service::ServiceLevel`], mirrored
+/// from [`service::ServiceState`] (that type has no `Serialize`/`specta::Type` derive of its own).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum ServiceInstallState {
+    /// No service is registered under imsg's label at this level.
+    NotInstalled,
+    /// Registered and currently running.
+    Running,
+    /// Registered but not running, with a reason if the platform reports one.
+    Stopped(Option<String>),
+}
+
+impl From<service::ServiceState> for ServiceInstallState {
+    fn from(state: service::ServiceState) -> Self {
+        match state {
+            service::ServiceState::NotInstalled => Self::NotInstalled,
+            service::ServiceState::Running => Self::Running,
+            service::ServiceState::Stopped(reason) => Self::Stopped(reason),
+        }
+    }
+}
+
+/// Returns whether the daemon service is registered at the given level, and its run state if so.
+///
+/// # Errors
+///
+/// Returns [`service::Error`] if no native service manager is available or it fails to report
+/// status.
+pub fn service_status(system: bool) -> Result<ServiceInstallState, service::Error> {
+    service::status(level(system)).map(ServiceInstallState::from)
+}
+
 /// Result of a [`stop`] request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum StopOutcome {

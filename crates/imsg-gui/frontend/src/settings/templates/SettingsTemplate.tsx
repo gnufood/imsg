@@ -36,28 +36,36 @@ const renderDaemonControls = ({
   installing,
   onInstall,
   onRestart,
+  onResumeServiceStatusPolling,
   onStop,
   onUninstall,
   restartError,
   restarting,
+  serviceStatusPollFailed,
   stopError,
   stopping,
+  systemInstalled,
   uninstallError,
   uninstalling,
+  userInstalled,
 }: DaemonControlsArgs): React.JSX.Element => (
   <DaemonControls
     installError={installError}
     installing={installing}
     onInstall={onInstall}
     onRestart={onRestart}
+    onResumeServiceStatusPolling={onResumeServiceStatusPolling}
     onStop={onStop}
     onUninstall={onUninstall}
     restartError={restartError}
     restarting={restarting}
+    serviceStatusPollFailed={serviceStatusPollFailed}
     stopError={stopError}
     stopping={stopping}
+    systemInstalled={systemInstalled}
     uninstallError={uninstallError}
     uninstalling={uninstalling}
+    userInstalled={userInstalled}
   />
 )
 

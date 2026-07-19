@@ -48,6 +48,23 @@ pub async fn daemon_status(addr: String) -> Option<SessionState> {
     crate::daemon::status(&addr).await
 }
 
+/// Returns the daemon service's registration/run state at the given level.
+///
+/// Untested against a real OS service manager for the same reason [`daemon_install`]/
+/// [`daemon_uninstall`] are — see `crate::daemon`'s test doc.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] if no native service manager is available or it fails to report
+/// status.
+#[tauri::command]
+#[specta::specta]
+pub fn daemon_service_status(
+    system: bool,
+) -> Result<crate::daemon::ServiceInstallState, CommandError> {
+    Ok(crate::daemon::service_status(system)?)
+}
+
 /// Same underlying query as [`daemon_status`] — the CLI keeps `broker status`/`daemon status`
 /// as separate subcommands (ephemeral vs. persistent broker), but the query itself has no
 /// domain-specific shape to distinguish them.

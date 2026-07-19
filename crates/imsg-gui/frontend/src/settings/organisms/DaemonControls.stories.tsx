@@ -8,14 +8,18 @@ const meta = {
     installing: false,
     onInstall: fn(),
     onRestart: fn(),
+    onResumeServiceStatusPolling: fn(),
     onStop: fn(),
     onUninstall: fn(),
     restartError: undefined,
     restarting: false,
+    serviceStatusPollFailed: false,
     stopError: undefined,
     stopping: false,
+    systemInstalled: false,
     uninstallError: undefined,
     uninstalling: false,
+    userInstalled: false,
   },
   component: DaemonControls,
   title: 'organisms/DaemonControls',
@@ -26,14 +30,18 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 
-export const Stopping: Story = {
-  args: { stopping: true },
+export const BothInstalled: Story = {
+  args: { systemInstalled: true, userInstalled: true },
 }
 
-export const StopFailed: Story = {
-  args: { stopError: "Couldn't reach the daemon." },
+export const Checking: Story = {
+  args: { systemInstalled: undefined, userInstalled: undefined },
 }
 
 export const InstallFailed: Story = {
   args: { installError: 'Permission denied registering the service.' },
+}
+
+export const ServiceStatusUnavailable: Story = {
+  args: { serviceStatusPollFailed: true },
 }
