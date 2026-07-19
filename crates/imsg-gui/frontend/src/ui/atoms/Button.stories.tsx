@@ -28,3 +28,9 @@ export const Disabled: Story = {
     disabled: true,
   },
 }
+
+export const Ghost: Story = {
+  args: {
+    ghost: true,
+  },
+}

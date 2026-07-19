@@ -4,6 +4,10 @@ import { fn } from 'storybook/test'
 
 const meta = {
   args: {
+    appearance: {
+      onPreferenceChange: fn(),
+      preference: 'system',
+    },
     channelOverrides: {
       error: undefined,
       mapDraft: '20',

@@ -1,3 +1,5 @@
+import AppearanceSettings from '@/settings/organisms/AppearanceSettings.tsx'
+import type AppearanceSettingsArgs from '@/settings/organisms/AppearanceSettings.types.ts'
 import type ChannelOverridesArgs from '@/settings/organisms/ChannelOverridesForm.types.ts'
 import ChannelOverridesForm from '@/settings/organisms/ChannelOverridesForm.tsx'
 import DaemonControls from '@/settings/organisms/DaemonControls.tsx'
@@ -59,6 +61,10 @@ const renderDaemonControls = ({
   />
 )
 
+const renderAppearance = ({ onPreferenceChange, preference }: AppearanceSettingsArgs): React.JSX.Element => (
+  <AppearanceSettings onPreferenceChange={onPreferenceChange} preference={preference} />
+)
+
 const renderChannelOverrides = ({
   error,
   mapDraft,
@@ -80,12 +86,13 @@ const renderChannelOverrides = ({
 )
 
 interface SettingsTemplateProps {
+  appearance: AppearanceSettingsArgs
   channelOverrides: ChannelOverridesArgs
   daemonControls: DaemonControlsArgs
   statusPanel: StatusPanelArgs
 }
 
-const SettingsTemplate = ({ channelOverrides, daemonControls, statusPanel }: SettingsTemplateProps): React.JSX.Element => (
+const SettingsTemplate = ({ appearance, channelOverrides, daemonControls, statusPanel }: SettingsTemplateProps): React.JSX.Element => (
   <div className="mx-auto flex w-full max-w-lg flex-col gap-8 p-6">
     <section className="flex flex-col gap-3">
       <Text as="h2" tone="muted">Device</Text>
@@ -98,6 +105,10 @@ const SettingsTemplate = ({ channelOverrides, daemonControls, statusPanel }: Set
     <section className="flex flex-col gap-3">
       <Text as="h2" tone="muted">Channels</Text>
       {renderChannelOverrides(channelOverrides)}
+    </section>
+    <section className="flex flex-col gap-3">
+      <Text as="h2" tone="muted">Appearance</Text>
+      {renderAppearance(appearance)}
     </section>
   </div>
 )

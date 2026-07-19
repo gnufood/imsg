@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.5.2",
+    "@storybook/addon-themes": "^10.5.2",
     "@storybook/react-vite": "^10.5.2",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

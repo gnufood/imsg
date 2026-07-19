@@ -4,7 +4,7 @@ import type { StorybookConfig } from '@storybook/react-vite'
 // (Resolves `configDir/..` as project root) — the `@` alias and Tailwind plugin need no
 // Duplication here.
 const config: StorybookConfig = {
-  addons: ['@storybook/addon-docs'],
+  addons: ['@storybook/addon-docs', '@storybook/addon-themes'],
   framework: '@storybook/react-vite',
   // Splash's story references `/splash.webp` from `public/` — Storybook's own dev/build
   // Server doesn't inherit Vite's `publicDir` the way `viteFinal` inherits the rest of the

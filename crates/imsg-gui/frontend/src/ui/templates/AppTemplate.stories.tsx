@@ -57,6 +57,10 @@ const messagesSlot = (
 
 const settingsSlot = (
   <Settings
+    appearance={{
+      onPreferenceChange: fn(),
+      preference: 'system',
+    }}
     channelOverrides={{
       error: undefined,
       mapDraft: '20',
