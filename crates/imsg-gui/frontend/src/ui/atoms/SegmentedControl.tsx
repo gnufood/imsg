@@ -1,9 +1,12 @@
+import type { LucideIcon } from 'lucide-react'
 import interactiveStyles from '@/ui/atoms/interactive-styles.ts'
 import { useMemo } from 'react'
 
 interface SegmentedControlOption<Value extends string> {
   label: string
   value: Value
+  // Optional — rendered before the label when present (e.g. AppearanceSettings' Sun/Moon/Monitor).
+  icon?: LucideIcon
 }
 
 interface SegmentedControlProps<Value extends string> {
@@ -17,6 +20,7 @@ interface SegmentedControlProps<Value extends string> {
 
 interface Segment<Value extends string> {
   handleChange: () => void
+  icon: LucideIcon | undefined
   label: string
   value: Value
 }
@@ -31,6 +35,7 @@ const buildSegments = <Value extends string>(
     handleChange: () => {
       onChange(option.value)
     },
+    icon: option.icon,
     label: option.label,
     value: option.value,
   }))
@@ -48,18 +53,19 @@ const SegmentedControl = <Value extends string>({
   const segments = useMemo(() => buildSegments(options, onChange), [onChange, options])
 
   return (
-    <div className="inline-flex gap-0.5 rounded-md border border-line p-0.5">
+    <div className="inline-flex gap-0.5">
       {segments.map((segment) => {
         const checked = segment.value === value
         let toneClass = `text-muted ${interactiveStyles.hover}`
         if (checked) {
           toneClass = 'bg-accent text-surface'
         }
+        const Icon = segment.icon
 
         return (
           <label
             key={segment.value}
-            className={`cursor-pointer rounded-[5px] px-2.5 py-1 text-sm ${toneClass} ${interactiveStyles.hasFocus} ${interactiveStyles.disabledContainer}`}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-sm ${toneClass} ${interactiveStyles.hasFocus} ${interactiveStyles.disabledContainer}`}
           >
             <input
               checked={checked}
@@ -70,6 +76,7 @@ const SegmentedControl = <Value extends string>({
               type="radio"
               value={segment.value}
             />
+            {Icon !== undefined && <Icon className="size-4" aria-hidden="true" />}
             {segment.label}
           </label>
         )

@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { useCallback, useState } from 'react'
 import AppTemplate from '@/ui/templates/AppTemplate.tsx'
+import type DaemonControlsArgs from '@/settings/organisms/DaemonControls.types.ts'
 import Messages from '@/messages/pages/Messages.tsx'
 import Settings from '@/settings/pages/Settings.tsx'
 import { fn } from 'storybook/test'
 import { useArgs } from 'storybook/preview-api'
-import { useCallback } from 'react'
 
 // Real pages, not placeholders — this is the one story showing the whole app (nav included)
 // The way it actually looks past the gate, since `App.tsx` itself can't be storied (it renders
@@ -55,49 +56,105 @@ const messagesSlot = (
   />
 )
 
-const settingsSlot = (
-  <Settings
-    appearance={{
-      onPreferenceChange: fn(),
-      preference: 'system',
-    }}
-    channelOverrides={{
-      error: undefined,
-      mapDraft: '20',
-      onMapDraftChange: fn(),
-      onPbapDraftChange: fn(),
-      onSave: fn(),
-      pbapDraft: '21',
-      saving: false,
-    }}
-    daemonControls={{
-      installError: undefined,
-      installing: false,
-      onInstall: fn(),
-      onRestart: fn(),
-      onResumeServiceStatusPolling: fn(),
-      onStop: fn(),
-      onUninstall: fn(),
-      restartError: undefined,
-      restarting: false,
-      serviceStatusPollFailed: false,
-      stopError: undefined,
-      stopping: false,
-      systemInstalled: false,
-      uninstallError: undefined,
-      uninstalling: false,
-      userInstalled: false,
-    }}
-    statusPanel={{
-      address: '00:11:22:33:44:55',
-      configFailed: false,
-      onResumeStatusPolling: fn(),
-      onRetryConfig: fn(),
-      status: 'active',
-      statusPollFailed: false,
-    }}
-  />
-)
+const appearanceArgs = {
+  onPreferenceChange: fn(),
+  preference: 'system' as const,
+}
+
+const channelOverridesArgs = {
+  detectError: undefined,
+  detecting: false,
+  mapChannel: 8,
+  mapDraft: '8',
+  onCancel: fn(),
+  onDetect: fn(),
+  onMapDraftChange: fn(),
+  onPbapDraftChange: fn(),
+  onSave: fn(),
+  pbapChannel: 12,
+  pbapDraft: '12',
+  saveError: undefined,
+  saving: false,
+}
+
+const statusPanelArgs = {
+  address: '00:11:22:33:44:55',
+  configFailed: false,
+  onResumeStatusPolling: fn(),
+  onRetryConfig: fn(),
+  status: 'active' as const,
+  statusPollFailed: false,
+}
+
+interface DaemonSimState {
+  installing: boolean
+  systemInstalled: boolean
+  uninstalling: boolean
+  userInstalled: boolean
+}
+
+const DAEMON_SIM_INITIAL: DaemonSimState = { installing: false, systemInstalled: false, uninstalling: false, userInstalled: false }
+
+// Simulates the real round trip `use-daemon-actions.ts` drives (brief pending state, then the
+// Installed flag flips) — this is the one story where `AppTemplate` renders the real `Settings`
+// Page, so Install/Uninstall need to actually do something instead of just logging to the
+// Actions panel. `DaemonControls` itself already owns the uninstall confirm-dialog step; this
+// Only has to react once that's resolved into a real `onUninstall` call.
+const SIMULATED_DAEMON_DELAY_MS = 400
+
+const useSimulatedDaemonControls = (): DaemonControlsArgs => {
+  const [state, setState] = useState(DAEMON_SIM_INITIAL)
+
+  const onInstall = useCallback((system: boolean) => {
+    setState((current) => ({ ...current, installing: true }))
+    setTimeout(() => {
+      setState((current) => {
+        if (system) {
+          return { ...current, installing: false, systemInstalled: true }
+        }
+        return { ...current, installing: false, userInstalled: true }
+      })
+    }, SIMULATED_DAEMON_DELAY_MS)
+  }, [])
+
+  const onUninstall = useCallback((system: boolean) => {
+    setState((current) => ({ ...current, uninstalling: true }))
+    setTimeout(() => {
+      setState((current) => {
+        if (system) {
+          return { ...current, systemInstalled: false, uninstalling: false }
+        }
+        return { ...current, uninstalling: false, userInstalled: false }
+      })
+    }, SIMULATED_DAEMON_DELAY_MS)
+  }, [])
+
+  return {
+    installError: undefined,
+    installing: state.installing,
+    onInstall,
+    onRestart: fn(),
+    onResumeServiceStatusPolling: fn(),
+    onStop: fn(),
+    onUninstall,
+    restartError: undefined,
+    restarting: false,
+    serviceStatusPollFailed: false,
+    stopError: undefined,
+    stopping: false,
+    systemInstalled: state.systemInstalled,
+    uninstallError: undefined,
+    uninstalling: state.uninstalling,
+    userInstalled: state.userInstalled,
+  }
+}
+
+const InteractiveSettingsSlot = (): React.JSX.Element => {
+  const daemonControls = useSimulatedDaemonControls()
+  return <Settings appearance={appearanceArgs} channelOverrides={channelOverridesArgs} daemonControls={daemonControls} statusPanel={statusPanelArgs} />
+}
+
+const settingsSlot = <InteractiveSettingsSlot />
 
 const meta = {
   args: {

@@ -18,11 +18,19 @@ const SettingsConnected = ({ onPreferenceChange, preference }: AppearanceSetting
   const address = config?.device_address
   const { pollFailed: statusPollFailed, resumePolling, status } = useDaemonStatus(address)
   const daemonControls = useDaemonActions(address, reload)
-  const { error: channelError, mapDraft, onMapDraftChange, onPbapDraftChange, pbapDraft, save, saving: savingChannels } = useChannelOverrides(
-    config?.map_channel,
-    config?.pbap_channel,
-    reload,
-  )
+  const {
+    cancel,
+    detect,
+    detectError,
+    detecting,
+    mapDraft,
+    onMapDraftChange,
+    onPbapDraftChange,
+    pbapDraft,
+    save,
+    saveError,
+    saving: savingChannels,
+  } = useChannelOverrides({ address, mapChannel: config?.map_channel, onSaved: reload, pbapChannel: config?.pbap_channel })
 
   const appearance = useMemo(() => ({ onPreferenceChange, preference }), [onPreferenceChange, preference])
 
@@ -32,8 +40,22 @@ const SettingsConnected = ({ onPreferenceChange, preference }: AppearanceSetting
   )
 
   const channelOverrides = useMemo(
-    () => ({ error: channelError, mapDraft, onMapDraftChange, onPbapDraftChange, onSave: save, pbapDraft, saving: savingChannels }),
-    [channelError, mapDraft, onMapDraftChange, onPbapDraftChange, save, pbapDraft, savingChannels],
+    () => ({
+      detectError,
+      detecting,
+      mapChannel: config?.map_channel,
+      mapDraft,
+      onCancel: cancel,
+      onDetect: detect,
+      onMapDraftChange,
+      onPbapDraftChange,
+      onSave: save,
+      pbapChannel: config?.pbap_channel,
+      pbapDraft,
+      saveError,
+      saving: savingChannels,
+    }),
+    [cancel, config?.map_channel, config?.pbap_channel, detect, detectError, detecting, mapDraft, onMapDraftChange, onPbapDraftChange, save, pbapDraft, saveError, savingChannels],
   )
 
   return <Settings appearance={appearance} channelOverrides={channelOverrides} daemonControls={daemonControls} statusPanel={statusPanel} />

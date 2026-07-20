@@ -4,12 +4,18 @@ import { fn } from 'storybook/test'
 
 const meta = {
   args: {
-    error: undefined,
-    mapDraft: '20',
+    detectError: undefined,
+    detecting: false,
+    mapChannel: 8,
+    mapDraft: '8',
+    onCancel: fn(),
+    onDetect: fn(),
     onMapDraftChange: fn(),
     onPbapDraftChange: fn(),
     onSave: fn(),
-    pbapDraft: '21',
+    pbapChannel: 12,
+    pbapDraft: '12',
+    saveError: undefined,
     saving: false,
   },
   component: ChannelOverridesForm,
@@ -19,12 +25,12 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+// Default renders the summary rows only — Saving/SaveFailed/Detecting/DetectFailed all live
+// Behind the "Change manually…" toggle, which is local `isEditing` state the component owns
+// Itself (not an arg), same reason `DaemonControls.stories.tsx` has no dedicated
+// Confirm-dialog-open story either. Click through in the canvas to reach the editor.
 export const Default: Story = {}
 
-export const Saving: Story = {
-  args: { saving: true },
-}
-
-export const Failed: Story = {
-  args: { error: 'Channels must be numbers.' },
+export const Loading: Story = {
+  args: { mapChannel: undefined, pbapChannel: undefined },
 }

@@ -28,18 +28,18 @@ const ServiceStatusCard = ({ description, disabled, installed, onToggle, title }
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-line px-3 py-2">
+    <div className="flex items-center gap-3 py-1">
       <div className="flex flex-1 flex-col gap-0.5">
-        <Text>{title}</Text>
+        <div className="flex items-center gap-1.5">
+          <StatusDot tone={statusTone} />
+          <Text>{title}</Text>
+          {/* `StatusDot` is decorative-only (see its own doc comment) — this is the visible
+          label it still needs for screen readers, just not rendered as its own line. */}
+          <span className="sr-only">{statusLabel}</span>
+        </div>
         <Text size="xs" tone="muted">
           {description}
         </Text>
-        <div className="flex items-center gap-1.5">
-          <StatusDot tone={statusTone} />
-          <Text size="xs" tone="muted">
-            {statusLabel}
-          </Text>
-        </div>
       </div>
       <Button disabled={disabled || installed === undefined} onClick={onToggle}>
         {actionLabel}

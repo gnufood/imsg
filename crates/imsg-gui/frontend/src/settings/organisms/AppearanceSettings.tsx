@@ -1,10 +1,13 @@
+import { Monitor, Moon, Sun } from 'lucide-react'
 import type AppearanceSettingsArgs from '@/settings/organisms/AppearanceSettings.types.ts'
 import SegmentedControl from '@/ui/atoms/SegmentedControl.tsx'
 
-const OPTIONS: { label: string, value: 'dark' | 'light' | 'system' }[] = [
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' },
-  { label: 'System', value: 'system' },
+// `typeof Sun` (not a separate `LucideIcon` import) to avoid a duplicate-import from
+// 'lucide-react' — same workaround as ErrorState/EmptyState.
+const OPTIONS: { icon: typeof Sun, label: string, value: 'dark' | 'light' | 'system' }[] = [
+  { icon: Sun, label: 'Light', value: 'light' },
+  { icon: Moon, label: 'Dark', value: 'dark' },
+  { icon: Monitor, label: 'System', value: 'system' },
 ]
 
 // No loading/error/disabled state of its own — unlike `DaemonControls`/`ChannelOverridesForm`,

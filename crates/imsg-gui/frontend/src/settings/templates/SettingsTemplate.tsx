@@ -74,21 +74,33 @@ const renderAppearance = ({ onPreferenceChange, preference }: AppearanceSettings
 )
 
 const renderChannelOverrides = ({
-  error,
+  detectError,
+  detecting,
+  mapChannel,
   mapDraft,
+  onCancel,
+  onDetect,
   onMapDraftChange,
   onPbapDraftChange,
   onSave,
+  pbapChannel,
   pbapDraft,
+  saveError,
   saving,
 }: ChannelOverridesArgs): React.JSX.Element => (
   <ChannelOverridesForm
-    error={error}
+    detectError={detectError}
+    detecting={detecting}
+    mapChannel={mapChannel}
     mapDraft={mapDraft}
+    onCancel={onCancel}
+    onDetect={onDetect}
     onMapDraftChange={onMapDraftChange}
     onPbapDraftChange={onPbapDraftChange}
     onSave={onSave}
+    pbapChannel={pbapChannel}
     pbapDraft={pbapDraft}
+    saveError={saveError}
     saving={saving}
   />
 )
@@ -100,24 +112,35 @@ interface SettingsTemplateProps {
   statusPanel: StatusPanelArgs
 }
 
+// Two independent flex columns, not a `grid` — left is live status (Device/Daemon), right is
+// Configuration (Channels/Appearance). `grid`'s row-height sync would stretch the shorter cell
+// In each row to match its taller neighbor (e.g. Device left with a gap before Daemon starts,
+// If Channels ran longer) — flex columns let each stack tightly on its own content instead.
+// Fixed side-by-side rather than a responsive breakpoint: `tauri.conf.json`'s `minWidth: 800` is
+// A hard floor for this desktop window, not a browser viewport, so there's no narrow case to
+// Fall back from.
 const SettingsTemplate = ({ appearance, channelOverrides, daemonControls, statusPanel }: SettingsTemplateProps): React.JSX.Element => (
-  <div className="mx-auto flex w-full max-w-lg flex-col gap-8 p-6">
-    <section className="flex flex-col gap-3">
-      <Text as="h2" tone="muted">Device</Text>
-      {renderStatusPanel(statusPanel)}
-    </section>
-    <section className="flex flex-col gap-3">
-      <Text as="h2" tone="muted">Daemon</Text>
-      {renderDaemonControls(daemonControls)}
-    </section>
-    <section className="flex flex-col gap-3">
-      <Text as="h2" tone="muted">Channels</Text>
-      {renderChannelOverrides(channelOverrides)}
-    </section>
-    <section className="flex flex-col gap-3">
-      <Text as="h2" tone="muted">Appearance</Text>
-      {renderAppearance(appearance)}
-    </section>
+  <div className="mx-auto flex w-full max-w-3xl gap-x-10 p-6">
+    <div className="flex flex-1 flex-col gap-8">
+      <section className="flex flex-col gap-3">
+        <Text as="h2" tone="accent">Device</Text>
+        {renderStatusPanel(statusPanel)}
+      </section>
+      <section className="flex flex-col gap-3">
+        <Text as="h2" tone="accent">Daemon</Text>
+        {renderDaemonControls(daemonControls)}
+      </section>
+    </div>
+    <div className="flex flex-1 flex-col gap-8">
+      <section className="flex flex-col gap-3">
+        <Text as="h2" tone="accent">Channels</Text>
+        {renderChannelOverrides(channelOverrides)}
+      </section>
+      <section className="flex flex-col gap-3">
+        <Text as="h2" tone="accent">Appearance</Text>
+        {renderAppearance(appearance)}
+      </section>
+    </div>
   </div>
 )
 

@@ -15,8 +15,8 @@ interface ServiceDescriptor {
 }
 
 const SERVICES: ServiceDescriptor[] = [
-  { description: 'Runs when you sign in — no administrator access.', level: 'user', title: 'User service' },
-  { description: 'Runs for all users — administrator access required.', level: 'system', title: 'System service' },
+  { description: 'Runs in the user session at login. Unprivileged.', level: 'user', title: 'User service' },
+  { description: 'Runs at boot, independent of login. Requires root.', level: 'system', title: 'System service' },
 ]
 
 interface ActionErrorsArgs {

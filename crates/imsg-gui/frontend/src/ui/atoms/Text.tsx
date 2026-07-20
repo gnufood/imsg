@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 
-type TextTone = 'ink' | 'muted' | 'surface'
+type TextTone = 'accent' | 'ink' | 'muted' | 'surface'
 type TextSize = 'sm' | 'xs'
 
 const TONE_CLASS: Record<TextTone, string> = {
+  accent: 'text-accent',
   ink: 'text-ink',
   muted: 'text-muted',
   surface: 'text-surface',
@@ -12,6 +13,14 @@ const TONE_CLASS: Record<TextTone, string> = {
 const SIZE_CLASS: Record<TextSize, string> = {
   sm: 'text-sm',
   xs: 'text-xs',
+}
+
+// `h1`/`h2` always render bold, regardless of `size` — headings read as headings everywhere
+// They're used (SettingsTemplate's section labels, DeviceSetupTemplate's screen title) rather
+// Than each call site opting in individually.
+const HEADING_CLASS: Record<'h1' | 'h2', string> = {
+  h1: 'text-base font-semibold',
+  h2: 'text-sm font-semibold',
 }
 
 interface TextProps {
@@ -23,8 +32,12 @@ interface TextProps {
   tone?: TextTone
 }
 
-const Text = ({ children, as: Tag = 'p', size = 'sm', tone = 'ink' }: TextProps): React.JSX.Element => (
-  <Tag className={`${SIZE_CLASS[size]} ${TONE_CLASS[tone]}`}>{children}</Tag>
-)
+const Text = ({ children, as: Tag = 'p', size = 'sm', tone = 'ink' }: TextProps): React.JSX.Element => {
+  let sizeClass = SIZE_CLASS[size]
+  if (Tag === 'h1' || Tag === 'h2') {
+    sizeClass = HEADING_CLASS[Tag]
+  }
+  return <Tag className={`${sizeClass} ${TONE_CLASS[tone]}`}>{children}</Tag>
+}
 
 export default Text

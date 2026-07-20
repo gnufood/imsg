@@ -4,7 +4,7 @@ import { fn } from 'storybook/test'
 
 const meta = {
   args: {
-    description: 'Runs when you sign in — no administrator access.',
+    description: 'Runs in the user session at login. Unprivileged.',
     disabled: false,
     installed: false,
     onToggle: fn(),
