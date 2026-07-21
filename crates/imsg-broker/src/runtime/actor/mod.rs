@@ -19,13 +19,15 @@ use store::Store;
 use tokio::sync::{broadcast, mpsc, watch};
 
 use super::types::{
-    ActorHandles, ConnState, ConnectPolicy, Connector, DeviceHandle, DeviceOp, TerminalReason,
+    ActorHandles, ConnState, ConnectPolicy, Connector, DeviceHandle, DeviceOp, PbapConnector,
+    TerminalReason,
 };
 
 /// Owns the connection lifecycle and serves [`DeviceOp`]s from connection tasks.
 struct Actor<T> {
     rx: mpsc::Receiver<DeviceOp>,
     connect: Connector<T>,
+    pbap_connect: PbapConnector<T>,
     store: Store,
     idle: Option<Duration>,
     policy: ConnectPolicy,
@@ -62,6 +64,7 @@ enum OpOutcome {
 /// exhausted budget.
 pub(in crate::runtime) fn spawn<T>(
     connector: Connector<T>,
+    pbap_connector: PbapConnector<T>,
     store: Store,
     idle: Option<Duration>,
     policy: ConnectPolicy,
@@ -77,6 +80,7 @@ where
     let actor = Actor {
         rx: op_rx,
         connect: connector,
+        pbap_connect: pbap_connector,
         store,
         idle,
         policy,
@@ -105,6 +109,30 @@ mod tests {
         include_bytes!("../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
     const NOTIF_REG_OK: &[u8] = &[0xA0, 0x00, 0x03];
     const GENERIC_OK: &[u8] = &[0xA0, 0x00, 0x03];
+    // OBEX CONNECT OK response with a ConnectionId header (same fixture bytes as imsg-pbap's
+    // `tests/fixtures/pbap_connect_rsp.bin`).
+    const PBAP_CONNECT_RSP: &[u8] = &[
+        0xa0, 0x00, 0x1f, 0x10, 0x00, 0x0f, 0xa0, 0xcb, 0xdd, 0x20, 0x40, 0xd0, 0x4a, 0x00, 0x13,
+        0x79, 0x61, 0x35, 0xf0, 0xf0, 0xc5, 0x11, 0xd8, 0x09, 0x66, 0x08, 0x00, 0x20, 0x0c, 0x9a,
+        0x66,
+    ];
+
+    /// Builds a PBAP connector whose every call yields a `PbapClient<DuplexStream>` backed by a
+    /// fresh fake OBEX server that only answers CONNECT — none of the current actor-lifecycle
+    /// tests drive it past that.
+    fn fake_pbap_connector() -> PbapConnector<tokio::io::DuplexStream> {
+        Box::new(|| {
+            Box::pin(async {
+                let (client_io, server_io) = duplex(4096);
+                tokio::spawn(async move {
+                    let mut t = obex_core::wrap(server_io);
+                    t.next().await;
+                    t.send(Bytes::from_static(PBAP_CONNECT_RSP)).await.ok();
+                });
+                pbap_core::client::PbapClient::connect(client_io).await.map_err(SessionError::from)
+            })
+        })
+    }
 
     /// Builds a connector whose every call yields a `MapClient<DuplexStream>` backed by a fresh
     /// minimal fake OBEX server, mirroring the production connector's contract.
@@ -133,6 +161,19 @@ mod tests {
                 Err(SessionError::Transport(obex_core::TransportError::Io(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
                     "no link",
+                ))))
+            })
+        })
+    }
+
+    /// A connector that always fails with a permanent, security-refused transport error —
+    /// what a kernel-rejected `BT_SECURITY` level surfaces as (`EACCES` → `PermissionDenied`).
+    fn permission_denied_connector() -> Connector<tokio::io::DuplexStream> {
+        Box::new(|| {
+            Box::pin(async {
+                Err(SessionError::Transport(obex_core::TransportError::Io(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "BT_SECURITY level refused",
                 ))))
             })
         })
@@ -187,7 +228,13 @@ mod tests {
     #[tokio::test]
     async fn reaches_active_then_shuts_down_when_handle_dropped() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(fake_connector(), store, Some(Duration::from_secs(60)), test_policy());
+        let h = spawn(
+            fake_connector(),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_secs(60)),
+            test_policy(),
+        );
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         drop(h.handle);
@@ -200,7 +247,13 @@ mod tests {
     #[tokio::test]
     async fn failed_connect_goes_terminal() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(failing_connector(), store, Some(Duration::from_secs(60)), test_policy());
+        let h = spawn(
+            failing_connector(),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_secs(60)),
+            test_policy(),
+        );
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Failed(_))).await?;
         Ok(())
@@ -212,7 +265,13 @@ mod tests {
     #[tokio::test]
     async fn failed_connect_reports_permanent_failure() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(failing_connector(), store, Some(Duration::from_secs(60)), test_policy());
+        let h = spawn(
+            failing_connector(),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_secs(60)),
+            test_policy(),
+        );
         let mut shutdown = h.shutdown;
         tokio::time::timeout(Duration::from_secs(3), shutdown.changed()).await??;
         assert!(matches!(*shutdown.borrow(), Some(TerminalReason::PermanentFailure(_))));
@@ -222,7 +281,13 @@ mod tests {
     #[tokio::test]
     async fn idle_timeout_shuts_down_when_some() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(fake_connector(), store, Some(Duration::from_millis(50)), test_policy());
+        let h = spawn(
+            fake_connector(),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_millis(50)),
+            test_policy(),
+        );
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         let mut shutdown = h.shutdown;
@@ -236,7 +301,7 @@ mod tests {
     #[tokio::test]
     async fn no_idle_timeout_when_none() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(fake_connector(), store, None, test_policy());
+        let h = spawn(fake_connector(), fake_pbap_connector(), store, None, test_policy());
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         let mut shutdown = h.shutdown;
@@ -250,7 +315,13 @@ mod tests {
     #[tokio::test]
     async fn bounded_policy_still_gives_up_past_cap() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
-        let h = spawn(flaky_connector(3), store, Some(Duration::from_secs(60)), test_policy());
+        let h = spawn(
+            flaky_connector(3),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_secs(60)),
+            test_policy(),
+        );
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Failed(_))).await?;
         Ok(())
@@ -259,6 +330,33 @@ mod tests {
     /// Daemon's persistent connect policy (`startup_budget: None`, `max_attempts: u32::MAX`)
     /// must survive far more transient failures than the CLI-bounded `test_policy()` would
     /// tolerate — the whole point of a daemon started before the phone is in Bluetooth range.
+    /// A `PermissionDenied` connect failure (e.g. a kernel-refused configured `security_level`)
+    /// must go terminal on the very first attempt, even under the daemon's unbounded policy —
+    /// otherwise a permanently unsatisfiable security requirement would retry forever instead
+    /// of failing fast like [`failed_connect_reports_permanent_failure`] proves for a bounded
+    /// policy.
+    #[tokio::test]
+    async fn permanent_classification_fails_fast_under_unbounded_policy() -> anyhow::Result<()> {
+        let (store, _dir) = fake_store().await?;
+        let policy = ConnectPolicy {
+            initial_backoff: Duration::from_millis(1),
+            max_backoff: Duration::from_millis(2),
+            max_attempts: u32::MAX,
+            startup_budget: None,
+        };
+        let h = spawn(
+            permission_denied_connector(),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_secs(60)),
+            policy,
+        );
+        let mut shutdown = h.shutdown;
+        tokio::time::timeout(Duration::from_millis(500), shutdown.changed()).await??;
+        assert!(matches!(*shutdown.borrow(), Some(TerminalReason::PermanentFailure(_))));
+        Ok(())
+    }
+
     #[tokio::test]
     async fn unbounded_policy_survives_past_bounded_cap() -> anyhow::Result<()> {
         let (store, _dir) = fake_store().await?;
@@ -268,7 +366,13 @@ mod tests {
             max_attempts: u32::MAX,
             startup_budget: None,
         };
-        let h = spawn(flaky_connector(3), store, Some(Duration::from_secs(60)), policy);
+        let h = spawn(
+            flaky_connector(3),
+            fake_pbap_connector(),
+            store,
+            Some(Duration::from_secs(60)),
+            policy,
+        );
         let mut state = h.state.clone();
         state.wait_for(|s| matches!(s, ConnState::Active)).await?;
         Ok(())

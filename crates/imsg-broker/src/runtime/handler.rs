@@ -216,6 +216,7 @@ fn req_to_op(
         BrokerRequest::SendLive { number, message } => {
             DeviceOp::LiveSend { number, message, reply }
         }
+        BrokerRequest::SyncContacts => DeviceOp::SyncContacts { reply },
         BrokerRequest::Status | BrokerRequest::Watch | BrokerRequest::Shutdown => {
             return Err(Box::new(BrokerResponse::Error(
                 "internal: routed to one-shot path".into(),

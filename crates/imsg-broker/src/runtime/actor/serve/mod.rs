@@ -61,52 +61,66 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 self.handle_subscribe(reply).await;
                 OpOutcome::Continue
             }
-            DeviceOp::Unsubscribe => {
-                self.watch_count = self.watch_count.saturating_sub(1);
-                if !wants_mns(self.watch_count, self.idle) {
-                    self.stop_mns();
-                }
-                OpOutcome::Continue
-            }
+            DeviceOp::Unsubscribe => self.handle_unsubscribe(),
             DeviceOp::Sync { folder, reply } => {
-                let r = dispatch::do_sync(client, &self.store, folder).await;
-                Self::finish_map(r, reply)
+                Self::finish_map(dispatch::do_sync(client, &self.store, folder).await, reply)
             }
-            DeviceOp::Send { number, message, reply } => {
-                let r = dispatch::do_send(client, &self.store, number, message).await;
-                Self::finish_map(r, reply)
-            }
-            DeviceOp::Delete { msg_handle, folder, reply } => {
-                let r =
-                    dispatch::do_delete(client, &self.store, msg_handle, folder, &self.watch_tx)
-                        .await;
-                Self::finish_map(r, reply)
-            }
+            DeviceOp::Send { number, message, reply } => Self::finish_map(
+                dispatch::do_send(client, &self.store, number, message).await,
+                reply,
+            ),
+            DeviceOp::Delete { msg_handle, folder, reply } => Self::finish_map(
+                dispatch::do_delete(client, &self.store, msg_handle, folder, &self.watch_tx).await,
+                reply,
+            ),
             DeviceOp::LiveMarkRead { handle, reply } => {
-                let r = dispatch::do_live_mark_read(client, handle).await;
-                Self::finish_map(r, reply)
+                Self::finish_map(dispatch::do_live_mark_read(client, handle).await, reply)
             }
             DeviceOp::LiveSend { number, message, reply } => {
-                let r = dispatch::do_live_send(client, number, message).await;
-                Self::finish_map(r, reply)
+                Self::finish_map(dispatch::do_live_send(client, number, message).await, reply)
             }
             DeviceOp::Backfill { reply } => {
-                let r = dispatch::do_backfill(client, &self.store).await;
-                Self::finish_map(r, reply)
+                Self::finish_map(dispatch::do_backfill(client, &self.store).await, reply)
             }
             DeviceOp::LiveList { folder, unread, from, since, limit, offset, reply } => {
-                let r = dispatch::do_live_list(client, folder, unread, from, since, limit, offset)
-                    .await;
-                Self::finish_map(r, reply)
+                Self::finish_map(
+                    dispatch::do_live_list(client, folder, unread, from, since, limit, offset)
+                        .await,
+                    reply,
+                )
             }
             DeviceOp::LiveGet { handle, reply } => {
-                let r = dispatch::do_live_get(client, handle).await;
-                Self::finish_map(r, reply)
+                Self::finish_map(dispatch::do_live_get(client, handle).await, reply)
             }
             DeviceOp::LiveThreads { reply } => {
-                let r = dispatch::do_live_threads(client).await;
-                Self::finish_map(r, reply)
+                Self::finish_map(dispatch::do_live_threads(client).await, reply)
             }
+            DeviceOp::SyncContacts { reply } => {
+                let resp = self.run_sync_contacts().await;
+                let _ = reply.send(resp);
+                OpOutcome::Continue
+            }
+        }
+    }
+
+    /// Drops one `Watch` subscriber, stopping MNS once none remain.
+    fn handle_unsubscribe(&mut self) -> OpOutcome {
+        self.watch_count = self.watch_count.saturating_sub(1);
+        if !wants_mns(self.watch_count, self.idle) {
+            self.stop_mns();
+        }
+        OpOutcome::Continue
+    }
+
+    /// Opens a fresh PBAP connection and syncs contacts, converting any failure — connect or
+    /// sync — into `BrokerResponse::Failed`. Never returns `OpOutcome::SessionLost`: PBAP
+    /// failures are unrelated to the (unaffected) MAP session's health.
+    async fn run_sync_contacts(&mut self) -> BrokerResponse {
+        match (self.pbap_connect)().await {
+            Ok(mut pbap) => dispatch::do_sync_contacts(&mut pbap, &self.store)
+                .await
+                .unwrap_or_else(|e| BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+            Err(e) => BrokerResponse::Failed(Reason::OperationFailed(e.to_string())),
         }
     }
 

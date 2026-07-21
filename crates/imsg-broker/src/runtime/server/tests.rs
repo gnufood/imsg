@@ -10,6 +10,30 @@ use super::*;
 const MAP_CONNECT_RSP: &[u8] =
     include_bytes!("../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
 const NOTIF_REG_OK: &[u8] = &[0xA0, 0x00, 0x03];
+// OBEX CONNECT OK response with a ConnectionId header (same fixture bytes as imsg-pbap's
+// `tests/fixtures/pbap_connect_rsp.bin`).
+const PBAP_CONNECT_RSP: &[u8] = &[
+    0xa0, 0x00, 0x1f, 0x10, 0x00, 0x0f, 0xa0, 0xcb, 0xdd, 0x20, 0x40, 0xd0, 0x4a, 0x00, 0x13, 0x79,
+    0x61, 0x35, 0xf0, 0xf0, 0xc5, 0x11, 0xd8, 0x09, 0x66, 0x08, 0x00, 0x20, 0x0c, 0x9a, 0x66,
+];
+
+/// PBAP connector whose every call answers CONNECT only — `serve_actor` never drives it
+/// further in this test, which exercises idle-wiring, not `SyncContacts` dispatch.
+fn fake_pbap_connector() -> PbapConnector<tokio::io::DuplexStream> {
+    Box::new(|| {
+        Box::pin(async {
+            let (client_io, server_io) = tokio::io::duplex(4096);
+            tokio::spawn(async move {
+                let mut t = obex_core::wrap(server_io);
+                t.next().await;
+                t.send(Bytes::from_static(PBAP_CONNECT_RSP)).await.ok();
+            });
+            pbap_core::client::PbapClient::connect(client_io)
+                .await
+                .map_err(session::SessionError::from)
+        })
+    })
+}
 
 /// Connector whose every call yields a fresh minimal fake OBEX server over an in-memory
 /// duplex stream, mirroring [`make_connector`]'s contract without touching real Bluetooth.
@@ -62,7 +86,7 @@ async fn serve_actor_never_exits_on_idle_when_none() -> anyhow::Result<()> {
 
     let task = tokio::spawn(async move {
         serve_actor(
-            fake_connector(),
+            Connectors { map: fake_connector(), pbap: fake_pbap_connector() },
             store,
             None,
             test_policy(),
@@ -92,6 +116,24 @@ async fn abstract_name_election_is_atomic() -> anyhow::Result<()> {
     };
     assert_eq!(err.kind(), std::io::ErrorKind::AddrInUse);
     Ok(())
+}
+
+#[test]
+fn security_from_config_none_stays_none() {
+    assert_eq!(security_from_config(None), None);
+}
+
+#[test]
+fn security_from_config_maps_each_level() {
+    for (cfg_level, bluer_level) in [
+        (config::SecurityLevel::Sdp, bluer::rfcomm::SecurityLevel::Sdp),
+        (config::SecurityLevel::Low, bluer::rfcomm::SecurityLevel::Low),
+        (config::SecurityLevel::Medium, bluer::rfcomm::SecurityLevel::Medium),
+        (config::SecurityLevel::High, bluer::rfcomm::SecurityLevel::High),
+    ] {
+        let expected = bluer::rfcomm::Security { level: bluer_level, key_size: 0 };
+        assert_eq!(security_from_config(Some(cfg_level)), Some(expected));
+    }
 }
 
 /// The abstract name is released the instant the listener is dropped.

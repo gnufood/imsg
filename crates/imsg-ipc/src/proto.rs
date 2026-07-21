@@ -84,6 +84,10 @@ pub enum BrokerRequest {
     /// Stream MAP notification events; broker sends zero or more [`BrokerResponse::WatchEvent`]
     /// frames until the client closes the connection.
     Watch,
+    /// Pull the main phonebook and upsert contact display names into the local contacts cache
+    /// (see `session::contacts::sync_contacts`). Broker owns the PBAP connection — local mode
+    /// only, no hub/spoke equivalent. Answered with [`BrokerResponse::ContactsSynced`].
+    SyncContacts,
     /// Return the broker's current connection state; always answered with one frame.
     Status,
     /// Request a graceful stop. Answered with [`BrokerResponse::Ok`] once accepted, or
@@ -131,6 +135,11 @@ pub enum BrokerResponse {
         /// from an ephemeral one-shot broker that happens to be holding the same socket, which
         /// self-idles and carries no shutdown coordinator.
         persistent: bool,
+    },
+    /// Contacts cache sync completed; sole answer to [`BrokerRequest::SyncContacts`].
+    ContactsSynced {
+        /// Number of address rows upserted into the local contacts cache.
+        count: usize,
     },
 }
 

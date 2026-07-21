@@ -7,6 +7,7 @@ use std::time::Duration;
 use futures::future::BoxFuture;
 use ipc::{Reason, SessionState, WatchEvent};
 use map_core::client::MapClient;
+use pbap_core::client::PbapClient;
 use session::SessionError;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
@@ -17,6 +18,22 @@ use tokio::sync::{broadcast, mpsc, oneshot, watch};
 /// testable against in-memory duplex streams.
 pub(in crate::runtime) type Connector<T> =
     Box<dyn FnMut() -> BoxFuture<'static, Result<MapClient<T>, SessionError>> + Send>;
+
+/// On-demand factory that establishes a fresh, short-lived PBAP session over stream type `T`.
+///
+/// Unlike [`Connector`], the actor calls this once per [`DeviceOp::SyncContacts`] and the
+/// resulting client is dropped immediately after — there is no persistent PBAP session to
+/// protect or reconnect.
+pub(in crate::runtime) type PbapConnector<T> =
+    Box<dyn FnMut() -> BoxFuture<'static, Result<PbapClient<T>, SessionError>> + Send>;
+
+/// The MAP and PBAP connectors, bundled — every caller constructs and passes both together.
+pub(in crate::runtime) struct Connectors<T> {
+    /// Establishes the persistent MAP session the actor owns for its whole lifetime.
+    pub(in crate::runtime) map: Connector<T>,
+    /// Establishes a fresh, short-lived PBAP session per [`DeviceOp::SyncContacts`].
+    pub(in crate::runtime) pbap: PbapConnector<T>,
+}
 
 /// Backoff and attempt limits for establishing (and re-establishing) the MAP session.
 #[derive(Clone, Copy)]
@@ -126,6 +143,9 @@ pub(in crate::runtime) enum DeviceOp {
         message: String,
         reply: oneshot::Sender<ipc::BrokerResponse>,
     },
+    /// Pull the main phonebook and upsert contact display names into the local contacts cache;
+    /// no MAP session involvement — the actor opens a fresh PBAP connection just for this.
+    SyncContacts { reply: oneshot::Sender<ipc::BrokerResponse> },
     /// Subscribe to inbound MAP event notifications.
     ///
     /// Starts the MNS listener on the first subscriber. Returns a

@@ -146,7 +146,8 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 | DeviceOp::LiveGet { reply, .. }
                 | DeviceOp::LiveThreads { reply }
                 | DeviceOp::LiveMarkRead { reply, .. }
-                | DeviceOp::LiveSend { reply, .. } => {
+                | DeviceOp::LiveSend { reply, .. }
+                | DeviceOp::SyncContacts { reply } => {
                     let _ = reply.send(resp);
                 }
                 DeviceOp::Subscribe { .. } | DeviceOp::Unsubscribe => {}

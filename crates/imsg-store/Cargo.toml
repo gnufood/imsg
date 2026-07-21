@@ -18,5 +18,10 @@ strum = "0.28"
 strum_macros = "0.28"
 thiserror = "2"
 
+[dev-dependencies]
+anyhow = "1"
+tempfile = "3"
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }
+
 [lints]
 workspace = true

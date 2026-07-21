@@ -18,7 +18,7 @@ use interprocess::local_socket::{
 use store::Store;
 
 use super::handler::handle_connection;
-use crate::runtime::types::{ActorHandles, ConnectPolicy, Connector};
+use crate::runtime::types::{ActorHandles, ConnectPolicy, Connector, Connectors, PbapConnector};
 
 /// Binds the abstract socket for `addr`.
 ///
@@ -89,8 +89,11 @@ pub(in crate::runtime) async fn serve_daemon(
 ) -> Result<()> {
     let policy = build_daemon_policy(&cfg);
     let readiness_wait = cfg.broker.readiness_wait();
-    let connector = make_connector(addr, channel, cfg.broker.bt_connected());
-    super::shutdown::run(connector, store, policy, listener, device, readiness_wait).await
+    let security = security_from_config(cfg.broker.security_level);
+    let connector = make_connector(addr, channel, cfg.broker.bt_connected(), security);
+    let pbap_connector = make_pbap_connector(addr, cfg.device.pbap_channel);
+    super::shutdown::run(connector, pbap_connector, store, policy, listener, device, readiness_wait)
+        .await
 }
 
 /// Shared by [`serve`] and [`serve_daemon`]; `idle` is their only difference.
@@ -105,8 +108,12 @@ async fn serve_with_idle(
 ) -> Result<()> {
     let policy = build_policy(&cfg);
     let readiness_wait = cfg.broker.readiness_wait();
-    let connector = make_connector(addr, channel, cfg.broker.bt_connected());
-    serve_actor(connector, store, idle, policy, &listener, device, readiness_wait).await
+    let security = security_from_config(cfg.broker.security_level);
+    let connectors = Connectors {
+        map: make_connector(addr, channel, cfg.broker.bt_connected(), security),
+        pbap: make_pbap_connector(addr, cfg.device.pbap_channel),
+    };
+    serve_actor(connectors, store, idle, policy, &listener, device, readiness_wait).await
 }
 
 /// Builds the connect-retry policy for one-shot (`serve`) mode: bounded attempts within a
@@ -136,7 +143,7 @@ pub(in crate::runtime) const fn build_daemon_policy(cfg: &Config) -> ConnectPoli
 /// Connector-generic core of [`serve`]/[`serve_daemon`], split out so the idle-wiring behavior
 /// is testable against a fake in-memory connector instead of a real MAP session.
 async fn serve_actor<T>(
-    connector: Connector<T>,
+    connectors: Connectors<T>,
     store: Store,
     idle: Option<Duration>,
     policy: ConnectPolicy,
@@ -147,15 +154,45 @@ async fn serve_actor<T>(
 where
     T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
-    let handles = super::actor::spawn(connector, store, idle, policy);
+    let handles = super::actor::spawn(connectors.map, connectors.pbap, store, idle, policy);
     serve_loop(handles, listener, device, readiness_wait).await
 }
 
 /// Builds the production connector: every call establishes a fresh RFCOMM/OBEX MAP session to
-/// `addr`:`channel`, gating on `BT_CONNECTED` up to `bt_gate`. Defined here so the transport-specific
-/// stream type stays out of the actor.
-fn make_connector(addr: bluer::Address, channel: u8, bt_gate: Duration) -> Connector<Stream> {
-    Box::new(move || Box::pin(session::lifecycle::connect_map(addr, channel, bt_gate)))
+/// `addr`:`channel`, gating on `BT_CONNECTED` up to `bt_gate` and requesting `security` (if
+/// any) from the kernel. Defined here so the transport-specific stream type stays out of the
+/// actor.
+fn make_connector(
+    addr: bluer::Address,
+    channel: u8,
+    bt_gate: Duration,
+    security: Option<bluer::rfcomm::Security>,
+) -> Connector<Stream> {
+    Box::new(move || Box::pin(session::lifecycle::connect_map(addr, channel, bt_gate, security)))
+}
+
+/// Maps the configured [`config::SecurityLevel`] to the `bluer::rfcomm::Security` value
+/// [`make_connector`] requests from the kernel. `None` means imsg makes no explicit request —
+/// the kernel/BlueZ default (whatever the existing pairing/bond negotiated) applies unchanged.
+/// `key_size: 0` is the `BT_SECURITY` convention for "any size" — this only pins the policy
+/// tier, not a minimum key length.
+const fn security_from_config(
+    level: Option<config::SecurityLevel>,
+) -> Option<bluer::rfcomm::Security> {
+    let Some(level) = level else { return None };
+    let level = match level {
+        config::SecurityLevel::Sdp => bluer::rfcomm::SecurityLevel::Sdp,
+        config::SecurityLevel::Low => bluer::rfcomm::SecurityLevel::Low,
+        config::SecurityLevel::Medium => bluer::rfcomm::SecurityLevel::Medium,
+        config::SecurityLevel::High => bluer::rfcomm::SecurityLevel::High,
+    };
+    Some(bluer::rfcomm::Security { level, key_size: 0 })
+}
+
+/// Builds the production PBAP connector: every call establishes a fresh, short-lived RFCOMM/OBEX
+/// PBAP session to `addr`:`channel` — no persistent session, no notification registration.
+fn make_pbap_connector(addr: bluer::Address, channel: u8) -> PbapConnector<Stream> {
+    Box::new(move || Box::pin(session::lifecycle::connect_pbap(addr, channel)))
 }
 
 /// Accepts connections until the actor signals shutdown. Each connection runs in its own task with

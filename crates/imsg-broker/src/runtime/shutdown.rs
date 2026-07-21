@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
 use super::handler::handle_connection;
-use super::types::{ActorHandles, ConnectPolicy, Connector, TerminalReason};
+use super::types::{ActorHandles, ConnectPolicy, Connector, PbapConnector, TerminalReason};
 
 /// Bound on how long shutdown waits for in-flight connections to finish and for the actor to
 /// confirm it disconnected, each. Not yet configurable.
@@ -32,6 +32,7 @@ const DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
 /// Returns an error if `listener.accept()` fails fatally.
 pub(in crate::runtime) async fn run<T>(
     connector: Connector<T>,
+    pbap_connector: PbapConnector<T>,
     store: Store,
     policy: ConnectPolicy,
     listener: IpcListener,
@@ -49,7 +50,7 @@ where
         "no SIGTERM/SIGINT handling on this platform — only an IPC `Shutdown` request will stop \
          the daemon"
     );
-    let handles = super::actor::spawn(connector, store, None, policy);
+    let handles = super::actor::spawn(connector, pbap_connector, store, None, policy);
     accept_and_drain(handles, listener, device, readiness_wait, token).await
 }
 

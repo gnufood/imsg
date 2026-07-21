@@ -15,6 +15,28 @@ use super::*;
 const MAP_CONNECT_RSP: &[u8] =
     include_bytes!("../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
 const NOTIF_REG_OK: &[u8] = &[0xA0, 0x00, 0x03];
+// OBEX CONNECT OK response with a ConnectionId header (same fixture bytes as imsg-pbap's
+// `tests/fixtures/pbap_connect_rsp.bin`).
+const PBAP_CONNECT_RSP: &[u8] = &[
+    0xa0, 0x00, 0x1f, 0x10, 0x00, 0x0f, 0xa0, 0xcb, 0xdd, 0x20, 0x40, 0xd0, 0x4a, 0x00, 0x13, 0x79,
+    0x61, 0x35, 0xf0, 0xf0, 0xc5, 0x11, 0xd8, 0x09, 0x66, 0x08, 0x00, 0x20, 0x0c, 0x9a, 0x66,
+];
+
+/// Fake PBAP connector that only answers CONNECT — none of these shutdown-coordinator tests
+/// drive it past that.
+fn fake_pbap_connector() -> PbapConnector<tokio::io::DuplexStream> {
+    Box::new(|| {
+        Box::pin(async {
+            let (client_io, server_io) = tokio::io::duplex(4096);
+            tokio::spawn(async move {
+                let mut t = obex_core::wrap(server_io);
+                t.next().await;
+                t.send(Bytes::from_static(PBAP_CONNECT_RSP)).await.ok();
+            });
+            pbap_core::client::PbapClient::connect(client_io).await.map_err(SessionError::from)
+        })
+    })
+}
 
 /// Same fake OBEX/MAP connector as `server::tests` — no real Bluetooth involved.
 fn fake_connector() -> Connector<tokio::io::DuplexStream> {
@@ -91,7 +113,13 @@ async fn cancel_stops_accept_and_drain_even_with_no_connections() -> anyhow::Res
     let name = "imsg/broker/test-shutdown-cancel-empty".to_ns_name::<GenericNamespaced>()?;
     let listener = ListenerOptions::new().name(name).create_tokio()?;
     let (store, _dir) = fake_store().await?;
-    let handles = super::super::actor::spawn(fake_connector(), store, None, test_policy());
+    let handles = super::super::actor::spawn(
+        fake_connector(),
+        fake_pbap_connector(),
+        store,
+        None,
+        test_policy(),
+    );
     let token = CancellationToken::new();
     let cancel = token.clone();
 
@@ -121,7 +149,13 @@ async fn shutdown_request_is_served_then_drain_converges() -> anyhow::Result<()>
     let name = "imsg/broker/test-shutdown-request".to_ns_name::<GenericNamespaced>()?;
     let listener = ListenerOptions::new().name(name).create_tokio()?;
     let (store, _dir) = fake_store().await?;
-    let handles = super::super::actor::spawn(fake_connector(), store, None, test_policy());
+    let handles = super::super::actor::spawn(
+        fake_connector(),
+        fake_pbap_connector(),
+        store,
+        None,
+        test_policy(),
+    );
     let token = CancellationToken::new();
 
     let task = tokio::spawn(async move {
@@ -153,7 +187,13 @@ async fn permanent_connect_failure_surfaces_as_error() -> anyhow::Result<()> {
     let name = "imsg/broker/test-shutdown-permanent-failure".to_ns_name::<GenericNamespaced>()?;
     let listener = ListenerOptions::new().name(name).create_tokio()?;
     let (store, _dir) = fake_store().await?;
-    let handles = super::super::actor::spawn(failing_connector(), store, None, test_policy());
+    let handles = super::super::actor::spawn(
+        failing_connector(),
+        fake_pbap_connector(),
+        store,
+        None,
+        test_policy(),
+    );
     let token = CancellationToken::new();
 
     let result = accept_and_drain(

@@ -1,6 +1,7 @@
 //! Session lifecycle — SDP lookup, RFCOMM connect, OBEX handshake, retry policy, MNS relay, and store sync.
 
 pub mod conn;
+pub mod contacts;
 pub mod fetch;
 pub mod lifecycle;
 pub mod live;

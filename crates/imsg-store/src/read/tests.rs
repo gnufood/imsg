@@ -1,0 +1,57 @@
+//! End-to-end checks against a real `Store` (temp-dir `SQLite`, no mocks).
+
+use secrecy::SecretBox;
+
+use crate::{Direction, NewMessage, Store};
+
+async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
+    let dir = tempfile::tempdir()?;
+    let key: SecretBox<[u8; 32]> = SecretBox::new(Box::new([0u8; 32]));
+    let s = Store::open(dir.path().join("test.db"), key).await?;
+    Ok((s, dir))
+}
+
+fn sample_message(handle: &str, address: &str) -> NewMessage {
+    NewMessage {
+        map_handle: handle.to_owned(),
+        timestamp_ms: 1_700_000_000_000,
+        folder: "telecom/msg/inbox".to_owned(),
+        direction: Direction::Received,
+        address: address.to_owned(),
+        status: crate::STATUS_UNREAD,
+        synced_at: 1_700_000_000_500,
+        text: "hi".to_owned(),
+        outgoing_status: None,
+    }
+}
+
+#[tokio::test]
+async fn threads_carries_cached_contact_name_when_present() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert(sample_message("H1", "+15550001")).await?;
+    db.upsert_contact("+15550001", Some("Alice")).await?;
+
+    let rows = db.threads().await?;
+
+    let row = rows
+        .iter()
+        .find(|t| t.address == "+15550001")
+        .ok_or_else(|| anyhow::anyhow!("thread missing"))?;
+    assert_eq!(row.contact_name.as_deref(), Some("Alice"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn threads_carries_none_contact_name_when_no_cached_contact() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert(sample_message("H1", "+15550001")).await?;
+
+    let rows = db.threads().await?;
+
+    let row = rows
+        .iter()
+        .find(|t| t.address == "+15550001")
+        .ok_or_else(|| anyhow::anyhow!("thread missing"))?;
+    assert_eq!(row.contact_name, None);
+    Ok(())
+}

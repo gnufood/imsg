@@ -80,6 +80,9 @@ pub struct ThreadRow {
     /// Outgoing delivery state of the most recent message in this thread; `None` when the
     /// latest message is received or was synced before Phase 4.
     pub latest_outgoing_status: Option<OutgoingStatus>,
+    /// Cached PBAP display name for `address`, joined from `contacts`; `None` if no contact
+    /// is cached for this exact address (match is a raw string equality, not phone-normalized).
+    pub contact_name: Option<String>,
 }
 
 /// A message to be inserted; rowid and `synced_at` are assigned by the caller.

@@ -47,6 +47,7 @@ fn live_data_response_variants_roundtrip() -> Result<(), serde_json::Error> {
             read: true,
             text: "hi".into(),
         }),
+        BrokerResponse::ContactsSynced { count: 3 },
     ];
     for resp in cases {
         let json = serde_json::to_string(&resp)?;
@@ -71,6 +72,7 @@ fn live_request_variants_roundtrip() -> Result<(), serde_json::Error> {
         BrokerRequest::Threads,
         BrokerRequest::MarkReadDevice { handle: "7".into() },
         BrokerRequest::SendLive { number: "+15550001".into(), message: "hi".into() },
+        BrokerRequest::SyncContacts,
         BrokerRequest::Shutdown,
     ];
     for req in cases {

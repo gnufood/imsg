@@ -86,6 +86,7 @@ fn thread_dto_preserves_fields_and_maps_outgoing_status() {
         total: 4,
         unread: 2,
         latest_outgoing_status: Some(StoreOutgoingStatus::SentConfirmed),
+        contact_name: None,
     };
     let dto = ThreadDto::from(&row);
     assert_eq!(dto.address, "+15550001");
@@ -150,6 +151,22 @@ fn paired_device_dto_keeps_missing_name_absent() -> anyhow::Result<()> {
         transport::discover::PairedDevice { address: "00:00:00:00:00:00".parse()?, name: None };
     assert_eq!(PairedDeviceDto::from(&device).name, None);
     Ok(())
+}
+
+/// Every `config::SecurityLevel` variant must round-trip through `SecurityLevelDto` both ways
+/// — exhaustive in both `From` impls, so a new config variant fails to compile here.
+#[test]
+fn security_level_dto_maps_every_variant_both_ways() {
+    let cases = [
+        (config::SecurityLevel::Sdp, SecurityLevelDto::Sdp),
+        (config::SecurityLevel::Low, SecurityLevelDto::Low),
+        (config::SecurityLevel::Medium, SecurityLevelDto::Medium),
+        (config::SecurityLevel::High, SecurityLevelDto::High),
+    ];
+    for (cfg_level, dto_level) in cases {
+        assert_eq!(SecurityLevelDto::from(cfg_level), dto_level);
+        assert_eq!(config::SecurityLevel::from(dto_level), cfg_level);
+    }
 }
 
 #[test]

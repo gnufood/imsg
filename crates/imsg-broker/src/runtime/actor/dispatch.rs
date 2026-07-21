@@ -19,6 +19,9 @@ use tokio::sync::broadcast;
 
 use super::dto::{to_body_dto, to_message_dto, to_thread_dto};
 
+mod pbap;
+pub(in crate::runtime::actor) use pbap::do_sync_contacts;
+
 /// Maps a session-establishment failure to the action-oriented wire [`Reason`].
 ///
 /// Permanent failures (auth/pairing/wrong channel) become [`Reason::ConnectionRefused`];

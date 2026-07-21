@@ -127,6 +127,7 @@ impl Store {
     ///
     /// Groups all stored messages by `address`, counting total messages and unread received
     /// messages (`status = 0`, `direction = 0`). Rows with an empty address are excluded.
+    /// `contact_name` is joined from the cached `contacts` table by exact address match.
     ///
     /// # Errors
     ///
@@ -135,7 +136,8 @@ impl Store {
         self.conn()
             .call(|conn: &mut rusqlite::Connection| {
                 // Correlated subquery for latest_outgoing_status is efficient because
-                // idx_messages_address_time covers (address, timestamp_ms DESC).
+                // idx_messages_address_time covers (address, timestamp_ms DESC). The contacts
+                // join is a single indexed lookup per group since contacts.address is a PK.
                 let mut stmt = conn.prepare_cached(
                     "SELECT m.address, \
                             MAX(m.timestamp_ms) AS latest_ms, \
@@ -144,8 +146,10 @@ impl Store {
                                 AS unread, \
                             (SELECT m2.outgoing_status FROM messages m2 \
                              WHERE m2.address = m.address \
-                             ORDER BY m2.timestamp_ms DESC LIMIT 1) AS latest_outgoing_status \
-                     FROM messages m WHERE m.address != '' \
+                             ORDER BY m2.timestamp_ms DESC LIMIT 1) AS latest_outgoing_status, \
+                            c.display_name AS contact_name \
+                     FROM messages m LEFT JOIN contacts c ON c.address = m.address \
+                     WHERE m.address != '' \
                      GROUP BY m.address ORDER BY latest_ms DESC",
                 )?;
                 let rows = stmt.query_map([], |row| {
@@ -157,6 +161,7 @@ impl Store {
                         latest_outgoing_status: row
                             .get::<_, Option<String>>(4)?
                             .and_then(|s| s.parse::<OutgoingStatus>().ok()),
+                        contact_name: row.get(5)?,
                     })
                 })?;
                 rows.collect::<Result<Vec<_>, _>>()
@@ -165,3 +170,6 @@ impl Store {
             .map_err(Error::Connection)
     }
 }
+
+#[cfg(test)]
+mod tests;

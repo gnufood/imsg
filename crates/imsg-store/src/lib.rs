@@ -5,6 +5,7 @@
 //! resolve paths and does not talk to the keyring. Introduces no dependency on
 //! the protocol crates.
 
+mod contacts;
 mod cursors;
 mod outbox;
 mod query;

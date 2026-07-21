@@ -4610,6 +4610,7 @@ dependencies = [
  "imsg-ipc",
  "imsg-map",
  "imsg-obex",
+ "imsg-pbap",
  "imsg-session",
  "imsg-store",
  "imsg-transport",
@@ -4815,12 +4816,15 @@ dependencies = [
 name = "imsg-store"
 version = "0.3.1"
 dependencies = [
+ "anyhow",
  "refinery",
  "rusqlite",
  "secrecy",
  "strum 0.28.0",
  "strum_macros 0.28.0",
+ "tempfile",
  "thiserror 2.0.18",
+ "tokio",
  "tokio-rusqlite",
 ]
 
