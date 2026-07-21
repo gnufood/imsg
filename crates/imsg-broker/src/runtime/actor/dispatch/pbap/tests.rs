@@ -28,15 +28,26 @@ fn ok_body_packet(body: &[u8]) -> anyhow::Result<Bytes> {
     .encode()?)
 }
 
-/// A connected PBAP client whose fake server answers CONNECT then one `pull_all` with `body`.
-async fn fake_pbap_client(body: &'static [u8]) -> anyhow::Result<PbapClient<DuplexStream>> {
+/// A connected PBAP client whose fake server answers CONNECT, then `sync_contacts`'s
+/// metadata-only probe (all-`None`, forcing a refresh), then one `list` (one `1.vcf` entry) and
+/// one `pull` returning `vcard`.
+async fn fake_pbap_client(vcard: &'static [u8]) -> anyhow::Result<PbapClient<DuplexStream>> {
     let (client_io, server_io) = duplex(4096);
     tokio::spawn(async move {
         let mut srv = obex_core::wrap(server_io);
         let _ = srv.next().await;
         let _ = srv.send(Bytes::from_static(PBAP_CONNECT_RSP)).await;
         let _ = srv.next().await;
-        if let Ok(pkt) = ok_body_packet(body) {
+        if let Ok(pkt) = ok_body_packet(&[]) {
+            let _ = srv.send(pkt).await;
+        }
+        let _ = srv.next().await;
+        let listing = b"<vCard-listing><card handle=\"1.vcf\" name=\"x\"/></vCard-listing>";
+        if let Ok(pkt) = ok_body_packet(listing) {
+            let _ = srv.send(pkt).await;
+        }
+        let _ = srv.next().await;
+        if let Ok(pkt) = ok_body_packet(vcard) {
             let _ = srv.send(pkt).await;
         }
     });
@@ -56,12 +67,15 @@ async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
 #[tokio::test]
 async fn do_sync_contacts_upserts_and_reports_count() -> anyhow::Result<()> {
     let (store, _dir) = fake_store().await?;
-    let body = b"BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nTEL:+15551110000\r\nEND:VCARD\r\n";
+    let body = b"BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nUID:uid-alice\r\n\
+TEL:+15551110000\r\nEND:VCARD\r\n";
     let mut pbap = fake_pbap_client(body).await?;
 
     let resp = do_sync_contacts(&mut pbap, &store).await?;
 
     assert!(matches!(resp, BrokerResponse::ContactsSynced { count: 1 }));
-    assert_eq!(store.contact_name("+15551110000").await?.as_deref(), Some("Alice"));
+    let contact =
+        store.lookup_contact("+15551110000").await?.ok_or_else(|| anyhow::anyhow!("missing"))?;
+    assert_eq!(contact.display_name.as_deref(), Some("Alice"));
     Ok(())
 }
