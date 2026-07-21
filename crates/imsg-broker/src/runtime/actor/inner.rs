@@ -8,6 +8,7 @@
 
 use ipc::{BrokerResponse, Reason};
 use map_core::client::MapClient;
+use pbap_core::client::PbapClient;
 use session::Disposition;
 use tokio::io::{AsyncRead, AsyncWrite};
 
@@ -31,6 +32,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         if wants_mns(self.watch_count, self.idle) {
             self.start_mns().await;
         }
+        // Lives across MAP reconnects, same as the MAP `client` lives across `serve_active`
+        // calls — a lost MAP session doesn't imply a lost PBAP one, so there is no reason to
+        // drop an already-established PBAP session just because MAP reconnected.
+        let mut pbap: Option<PbapClient<T>> = None;
         let reason = loop {
             let client = match self.try_connect().await {
                 Ok(c) => c,
@@ -40,10 +45,15 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                     break TerminalReason::PermanentFailure(reason);
                 }
             };
-            if !self.run_session(client).await {
+            if !self.run_session(client, &mut pbap).await {
                 break TerminalReason::Requested;
             }
         };
+        if let Some(pbap) = pbap.take() {
+            if let Err(e) = pbap.disconnect().await {
+                tracing::warn!("PBAP disconnect on shutdown: {e}");
+            }
+        }
         let _ = self.shutdown_tx.send(Some(reason));
     }
 
@@ -55,13 +65,17 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Returns `true` to reconnect (a recoverable drop while subscribers remain or in persistent
     /// mode) or `false` to exit the lifecycle (idle/shutdown, or a drop with no subscribers in
     /// ephemeral mode — the CLI respawns lazily).
-    async fn run_session(&mut self, mut client: MapClient<T>) -> bool {
+    async fn run_session(
+        &mut self,
+        mut client: MapClient<T>,
+        pbap: &mut Option<PbapClient<T>>,
+    ) -> bool {
         let _ = self.state_tx.send(ConnState::Active);
         let now = session::util::now_ms();
         if let Err(e) = session::outbox::drain_outbox(&mut client, &self.store, now).await {
             tracing::warn!("initial outbox drain failed: {e}");
         }
-        let outcome = self.serve_active(&mut client).await;
+        let outcome = self.serve_active(&mut client, pbap).await;
         match outcome {
             ServeOutcome::Exit => {
                 self.stop_mns();
@@ -124,6 +138,65 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 return Err(reason);
             };
             tracing::warn!("MAP connect failed (transient): {err}; retrying in {d:?}");
+            tokio::time::sleep(d).await;
+        }
+    }
+
+    /// Populates `pbap` by connecting (with the same retry policy as MAP) if it isn't already
+    /// live.
+    ///
+    /// Mirrors `try_connect`/`connect_with_retry` but for PBAP: a failed connect here is scoped
+    /// to PBAP alone and never touches [`ConnState`] or the MAP session — the caller
+    /// (`run_sync_contacts` in `super::serve`) converts a `Reason` into a plain
+    /// [`BrokerResponse::Failed`]. `pbap` is a local threaded down from `run`, not a field, so
+    /// this can populate it while `&self` (e.g. `self.store`) is borrowed independently.
+    pub(in crate::runtime::actor) async fn ensure_pbap(
+        &mut self,
+        pbap: &mut Option<PbapClient<T>>,
+    ) -> Result<(), Reason> {
+        if pbap.is_none() {
+            *pbap = Some(self.pbap_try_connect().await?);
+        }
+        Ok(())
+    }
+
+    /// Establishes the PBAP session, within the wall-clock startup budget if the policy has one
+    /// — same shape as [`try_connect`][Self::try_connect], applied to `pbap_connect`.
+    async fn pbap_try_connect(&mut self) -> Result<PbapClient<T>, Reason> {
+        match self.policy.startup_budget {
+            Some(budget) => {
+                match tokio::time::timeout(budget, self.pbap_connect_with_retry()).await {
+                    Ok(result) => result,
+                    Err(_elapsed) => Err(Reason::DeviceUnreachable),
+                }
+            }
+            None => self.pbap_connect_with_retry().await,
+        }
+    }
+
+    /// Calls `pbap_connect` with doubling backoff — same schedule and classification as
+    /// [`connect_with_retry`][Self::connect_with_retry], applied to the PBAP connector.
+    async fn pbap_connect_with_retry(&mut self) -> Result<PbapClient<T>, Reason> {
+        let mut delays = session::retry::backoff(
+            self.policy.initial_backoff,
+            self.policy.max_backoff,
+            self.policy.max_attempts,
+        );
+        loop {
+            let err = match (self.pbap_connect)().await {
+                Ok(client) => return Ok(client),
+                Err(e) => e,
+            };
+            let reason = dispatch::connect_reason(&err);
+            if session::classify(&err) == Disposition::Permanent {
+                tracing::error!("PBAP connect failed (permanent): {err}");
+                return Err(reason);
+            }
+            let Some(d) = delays.next() else {
+                tracing::error!("PBAP connect failed; attempts exhausted: {err}");
+                return Err(reason);
+            };
+            tracing::warn!("PBAP connect failed (transient): {err}; retrying in {d:?}");
             tokio::time::sleep(d).await;
         }
     }

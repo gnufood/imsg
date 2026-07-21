@@ -8,6 +8,7 @@ use std::time::Duration;
 use anyhow::Result;
 use ipc::{BrokerResponse, EventType, Reason, WatchEvent};
 use map_core::client::MapClient;
+use pbap_core::client::PbapClient;
 use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
@@ -26,6 +27,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     pub(in crate::runtime::actor) async fn serve_active(
         &mut self,
         client: &mut MapClient<T>,
+        pbap: &mut Option<PbapClient<T>>,
     ) -> ServeOutcome {
         loop {
             tokio::select! {
@@ -41,7 +43,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 },
                 maybe_op = self.rx.recv() => {
                     let Some(op) = maybe_op else { return ServeOutcome::Exit };
-                    if matches!(self.handle_op(client, op).await, OpOutcome::SessionLost) {
+                    if matches!(self.handle_op(client, pbap, op).await, OpOutcome::SessionLost) {
                         return ServeOutcome::Dropped;
                     }
                 }
@@ -54,8 +56,14 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     }
 
     /// Dispatches one [`DeviceOp`]. Watch ops adjust the subscriber count; MAP ops run via
-    /// [`dispatch`] and finish through [`finish_map`][Self::finish_map].
-    async fn handle_op(&mut self, client: &mut MapClient<T>, op: DeviceOp) -> OpOutcome {
+    /// [`dispatch`] and finish through [`finish_map`][Self::finish_map]; `SyncContacts` runs
+    /// against the held PBAP session via [`run_sync_contacts`][Self::run_sync_contacts].
+    async fn handle_op(
+        &mut self,
+        client: &mut MapClient<T>,
+        pbap: &mut Option<PbapClient<T>>,
+        op: DeviceOp,
+    ) -> OpOutcome {
         match op {
             DeviceOp::Subscribe { reply } => {
                 self.handle_subscribe(reply).await;
@@ -96,7 +104,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 Self::finish_map(dispatch::do_live_threads(client).await, reply)
             }
             DeviceOp::SyncContacts { reply } => {
-                let resp = self.run_sync_contacts().await;
+                let resp = self.run_sync_contacts(pbap).await;
                 let _ = reply.send(resp);
                 OpOutcome::Continue
             }
@@ -112,15 +120,28 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         OpOutcome::Continue
     }
 
-    /// Opens a fresh PBAP connection and syncs contacts, converting any failure — connect or
-    /// sync — into `BrokerResponse::Failed`. Never returns `OpOutcome::SessionLost`: PBAP
-    /// failures are unrelated to the (unaffected) MAP session's health.
-    async fn run_sync_contacts(&mut self) -> BrokerResponse {
-        match (self.pbap_connect)().await {
-            Ok(mut pbap) => dispatch::do_sync_contacts(&mut pbap, &self.store)
-                .await
-                .unwrap_or_else(|e| BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
-            Err(e) => BrokerResponse::Failed(Reason::OperationFailed(e.to_string())),
+    /// Syncs contacts against the actor's held PBAP session (connecting it first if needed),
+    /// converting any failure — connect or sync — into `BrokerResponse::Failed`. Never returns
+    /// `OpOutcome::SessionLost`: PBAP failures are unrelated to the (unaffected) MAP session's
+    /// health. A sync failure drops the cached session so the next PBAP op reconnects rather
+    /// than reusing a client that may be dead.
+    async fn run_sync_contacts(&mut self, pbap: &mut Option<PbapClient<T>>) -> BrokerResponse {
+        if let Err(reason) = self.ensure_pbap(pbap).await {
+            return BrokerResponse::Failed(reason);
+        }
+        // Invariant: `ensure_pbap`'s `Ok(())` always populates `pbap`; the `None` arm is
+        // unreachable in practice but handled rather than panicked on.
+        let Some(client) = pbap.as_mut() else {
+            return BrokerResponse::Failed(Reason::OperationFailed(
+                "pbap session missing after connect".to_owned(),
+            ));
+        };
+        match dispatch::do_sync_contacts(client, &self.store).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                *pbap = None;
+                BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))
+            }
         }
     }
 

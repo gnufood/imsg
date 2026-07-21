@@ -19,11 +19,14 @@ use tokio::sync::{broadcast, mpsc, oneshot, watch};
 pub(in crate::runtime) type Connector<T> =
     Box<dyn FnMut() -> BoxFuture<'static, Result<MapClient<T>, SessionError>> + Send>;
 
-/// On-demand factory that establishes a fresh, short-lived PBAP session over stream type `T`.
+/// On-demand factory that establishes a PBAP session over stream type `T`.
 ///
-/// Unlike [`Connector`], the actor calls this once per [`DeviceOp::SyncContacts`] and the
-/// resulting client is dropped immediately after — there is no persistent PBAP session to
-/// protect or reconnect.
+/// Same contract as [`Connector`]: the actor calls this lazily on the first PBAP-touching
+/// [`DeviceOp`] and again on reconnect after that session drops, holding the client in between —
+/// it is not a fresh connect per op. Unlike the MAP session, PBAP connects lazily (there is no
+/// PBAP-side push notification requiring it up front) and a lost PBAP session never affects the
+/// MAP session's liveness, or vice versa; the two are independent fault domains sharing the same
+/// persistent-session shape.
 pub(in crate::runtime) type PbapConnector<T> =
     Box<dyn FnMut() -> BoxFuture<'static, Result<PbapClient<T>, SessionError>> + Send>;
 
@@ -31,7 +34,7 @@ pub(in crate::runtime) type PbapConnector<T> =
 pub(in crate::runtime) struct Connectors<T> {
     /// Establishes the persistent MAP session the actor owns for its whole lifetime.
     pub(in crate::runtime) map: Connector<T>,
-    /// Establishes a fresh, short-lived PBAP session per [`DeviceOp::SyncContacts`].
+    /// Establishes the persistent PBAP session, connected lazily on first use.
     pub(in crate::runtime) pbap: PbapConnector<T>,
 }
 
@@ -144,7 +147,7 @@ pub(in crate::runtime) enum DeviceOp {
         reply: oneshot::Sender<ipc::BrokerResponse>,
     },
     /// Pull the main phonebook and upsert contact display names into the local contacts cache;
-    /// no MAP session involvement — the actor opens a fresh PBAP connection just for this.
+    /// runs against the actor's held PBAP session, independent of the MAP session.
     SyncContacts { reply: oneshot::Sender<ipc::BrokerResponse> },
     /// Subscribe to inbound MAP event notifications.
     ///
