@@ -22,6 +22,9 @@ pub enum ContactError {
 pub struct Contact {
     /// Value of the FN property; `None` if absent.
     pub display_name: Option<String>,
+    /// Value of the UID property; `None` if absent. A durable per-contact key — unlike PBAP
+    /// handles, which are volatile and re-resolved on every sync.
+    pub uid: Option<String>,
     phones: Vec<String>,
 }
 
@@ -35,7 +38,7 @@ impl Contact {
 }
 
 impl Contact {
-    /// Extracts FN and TEL; input must be a single vCard.
+    /// Extracts FN, TEL, and UID; input must be a single vCard.
     ///
     /// # Errors
     ///
@@ -50,6 +53,12 @@ impl Contact {
             .and_then(VCardValue::as_text)
             .map(str::to_owned);
 
+        let uid = vcard
+            .property(&VCardProperty::Uid)
+            .and_then(|e| e.values.first())
+            .and_then(VCardValue::as_text)
+            .map(str::to_owned);
+
         let phones = vcard
             .properties(&VCardProperty::Tel)
             .flat_map(|e| e.values.iter())
@@ -58,6 +67,6 @@ impl Contact {
             .filter(|s| !s.is_empty())
             .collect();
 
-        Ok(Self { display_name, phones })
+        Ok(Self { display_name, uid, phones })
     }
 }

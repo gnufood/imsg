@@ -28,7 +28,7 @@ const NEW_MESSAGE_XML: &[u8] = b"<?xml version='1.0'?>\
 async fn iphone_connect(
     t: &mut obex_core::ObexTransport<tokio::io::DuplexStream>,
 ) -> Result<(), MnsError> {
-    let req = ObexClient::connect_request(&MNS_TARGET).map_err(MnsError::Obex)?;
+    let req = ObexClient::connect_request(&MNS_TARGET, None).map_err(MnsError::Obex)?;
     t.send(req).await?;
     t.next().await.ok_or(MnsError::UnexpectedEof)?.map_err(MnsError::Transport)?;
     Ok(())
@@ -149,7 +149,7 @@ async fn test_mns_invalid_target() {
     let wrong_target = [0u8; 16];
     let (server_result, ()) = futures::join!(MnsServer::accept(server_io), async {
         let mut t = wrap(iphone_io);
-        if let Ok(req) = ObexClient::connect_request(&wrong_target) {
+        if let Ok(req) = ObexClient::connect_request(&wrong_target, None) {
             let _ = t.send(req).await;
         }
     });
@@ -205,7 +205,7 @@ async fn test_mns_unexpected_opcode() {
         },
         async {
             let mut t = wrap(iphone_io);
-            if let Ok(req) = ObexClient::connect_request(&MNS_TARGET) {
+            if let Ok(req) = ObexClient::connect_request(&MNS_TARGET, None) {
                 if t.send(req).await.is_ok() {
                     let _ = t.next().await;
                     let get = Packet {

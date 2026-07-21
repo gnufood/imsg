@@ -281,6 +281,18 @@ impl Packet {
             _ => None,
         })
     }
+
+    /// First `AppParams` header payload, if present.
+    #[must_use]
+    pub fn header_app_params(&self) -> Option<&[u8]> {
+        self.headers.iter().find_map(|h| {
+            if let Header::AppParams(b) = h {
+                Some(b.as_ref())
+            } else {
+                None
+            }
+        })
+    }
 }
 
 fn framed(data: &[u8]) -> Result<(OpCode, &[u8]), PacketError> {

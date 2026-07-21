@@ -52,11 +52,20 @@ impl ObexClient {
         Self { state: State::Disconnected }
     }
 
-    /// Targets the given 16-byte service UUID.
+    /// Targets the given 16-byte service UUID. `app_params` is an optional `AppParams` header,
+    /// e.g. a profile-specific capability bitmask such as PBAP's `PBAPSupportedFeatures` — this
+    /// layer treats it as opaque bytes.
     ///
     /// # Errors
     /// Returns `Packet` if encoding fails (packet too large — not possible in practice).
-    pub fn connect_request(target_uuid: &[u8; 16]) -> Result<Bytes, ObexError> {
+    pub fn connect_request(
+        target_uuid: &[u8; 16],
+        app_params: Option<Bytes>,
+    ) -> Result<Bytes, ObexError> {
+        let mut headers = vec![Header::Target(Bytes::copy_from_slice(target_uuid))];
+        if let Some(params) = app_params {
+            headers.push(Header::AppParams(params));
+        }
         Ok(Packet {
             opcode: OpCode::Connect,
             extra: PacketExtra::Connect {
@@ -64,7 +73,7 @@ impl ObexClient {
                 flags: OBEX_FLAGS,
                 max_packet: OBEX_MAX_PACKET,
             },
-            headers: vec![Header::Target(Bytes::copy_from_slice(target_uuid))],
+            headers,
         }
         .encode()?)
     }

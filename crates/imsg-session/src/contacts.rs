@@ -23,7 +23,7 @@ pub async fn sync_contacts<T: AsyncRead + AsyncWrite + Unpin>(
     store: &Store,
     path: PhonebookPath,
 ) -> anyhow::Result<usize> {
-    let contacts = client.pull_all(path).await?;
+    let contacts = client.pull_all(path, None, 0).await?;
     let entries: Vec<(String, Option<String>)> = contacts
         .iter()
         .flat_map(|c| c.phones().iter().map(move |p| (p.clone(), c.display_name.clone())))

@@ -47,7 +47,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin> MapClient<T> {
     pub async fn connect(stream: T) -> Result<Self, MapError> {
         let mut transport = wrap(stream);
         let mut obex = ObexClient::new();
-        let req = ObexClient::connect_request(&MAP_UUID)?;
+        let req = ObexClient::connect_request(&MAP_UUID, None)?;
         transport.send(req).await?;
         let rsp = Self::recv(&mut transport).await?;
         obex.handle_connect_response(&rsp)?;

@@ -2,6 +2,7 @@
 
 pub mod client;
 pub mod contacts;
+pub mod metadata;
 pub mod params;
 pub mod phonebook;
 
@@ -9,6 +10,7 @@ pub use contacts::normalize_number;
 pub use contacts::CardEntry;
 pub use contacts::CardListingError;
 pub use formats::vcard::{Contact, ContactError};
+pub use metadata::PhonebookMetadata;
 pub use obex_core::client::ObexError;
 pub use obex_core::TransportError;
 

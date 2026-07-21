@@ -26,7 +26,7 @@ pub(crate) const NEW_MESSAGE_XML: &[u8] = b"<?xml version='1.0'?>\
 pub(crate) async fn iphone_connect(
     t: &mut obex_core::ObexTransport<DuplexStream>,
 ) -> Result<(), MnsError> {
-    let req = ObexClient::connect_request(&MNS_TARGET).map_err(MnsError::Obex)?;
+    let req = ObexClient::connect_request(&MNS_TARGET, None).map_err(MnsError::Obex)?;
     t.send(req).await?;
     t.next().await.ok_or(MnsError::UnexpectedEof)?.map_err(MnsError::Transport)?;
     Ok(())

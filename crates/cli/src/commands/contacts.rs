@@ -104,14 +104,14 @@ pub(crate) async fn run(
     } else if let Some(handle) = get {
         render_contact(&client.pull(pb, &handle).await?, raw)
     } else if list {
-        let entries = client.list(pb).await?;
+        let entries = client.list(pb, None, 0).await?;
         paginate(&entries, limit, page)
             .iter()
             .map(|e| render_entry(e.handle(), e.name()))
             .collect::<Vec<_>>()
             .join("\n")
     } else {
-        let contacts = client.pull_all(pb).await?;
+        let contacts = client.pull_all(pb, None, 0).await?;
         let page_contacts = paginate(&contacts, limit, page);
         if page_contacts.is_empty() {
             "(no contacts)".to_owned()

@@ -49,3 +49,19 @@ fn empty_tel_is_filtered_out() -> Result<(), ContactError> {
 fn invalid_input_returns_error() {
     assert!(matches!(Contact::from_vcard_str("not a vcard"), Err(ContactError::ParseFailed)));
 }
+
+#[test]
+fn extracts_uid() -> Result<(), ContactError> {
+    let input = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:John Doe\r\nUID:abc-123\r\nEND:VCARD\r\n";
+    let contact = Contact::from_vcard_str(input)?;
+    assert_eq!(contact.uid.as_deref(), Some("abc-123"));
+    Ok(())
+}
+
+#[test]
+fn missing_uid_gives_none() -> Result<(), ContactError> {
+    let input = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Jane\r\nEND:VCARD\r\n";
+    let contact = Contact::from_vcard_str(input)?;
+    assert_eq!(contact.uid, None);
+    Ok(())
+}

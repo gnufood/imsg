@@ -29,6 +29,28 @@ async fn connect_ok() -> Result<(), PbapError> {
 }
 
 #[tokio::test]
+async fn connect_declares_pbap_supported_features() -> Result<(), PbapError> {
+    let (client_io, server_io) = tokio::io::duplex(4096);
+
+    let (server_result, client_result) = futures::join!(
+        async {
+            let mut srv = obex_core::wrap(server_io);
+            let req =
+                srv.next().await.ok_or(PbapError::UnexpectedEof)?.map_err(PbapError::Transport)?;
+            let packet =
+                obex_core::packet::Packet::decode(&req).map_err(|_| PbapError::UnexpectedEof)?;
+            assert_eq!(packet.header_app_params(), Some(&[0x10, 0x04, 0x00, 0x00, 0x00, 0x0D][..]));
+            srv.send(Bytes::from_static(CONNECT_RSP)).await.map_err(PbapError::Transport)?;
+            Ok::<(), PbapError>(())
+        },
+        PbapClient::connect(client_io),
+    );
+    server_result?;
+    client_result?;
+    Ok(())
+}
+
+#[tokio::test]
 async fn connect_rejected() -> Result<(), PbapError> {
     let (client_io, server_io) = tokio::io::duplex(4096);
 

@@ -24,7 +24,7 @@ fn connected_client() -> Result<ObexClient, ObexError> {
 
 #[test]
 fn encode_connect_request_matches_fixture() -> Result<(), ObexError> {
-    let encoded = ObexClient::connect_request(&MAP_UUID)?;
+    let encoded = ObexClient::connect_request(&MAP_UUID, None)?;
     let fixture = include_bytes!("fixtures/connect_req.bin");
     assert_eq!(encoded.as_ref(), &fixture[..]);
     Ok(())
@@ -41,6 +41,17 @@ fn decode_connect_request() -> Result<(), PacketError> {
     );
     let target = packet.header_target().ok_or(PacketError::InvalidHeader)?;
     assert_eq!(target, &MAP_UUID);
+    assert_eq!(packet.header_app_params(), None);
+    Ok(())
+}
+
+#[test]
+fn encode_connect_request_with_app_params_includes_header() -> Result<(), ObexError> {
+    let params = Bytes::from_static(&[0x10, 0x04, 0x00, 0x00, 0x00, 0x0D]);
+    let encoded = ObexClient::connect_request(&MAP_UUID, Some(params.clone()))?;
+    let packet = Packet::decode(&encoded)?;
+    assert_eq!(packet.header_target(), Some(&MAP_UUID[..]));
+    assert_eq!(packet.header_app_params(), Some(params.as_ref()));
     Ok(())
 }
 

@@ -59,3 +59,24 @@ impl PhonebookPath {
         format!("{}/{}", self.list_name(), handle)
     }
 }
+
+/// `ListvCardObjects` `SearchAttribute` — which field [`PbapClient::search`](crate::client::PbapClient::search)'s value matches against.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchAttribute {
+    /// Match against contact name.
+    Name,
+    /// Match against phone number.
+    Number,
+    /// Match against phonetic sound.
+    Sound,
+}
+
+impl SearchAttribute {
+    pub(crate) const fn to_wire(self) -> u8 {
+        match self {
+            Self::Name => 0x00,
+            Self::Number => 0x01,
+            Self::Sound => 0x02,
+        }
+    }
+}
