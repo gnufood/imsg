@@ -3,10 +3,11 @@
 mod broker;
 mod write;
 
-pub use broker::BrokerConfig;
+pub use broker::{BrokerConfig, SecurityLevel};
 pub use write::{
     broker_abstract_name, broker_log_path, daemon_log_path, db_path, hub_key_path, hub_lock_path,
-    set_device, set_device_and_channels, set_hub_key, set_map_channel, set_pbap_channel,
+    set_broker_security_level, set_device, set_device_and_channels, set_hub_key, set_map_channel,
+    set_pbap_channel,
 };
 
 use std::path::PathBuf;

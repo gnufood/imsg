@@ -319,7 +319,8 @@ async fn proxy_rfcomm(
     let (send, recv) = conn.accept_bi().await.map_err(iroh_err)?;
     let mut quic = tokio::io::join(recv, send);
     let mut rfcomm =
-        crate::rfcomm::connect(bt_addr, channel, crate::rfcomm::DEFAULT_BT_CONNECTED_GATE).await?;
+        crate::rfcomm::connect(bt_addr, channel, crate::rfcomm::DEFAULT_BT_CONNECTED_GATE, None)
+            .await?;
     let result = tokio::io::copy_bidirectional(&mut quic, &mut rfcomm).await;
     match &result {
         Ok((up, down)) => tracing::info!("hub proxy ch{channel}: {up}↑ {down}↓ bytes proxied"),

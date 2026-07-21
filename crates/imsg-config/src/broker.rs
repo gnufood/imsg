@@ -39,6 +39,41 @@ pub struct BrokerConfig {
     pub readiness_wait_secs: u64,
     /// CLI poll interval while awaiting broker readiness, in milliseconds. Default: 50.
     pub readiness_poll_ms: u64,
+    /// Minimum RFCOMM `BT_SECURITY` level required for the MAP connect socket. Absent (default)
+    /// means imsg never requests a security level — the kernel's already-negotiated
+    /// pairing/bond security applies unmodified.
+    #[serde(default)]
+    pub security_level: Option<SecurityLevel>,
+}
+
+/// RFCOMM socket security level requestable from the kernel for the MAP connect socket.
+///
+/// Mirrors `bluer::rfcomm::SecurityLevel`'s four `BT_SECURITY` tiers, kept local so this crate
+/// doesn't need `bluer`'s `rfcomm` feature just to hold a config value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SecurityLevel {
+    /// `BT_SECURITY_SDP` — SDP-only traffic, no security.
+    Sdp,
+    /// `BT_SECURITY_LOW` — no encryption or authentication required.
+    Low,
+    /// `BT_SECURITY_MEDIUM` — encryption required; no authentication (no MITM protection).
+    Medium,
+    /// `BT_SECURITY_HIGH` — encryption and authentication required (MITM protection).
+    High,
+}
+
+impl SecurityLevel {
+    /// Lowercase TOML representation, matching this enum's `#[serde(rename_all = "lowercase")]`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Sdp => "sdp",
+            Self::Low => "low",
+            Self::Medium => "medium",
+            Self::High => "high",
+        }
+    }
 }
 
 impl Default for BrokerConfig {
@@ -52,6 +87,7 @@ impl Default for BrokerConfig {
             startup_budget_secs: 30,
             readiness_wait_secs: 40,
             readiness_poll_ms: 50,
+            security_level: None,
         }
     }
 }
@@ -164,5 +200,10 @@ mod tests {
         assert_eq!(b.bt_connected(), Duration::from_secs(5));
         assert_eq!(b.initial_backoff(), Duration::from_millis(500));
         assert_eq!(b.readiness_poll(), Duration::from_millis(50));
+    }
+
+    #[test]
+    fn security_level_defaults_to_none() {
+        assert_eq!(BrokerConfig::default().security_level, None);
     }
 }

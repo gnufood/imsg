@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use bluer::rfcomm::{Profile, Role, SocketAddr, Stream};
+use bluer::rfcomm::{Profile, Role, Security, Socket, SocketAddr, Stream};
 use futures::StreamExt;
 use uuid::{uuid, Uuid};
 
@@ -54,17 +54,27 @@ impl ProfileListener {
 /// every 25 ms for up to `bt_gate` so the first OBEX write never hits `ENOTCONN`. Use
 /// [`DEFAULT_BT_CONNECTED_GATE`] when no configured budget applies.
 ///
+/// `security`, if given, is requested from the kernel via `setsockopt(BT_SECURITY)` before
+/// connecting; `None` leaves the socket's security unmodified — whatever the existing
+/// pairing/bond already negotiated applies unchanged.
+///
 /// # Errors
 ///
-/// Returns [`TransportError::Io`] on socket creation, RFCOMM connect failure, or if the
-/// link does not reach `BT_CONNECTED` within `bt_gate`.
+/// Returns [`TransportError::Io`] on socket creation, rejection of a requested `security`
+/// level, RFCOMM connect failure, or if the link does not reach `BT_CONNECTED` within
+/// `bt_gate`.
 pub async fn connect(
     addr: bluer::Address,
     channel: u8,
     bt_gate: Duration,
+    security: Option<Security>,
 ) -> Result<Stream, TransportError> {
     tracing::debug!("rfcomm: dialing {addr} ch{channel}");
-    let stream = Stream::connect(SocketAddr::new(addr, channel)).await.inspect_err(|e| {
+    let socket = Socket::new()?;
+    if let Some(security) = security {
+        socket.set_security(security)?;
+    }
+    let stream = socket.connect(SocketAddr::new(addr, channel)).await.inspect_err(|e| {
         tracing::warn!("rfcomm: socket connect to {addr} ch{channel} failed: {e}");
     })?;
     let deadline = tokio::time::Instant::now().checked_add(bt_gate).ok_or_else(|| {
@@ -146,6 +156,10 @@ mod tests {
     // --- OS-invariant tests ---
     // Prove the kernel behaviour await_bt_connected relies on.
     // Use standard sockets — no RFCOMM hardware needed.
+    //
+    // `connect`'s `security` branch (Socket::new/set_security/connect) needs a real RFCOMM
+    // socket and is untested here, matching this crate's existing convention for
+    // hardware-backed calls (see discover.rs's note on `connect`/`listen_mns`).
 
     /// `getpeername` on a newly created, unconnected socket returns `ENOTCONN`.
     ///

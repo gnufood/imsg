@@ -45,6 +45,17 @@ pub fn set_pbap_channel(channel: u8) -> Result<(), config::ConfigError> {
     config::set_pbap_channel(channel)
 }
 
+/// Persists the RFCOMM `BT_SECURITY` requirement to the user config file
+/// (`~/.config/imsg/imsg.toml`).
+///
+/// # Errors
+///
+/// Returns [`config::ConfigError`] on filesystem failure or if the config file can't be
+/// parsed.
+pub fn set_broker_security_level(level: config::SecurityLevel) -> Result<(), config::ConfigError> {
+    config::set_broker_security_level(level)
+}
+
 /// `true` if the user has configured a device address yet.
 ///
 /// Cheap pre-check for the device-config startup gate — distinguishes "no device configured

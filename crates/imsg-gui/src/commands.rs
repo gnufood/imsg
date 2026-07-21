@@ -94,6 +94,7 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             config::config_set_pbap_channel,
             config::config_is_device_configured,
             config::config_set_device_and_channels,
+            config::config_set_broker_security_level,
             discover::discover_list_paired_devices,
             discover::discover_resolve_channels,
             gate::gate_status,

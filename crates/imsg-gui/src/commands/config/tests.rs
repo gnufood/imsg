@@ -124,3 +124,20 @@ fn config_set_device_and_channels_maps_invalid_mac_to_command_error() {
     let result = config_set_device_and_channels("not-a-mac".to_owned(), 2, 13);
     assert!(result.is_err());
 }
+
+#[test]
+#[serial]
+fn config_set_broker_security_level_persists() {
+    figment::Jail::expect_with(|jail| {
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        let home = jail.directory().to_path_buf();
+        jail.set_env("HOME", home.to_str().unwrap_or_default());
+
+        config_set_broker_security_level(crate::dto::SecurityLevelDto::High)
+            .map_err(|e| figment::Error::from(e.to_string()))?;
+
+        let dto = config_show(None).map_err(|e| figment::Error::from(e.to_string()))?;
+        assert_eq!(dto.security_level, Some(crate::dto::SecurityLevelDto::High));
+        Ok(())
+    });
+}

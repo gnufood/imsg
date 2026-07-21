@@ -128,6 +128,42 @@ impl From<&store::ThreadRow> for ThreadDto {
     }
 }
 
+/// RFCOMM `BT_SECURITY` policy tier requested from the kernel; mirrors `config::SecurityLevel`.
+/// See [`Direction`]/[`OutgoingStatus`] for why this is a separate GUI-facing type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum SecurityLevelDto {
+    /// `BT_SECURITY_SDP` — SDP-only traffic, no security.
+    Sdp,
+    /// `BT_SECURITY_LOW` — no encryption or authentication required.
+    Low,
+    /// `BT_SECURITY_MEDIUM` — encryption required; no authentication (no MITM protection).
+    Medium,
+    /// `BT_SECURITY_HIGH` — encryption and authentication required (MITM protection).
+    High,
+}
+
+impl From<config::SecurityLevel> for SecurityLevelDto {
+    fn from(level: config::SecurityLevel) -> Self {
+        match level {
+            config::SecurityLevel::Sdp => Self::Sdp,
+            config::SecurityLevel::Low => Self::Low,
+            config::SecurityLevel::Medium => Self::Medium,
+            config::SecurityLevel::High => Self::High,
+        }
+    }
+}
+
+impl From<SecurityLevelDto> for config::SecurityLevel {
+    fn from(level: SecurityLevelDto) -> Self {
+        match level {
+            SecurityLevelDto::Sdp => Self::Sdp,
+            SecurityLevelDto::Low => Self::Low,
+            SecurityLevelDto::Medium => Self::Medium,
+            SecurityLevelDto::High => Self::High,
+        }
+    }
+}
+
 /// Resolved local configuration (`imsg config show`'s data), shaped for the GUI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct ConfigDto {
@@ -139,6 +175,10 @@ pub struct ConfigDto {
     pub pbap_channel: u8,
     /// iroh hub node key; `None` until `imsg spoke add` has been run.
     pub hub_node_key: Option<String>,
+    /// Configured RFCOMM `BT_SECURITY` requirement for the MAP connect socket; `None` means
+    /// imsg makes no explicit request — the kernel/BlueZ default (whatever the existing
+    /// pairing/bond negotiated) applies unchanged.
+    pub security_level: Option<SecurityLevelDto>,
 }
 
 impl From<&config::Config> for ConfigDto {
@@ -148,6 +188,7 @@ impl From<&config::Config> for ConfigDto {
             map_channel: cfg.device.map_channel,
             pbap_channel: cfg.device.pbap_channel,
             hub_node_key: cfg.hub.node_key.clone(),
+            security_level: cfg.broker.security_level.map(Into::into),
         }
     }
 }

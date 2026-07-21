@@ -84,6 +84,21 @@ fn set_pbap_channel_roundtrip_as_typed_integer() {
 }
 
 #[test]
+#[serial]
+fn set_broker_security_level_roundtrip() {
+    figment::Jail::expect_with(|jail| {
+        let tmp = jail.directory().to_path_buf();
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        set_broker_security_level(SecurityLevel::High)
+            .map_err(|e| figment::Error::from(e.to_string()))?;
+        let cfg: crate::Config = crate::figment(None).extract()?;
+        assert_eq!(cfg.broker.security_level, Some(SecurityLevel::High));
+        Ok(())
+    });
+}
+
+#[test]
 fn set_device_and_channels_rejects_invalid_address() {
     let result = set_device_and_channels("not-an-address", 2, 13);
     assert!(matches!(result, Err(ConfigError::Invalid { field: "device.address", .. })));

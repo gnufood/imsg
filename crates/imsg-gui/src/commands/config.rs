@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use crate::dto::ConfigDto;
+use crate::dto::{ConfigDto, SecurityLevelDto};
 
 use super::CommandError;
 
@@ -59,6 +59,17 @@ pub fn config_set_map_channel(channel: u8) -> Result<(), CommandError> {
 #[specta::specta]
 pub fn config_set_pbap_channel(channel: u8) -> Result<(), CommandError> {
     Ok(crate::config::set_pbap_channel(channel)?)
+}
+
+/// Persists the RFCOMM `BT_SECURITY` requirement to the user config file.
+///
+/// # Errors
+///
+/// Returns [`CommandError`] on filesystem failure or if the config file can't be parsed.
+#[tauri::command]
+#[specta::specta]
+pub fn config_set_broker_security_level(level: SecurityLevelDto) -> Result<(), CommandError> {
+    Ok(crate::config::set_broker_security_level(level.into())?)
 }
 
 /// `true` if the user has configured a device address yet — the device-config startup gate's

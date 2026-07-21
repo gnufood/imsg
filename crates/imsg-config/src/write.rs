@@ -6,6 +6,7 @@ use interprocess::local_socket::{GenericNamespaced, Name, ToNsName as _};
 use toml_edit::{DocumentMut, Item, Table};
 
 use super::ConfigError;
+use crate::broker::SecurityLevel;
 
 /// Opens (or creates) `~/.config/imsg/imsg.toml`, sets `[section].key = value`, writes back.
 ///
@@ -216,6 +217,20 @@ pub fn set_hub_key(key: &str) -> Result<(), ConfigError> {
         });
     }
     patch_config("hub", "node_key", key)
+}
+
+/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+///
+/// All other keys preserved. Always valid — `SecurityLevel` has no invalid states — so this
+/// only fails on I/O.
+///
+/// # Errors
+///
+/// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory
+/// cannot be determined.
+/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
+pub fn set_broker_security_level(level: SecurityLevel) -> Result<(), ConfigError> {
+    patch_config("broker", "security_level", level.as_str())
 }
 
 #[cfg(test)]

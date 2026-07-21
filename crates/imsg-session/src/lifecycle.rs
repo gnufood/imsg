@@ -29,8 +29,8 @@ pub async fn establish_map_session<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(client)
 }
 
-/// RFCOMM connect to `addr`:`channel` (gating on `BT_CONNECTED` up to `bt_gate`) then
-/// [`establish_map_session`].
+/// RFCOMM connect to `addr`:`channel` (gating on `BT_CONNECTED` up to `bt_gate`, requesting
+/// `security` if given) then [`establish_map_session`].
 ///
 /// # Errors
 ///
@@ -40,8 +40,9 @@ pub async fn connect_map(
     addr: bluer::Address,
     channel: u8,
     bt_gate: Duration,
+    security: Option<bluer::rfcomm::Security>,
 ) -> Result<MapClient<bluer::rfcomm::Stream>, SessionError> {
-    let stream = transport::rfcomm::connect(addr, channel, bt_gate).await?;
+    let stream = transport::rfcomm::connect(addr, channel, bt_gate, security).await?;
     establish_map_session(stream).await
 }
 
@@ -54,7 +55,7 @@ pub async fn connect_pbap(
     addr: bluer::Address,
     channel: u8,
 ) -> Result<PbapClient<bluer::rfcomm::Stream>, SessionError> {
-    let stream = transport::rfcomm::connect(addr, channel, DEFAULT_BT_CONNECTED_GATE).await?;
+    let stream = transport::rfcomm::connect(addr, channel, DEFAULT_BT_CONNECTED_GATE, None).await?;
     let client = PbapClient::connect(stream).await?;
     Ok(client)
 }

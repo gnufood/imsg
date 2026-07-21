@@ -19,6 +19,39 @@ fn show_returns_resolved_config() {
         assert_eq!(dto.map_channel, 2);
         assert_eq!(dto.pbap_channel, 13);
         assert_eq!(dto.hub_node_key, None);
+        assert_eq!(dto.security_level, None);
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
+fn show_reflects_broker_security_level_env_override() {
+    figment::Jail::expect_with(|jail| {
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        jail.set_env("IMSG_BROKER__SECURITY_LEVEL", "medium");
+        let home = jail.directory().to_path_buf();
+        jail.set_env("HOME", home.to_str().unwrap_or_default());
+
+        let dto = show(None).map_err(|e| figment::Error::from(e.to_string()))?;
+        assert_eq!(dto.security_level, Some(crate::dto::SecurityLevelDto::Medium));
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
+fn set_broker_security_level_persists_and_show_reflects_it() {
+    figment::Jail::expect_with(|jail| {
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        let home = jail.directory().to_path_buf();
+        jail.set_env("HOME", home.to_str().unwrap_or_default());
+
+        set_broker_security_level(config::SecurityLevel::High)
+            .map_err(|e| figment::Error::from(e.to_string()))?;
+
+        let dto = show(None).map_err(|e| figment::Error::from(e.to_string()))?;
+        assert_eq!(dto.security_level, Some(crate::dto::SecurityLevelDto::High));
         Ok(())
     });
 }

@@ -113,6 +113,7 @@ async fn connect_map_inner(
                 addr,
                 channel,
                 transport::rfcomm::DEFAULT_BT_CONNECTED_GATE,
+                None,
             )
             .await
             .context("RFCOMM connect (MAP)")?;
@@ -168,6 +169,7 @@ async fn connect_pbap_inner(
                 addr,
                 channel,
                 transport::rfcomm::DEFAULT_BT_CONNECTED_GATE,
+                None,
             )
             .await
             .context("RFCOMM connect (PBAP)")?;

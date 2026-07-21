@@ -120,6 +120,32 @@ fn hub_lock_path_format() {
 
 #[test]
 #[serial]
+fn broker_security_level_defaults_to_none() {
+    figment::Jail::expect_with(|jail| {
+        let dir = jail.directory().to_string_lossy().into_owned();
+        jail.set_env("HOME", &dir);
+        jail.set_env("XDG_CONFIG_HOME", &dir);
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        let cfg: Config = figment(None).extract()?;
+        assert_eq!(cfg.broker.security_level, None);
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
+fn env_override_broker_security_level() {
+    figment::Jail::expect_with(|jail| {
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        jail.set_env("IMSG_BROKER__SECURITY_LEVEL", "medium");
+        let cfg: Config = figment(None).extract()?;
+        assert_eq!(cfg.broker.security_level, Some(SecurityLevel::Medium));
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
 fn store_path_env_override() {
     figment::Jail::expect_with(|jail| {
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
