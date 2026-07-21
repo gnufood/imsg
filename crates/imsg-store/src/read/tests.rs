@@ -2,7 +2,7 @@
 
 use secrecy::SecretBox;
 
-use crate::{Direction, NewMessage, Store};
+use crate::{Direction, NewContact, NewMessage, Store};
 
 async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
     let dir = tempfile::tempdir()?;
@@ -29,7 +29,12 @@ fn sample_message(handle: &str, address: &str) -> NewMessage {
 async fn threads_carries_cached_contact_name_when_present() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
     db.upsert(sample_message("H1", "+15550001")).await?;
-    db.upsert_contact("+15550001", Some("Alice")).await?;
+    db.upsert_contacts(vec![NewContact {
+        uid: "uid-alice".to_owned(),
+        display_name: Some("Alice".to_owned()),
+        phones: vec!["+15550001".to_owned()],
+    }])
+    .await?;
 
     let rows = db.threads().await?;
 

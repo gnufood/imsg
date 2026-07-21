@@ -127,7 +127,8 @@ impl Store {
     ///
     /// Groups all stored messages by `address`, counting total messages and unread received
     /// messages (`status = 0`, `direction = 0`). Rows with an empty address are excluded.
-    /// `contact_name` is joined from the cached `contacts` table by exact address match.
+    /// `contact_name` is joined via `contact_phones` (exact address match) to its owning
+    /// `contacts` row.
     ///
     /// # Errors
     ///
@@ -136,8 +137,8 @@ impl Store {
         self.conn()
             .call(|conn: &mut rusqlite::Connection| {
                 // Correlated subquery for latest_outgoing_status is efficient because
-                // idx_messages_address_time covers (address, timestamp_ms DESC). The contacts
-                // join is a single indexed lookup per group since contacts.address is a PK.
+                // idx_messages_address_time covers (address, timestamp_ms DESC). The
+                // contact_phones join uses idx_contact_phones_address.
                 let mut stmt = conn.prepare_cached(
                     "SELECT m.address, \
                             MAX(m.timestamp_ms) AS latest_ms, \
@@ -148,7 +149,9 @@ impl Store {
                              WHERE m2.address = m.address \
                              ORDER BY m2.timestamp_ms DESC LIMIT 1) AS latest_outgoing_status, \
                             c.display_name AS contact_name \
-                     FROM messages m LEFT JOIN contacts c ON c.address = m.address \
+                     FROM messages m \
+                     LEFT JOIN contact_phones cp ON cp.address = m.address \
+                     LEFT JOIN contacts c ON c.uid = cp.uid \
                      WHERE m.address != '' \
                      GROUP BY m.address ORDER BY latest_ms DESC",
                 )?;

@@ -58,7 +58,8 @@ impl Store {
             let key_hex = make_key_hex(key.expose_secret());
             conn.pragma_update(None, "key", key_hex.as_str())?;
             conn.pragma_update(None, "journal_mode", "WAL")?;
-            conn.pragma_update(None, "synchronous", "NORMAL")
+            conn.pragma_update(None, "synchronous", "NORMAL")?;
+            conn.pragma_update(None, "foreign_keys", "ON")
         })
         .await?;
 
