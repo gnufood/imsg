@@ -56,9 +56,11 @@ impl FetchedMessage {
 
 /// Lists `folder`, paging at 1024 entries per request and accumulating across pages.
 ///
-/// Listing only — no bodies are fetched, so this is cheap relative to [`fetch_folder`] and is
-/// what the live `threads` aggregation uses. Pure device read: no store access. Returns entries
-/// in device listing order.
+/// `template` carries any device-side filter (currently just `read_status`) applied to every
+/// page; its `max_count`/`offset` are ignored — this function owns pagination. Listing only — no
+/// bodies are fetched, so this is cheap relative to [`fetch_folder`] and is what the live
+/// `threads` aggregation uses. Pure device read: no store access. Returns entries in device
+/// listing order.
 ///
 /// # Errors
 ///
@@ -66,6 +68,7 @@ impl FetchedMessage {
 pub async fn list_folder<T: AsyncRead + AsyncWrite + Unpin>(
     client: &mut MapClient<T>,
     folder: Folder,
+    template: &ListMessagesFilter,
 ) -> anyhow::Result<Vec<MessageEntry>> {
     const PAGE: u16 = 1024;
 
@@ -73,7 +76,7 @@ pub async fn list_folder<T: AsyncRead + AsyncWrite + Unpin>(
     let mut out = Vec::new();
     let mut offset: u16 = 0;
     loop {
-        let filter = ListMessagesFilter { max_count: PAGE, offset, ..Default::default() };
+        let filter = ListMessagesFilter { max_count: PAGE, offset, ..template.clone() };
         let entries = client.list_messages(&filter).await?;
         let count = entries.len();
         out.extend(entries);
@@ -90,10 +93,11 @@ pub async fn list_folder<T: AsyncRead + AsyncWrite + Unpin>(
 
 /// Lists `folder` and fetches each message body since `since_ms`.
 ///
-/// Entries older than `since_ms` (by listing datetime) are skipped before the body fetch, so a
-/// caller passing the per-folder cursor anchor fetches only new messages; `None` fetches the full
-/// window. `now` is the fallback timestamp for entries with an absent/malformed datetime. Pure
-/// device read: no store access, no cursor writes.
+/// `template` is forwarded to [`list_folder`] for device-side filtering (currently just
+/// `read_status`). Entries older than `since_ms` (by listing datetime) are skipped before the
+/// body fetch, so a caller passing the per-folder cursor anchor fetches only new messages; `None`
+/// fetches the full window. `now` is the fallback timestamp for entries with an absent/malformed
+/// datetime. Pure device read: no store access, no cursor writes.
 ///
 /// # Errors
 ///
@@ -103,10 +107,11 @@ pub async fn fetch_folder<T: AsyncRead + AsyncWrite + Unpin>(
     folder: Folder,
     since_ms: Option<i64>,
     now: i64,
+    template: &ListMessagesFilter,
 ) -> anyhow::Result<Vec<FetchedMessage>> {
     let folder_str = folder.as_str();
     let mut out = Vec::new();
-    for entry in list_folder(client, folder).await? {
+    for entry in list_folder(client, folder, template).await? {
         if since_ms.is_some_and(|since| datetime_to_ms(&entry.datetime).unwrap_or(i64::MAX) < since)
         {
             continue;

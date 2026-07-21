@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use map_core::client::MapClient;
 use map_core::folders::Folder;
-use map_core::messages::MessageEntry;
+use map_core::messages::{ListMessagesFilter, MessageEntry, ReadStatus};
 use map_core::{BMessage, MessageStatus};
 use tokio::io::{AsyncRead, AsyncWrite};
 
@@ -19,10 +19,11 @@ use crate::fetch::{fetch_folder, list_folder};
 use crate::util::{datetime_to_ms, now_ms};
 use models::{Direction, LiveBody, LiveMessage, LiveThread};
 
-/// Client-side filters for a live [`list`], mirroring `store::list_messages` semantics.
+/// Filters for a live [`list`], mirroring `store::list_messages` semantics.
 ///
-/// Applied in memory over the device's listing window: the device returns its whole fixed
-/// window regardless of offset, so paging is meaningless against it.
+/// `unread` is pushed down to the device via `FilterReadStatus`. `from`/`since_ms`/`limit`/
+/// `offset` are applied in memory over the device's listing window: the device returns its whole
+/// fixed window regardless of offset, so paging is meaningless against it.
 #[derive(Debug, Default)]
 pub struct ListFilter {
     /// Keep only unread messages.
@@ -39,8 +40,9 @@ pub struct ListFilter {
 
 /// Lists `folder` live and returns lean messages newest-first, after applying `filter`.
 ///
-/// Fetches the device's full listing window (bodies included, an irreducible 1+N cost) then
-/// filters, sorts, and windows in memory. No store access, no cursor advance.
+/// `unread` is filtered device-side via `FilterReadStatus`, so an unread-only request never
+/// fetches a read message's body. Remaining filters, sort, and windowing happen in memory over
+/// whatever the device returns. No store access, no cursor advance.
 ///
 /// # Errors
 ///
@@ -50,7 +52,9 @@ pub async fn list<T: AsyncRead + AsyncWrite + Unpin>(
     folder: Folder,
     filter: &ListFilter,
 ) -> anyhow::Result<Vec<LiveMessage>> {
-    let mut msgs: Vec<LiveMessage> = fetch_folder(client, folder, None, now_ms())
+    let template =
+        ListMessagesFilter { read_status: read_status_for(filter), ..Default::default() };
+    let mut msgs: Vec<LiveMessage> = fetch_folder(client, folder, None, now_ms(), &template)
         .await?
         .into_iter()
         .map(|m| LiveMessage {
@@ -67,10 +71,11 @@ pub async fn list<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(window(msgs, filter))
 }
 
+fn read_status_for(f: &ListFilter) -> Option<ReadStatus> {
+    f.unread.then_some(ReadStatus::Unread)
+}
+
 fn keep(m: &LiveMessage, f: &ListFilter) -> bool {
-    if f.unread && m.read {
-        return false;
-    }
     if f.from.as_deref().is_some_and(|addr| addr != m.address) {
         return false;
     }
@@ -99,7 +104,7 @@ pub async fn threads<T: AsyncRead + AsyncWrite + Unpin>(
 ) -> anyhow::Result<Vec<LiveThread>> {
     let mut acc: HashMap<String, LiveThread> = HashMap::new();
     for folder in [Folder::Inbox, Folder::Sent] {
-        for entry in list_folder(client, folder).await? {
+        for entry in list_folder(client, folder, &ListMessagesFilter::default()).await? {
             accumulate(&mut acc, &entry);
         }
     }

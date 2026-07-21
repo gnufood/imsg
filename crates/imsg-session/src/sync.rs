@@ -5,6 +5,7 @@ pub use crate::util::{datetime_to_ms, ms_to_display};
 
 use map_core::client::MapClient;
 use map_core::folders::Folder;
+use map_core::messages::ListMessagesFilter;
 use store::{Direction, FolderSyncStatus, NewMessage, Store};
 use tokio::io::{AsyncRead, AsyncWrite};
 
@@ -53,7 +54,7 @@ async fn backfill_folder<T: AsyncRead + AsyncWrite + Unpin>(
     let folder_str = folder.as_str();
     let is_sent = folder == Folder::Sent;
 
-    for msg in fetch_folder(client, folder, since_ms, now).await? {
+    for msg in fetch_folder(client, folder, since_ms, now, &ListMessagesFilter::default()).await? {
         if msg.timestamp_ms > highest_ts_seen {
             highest_ts_seen = msg.timestamp_ms;
         }

@@ -2,11 +2,13 @@
 
 use std::collections::HashMap;
 
-use map_core::messages::MessageEntry;
+use map_core::messages::{MessageEntry, ReadStatus};
 use map_core::BMessage;
 
 use super::models::{Direction, LiveMessage};
-use super::{accumulate, direction_of, keep, peer_address, to_live_body, window, ListFilter};
+use super::{
+    accumulate, direction_of, keep, peer_address, read_status_for, to_live_body, window, ListFilter,
+};
 use crate::util::datetime_to_ms;
 
 fn entry(sent: bool, read: bool, datetime: &str, sender: &str, recipient: &str) -> MessageEntry {
@@ -49,10 +51,15 @@ fn direction_received_for_inbox_and_deleted() {
 }
 
 #[test]
-fn keep_drops_read_when_unread_filter_set() {
+fn read_status_for_unread_filter_requests_unread_only() {
     let f = ListFilter { unread: true, ..Default::default() };
-    assert!(!keep(&msg(0, "a", true), &f));
-    assert!(keep(&msg(0, "a", false), &f));
+    assert_eq!(read_status_for(&f), Some(ReadStatus::Unread));
+}
+
+#[test]
+fn read_status_for_no_filter_requests_everything() {
+    let f = ListFilter::default();
+    assert_eq!(read_status_for(&f), None);
 }
 
 #[test]
