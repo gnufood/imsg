@@ -4589,6 +4589,7 @@ dependencies = [
  "imsg-transport",
  "indicatif",
  "interprocess",
+ "secrecy",
  "serde_json",
  "serial_test",
  "tempfile",

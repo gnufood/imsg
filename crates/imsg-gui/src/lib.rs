@@ -6,6 +6,7 @@
 
 pub mod commands;
 pub mod config;
+pub mod contacts;
 pub mod daemon;
 pub mod delete;
 pub mod discover;

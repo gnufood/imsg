@@ -46,6 +46,7 @@ dialoguer            = "0.12"
 [dev-dependencies]
 serial_test          = "3"
 tempfile             = "3"
+secrecy              = "0.10"
 
 [lints]
 workspace = true

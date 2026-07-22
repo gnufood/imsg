@@ -18,7 +18,7 @@ pub(in crate::commands) async fn run_list(
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
-    if is_opted_in(db).await {
+    if is_opted_in(db, "sync_enabled").await {
         with_spinner("listing", list::run_store(opts, db)).await
     } else {
         with_spinner("listing", list::run(cfg, spoke, device, opts, config_path)).await
@@ -43,7 +43,7 @@ pub(in crate::commands) async fn run_contacts(
         let count = with_spinner("syncing contacts", fut).await?;
         return Ok(format!("synced {count} contacts"));
     }
-    if is_opted_in(db).await {
+    if is_opted_in(db, "contacts_synced").await {
         with_spinner("contacts", contacts::run_store(&opts, db)).await
     } else {
         with_spinner("contacts", contacts::run(cfg, spoke, device, &opts, config_path)).await
@@ -60,7 +60,7 @@ pub(in crate::commands) async fn run_get(
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
-    if is_opted_in(db).await {
+    if is_opted_in(db, "sync_enabled").await {
         with_spinner("fetching", get::run_store(handle, mark_read, db)).await
     } else {
         with_spinner("fetching", get::run(cfg, spoke, device, handle, mark_read, config_path)).await
@@ -75,7 +75,7 @@ pub(in crate::commands) async fn run_threads(
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
-    if is_opted_in(db).await {
+    if is_opted_in(db, "sync_enabled").await {
         with_spinner("threads", threads::run_store(db)).await
     } else {
         with_spinner("threads", threads::run(cfg, spoke, device, config_path)).await
@@ -95,7 +95,7 @@ pub(in crate::commands) async fn run_send(
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
-    if is_opted_in(db).await {
+    if is_opted_in(db, "sync_enabled").await {
         let fut = send::run(cfg, spoke, device, number, message, db, config_path);
         with_spinner("sending", fut).await
     } else {
@@ -104,16 +104,21 @@ pub(in crate::commands) async fn run_send(
     }
 }
 
-/// Returns `true` when `sync_enabled = "true"` is set in the store `meta` table.
+/// Returns `true` when `key = "true"` is set in the store `meta` table. Callers pass
+/// `"sync_enabled"` (MAP domain) or `"contacts_synced"` (contacts domain) — the two are tracked
+/// independently since a device's MAP and PBAP data sync on unrelated schedules.
 ///
 /// Any store error is treated as not opted in so the caller falls back to the phone path; a
 /// warning is emitted so the failure is visible in logs.
-async fn is_opted_in(store: &store::Store) -> bool {
-    match store.get_meta("sync_enabled").await {
+async fn is_opted_in(store: &store::Store, key: &str) -> bool {
+    match store.get_meta(key).await {
         Ok(v) => v.as_deref() == Some("true"),
         Err(e) => {
-            tracing::warn!("failed to read sync_enabled from store, falling back to phone: {e}");
+            tracing::warn!("failed to read {key} from store, falling back to phone: {e}");
             false
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

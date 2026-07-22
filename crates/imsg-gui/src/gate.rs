@@ -2,7 +2,8 @@
 //!
 //! Brings the app from cold start to a ready `Store` in the CLI's own order — `config::load` →
 //! [`daemon::provision::ensure_running`](crate::daemon::provision::ensure_running) →
-//! open store → [`sync::ensure_synced`](crate::sync::ensure_synced).
+//! open store → [`sync::ensure_synced`](crate::sync::ensure_synced) →
+//! [`contacts::ensure_synced_best_effort`](crate::contacts::ensure_synced_best_effort).
 //!
 //! The frontend never drives this sequence. Its whole surface is: poll the current
 //! [`GateStatus`] (`commands::gate::gate_status`), supply device config through the ordinary
@@ -150,6 +151,7 @@ pub async fn run<F, R>(
             state.park(failed(GateStage::Sync, &e)).await;
             continue;
         }
+        crate::contacts::ensure_synced_best_effort(cfg.device.address()).await;
         state.set(GateStatus::Ready);
         on_ready(db);
         return;

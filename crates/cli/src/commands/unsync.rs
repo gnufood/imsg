@@ -5,16 +5,21 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use store::Store;
 
-/// Clears `sync_enabled` in the `meta` table, reverting `list`/`get`/`threads` to direct
-/// phone access. The database file and all synced data are preserved.
+/// Clears `sync_enabled` and `contacts_synced` in the `meta` table, reverting `list`/`get`/
+/// `threads`/`contacts` to direct phone access. The database file and all synced data are
+/// preserved.
 ///
 /// # Errors
 ///
 /// Returns an error if the store write fails.
 pub(crate) async fn disable(store: &Store) -> Result<()> {
     store.set_meta("sync_enabled", "false").await?;
+    store.set_meta("contacts_synced", "false").await?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
 
 /// Deletes the database file and companion WAL/SHM files without opening a connection.
 ///

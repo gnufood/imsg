@@ -64,7 +64,9 @@ async fn refresh_contacts<T: AsyncRead + AsyncWrite + Unpin>(
 /// be valid); a version-counter-only change refreshes without wiping. A `DatabaseIdentifier` the
 /// device never reports (`None`) can't establish cache validity, so every call refreshes.
 ///
-/// Returns the number of contacts upserted.
+/// Returns the number of contacts upserted. On any success path (including the no-op), sets the
+/// `contacts_synced` meta flag — the contacts-domain counterpart to `sync_enabled`, read by
+/// callers deciding whether the local contacts cache is trustworthy enough to read directly.
 ///
 /// # Errors
 ///
@@ -78,6 +80,7 @@ pub async fn sync_contacts<T: AsyncRead + AsyncWrite + Unpin>(
     let cached = store.pbap_meta().await?;
 
     if remote.database_id.is_some() && remote == cached {
+        store.set_meta("contacts_synced", "true").await?;
         return Ok(0);
     }
     if remote.database_id.is_some() && remote.database_id != cached.database_id {
@@ -86,6 +89,7 @@ pub async fn sync_contacts<T: AsyncRead + AsyncWrite + Unpin>(
 
     let count = refresh_contacts(client, store, path).await?;
     store.set_pbap_meta(&remote).await?;
+    store.set_meta("contacts_synced", "true").await?;
     Ok(count)
 }
 
