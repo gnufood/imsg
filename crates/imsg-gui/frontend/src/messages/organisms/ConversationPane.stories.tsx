@@ -4,6 +4,7 @@ import { fn } from 'storybook/test'
 
 const meta = {
   args: {
+    contactName: 'Jane Doe',
     deleting: false,
     messages: [
       {
@@ -45,8 +46,12 @@ type Story = StoryObj<typeof meta>
 
 export const Ready: Story = {}
 
+export const UnnamedContact: Story = {
+  args: { contactName: undefined },
+}
+
 export const Empty: Story = {
-  args: { messages: [], selectedAddress: undefined },
+  args: { contactName: undefined, messages: [], selectedAddress: undefined },
 }
 
 export const Loading: Story = {

@@ -10,6 +10,13 @@ import { Trash2 } from 'lucide-react'
 
 const paneCenter = (children: React.ReactNode): React.JSX.Element => <div className="grid h-full place-items-center p-6">{children}</div>
 
+const headerLabel = (selectedAddress: string | undefined, contactName: string | undefined): string => {
+  if (selectedAddress === undefined) {
+    return 'Conversation'
+  }
+  return contactName ?? selectedAddress
+}
+
 interface ConversationContentArgs {
   messages: MessageDto[] | undefined
   onResumePolling: () => void
@@ -35,6 +42,7 @@ const renderContent = ({ messages, onResumePolling, pollFailed, selectedAddress 
 }
 
 interface ConversationPaneProps {
+  contactName: string | undefined
   deleting: boolean
   messages: MessageDto[] | undefined
   onDelete: () => void
@@ -47,6 +55,7 @@ interface ConversationPaneProps {
 }
 
 const ConversationPane = ({
+  contactName,
   deleting,
   messages,
   onDelete,
@@ -60,7 +69,7 @@ const ConversationPane = ({
   <div className="flex flex-1 flex-col overflow-hidden">
     <div className="flex items-center justify-between border-b border-line p-4">
       <Text as="span" tone="muted">
-        Conversation
+        {headerLabel(selectedAddress, contactName)}
       </Text>
       {/* Only offer delete once a conversation is actually selected — nothing to delete otherwise. */}
       {selectedAddress !== undefined && <IconButton disabled={deleting} icon={Trash2} label="Delete conversation" onClick={onDelete} />}

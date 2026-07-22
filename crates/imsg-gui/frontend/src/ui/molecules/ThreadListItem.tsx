@@ -30,7 +30,7 @@ const ThreadListItem = ({ thread, onSelect }: ThreadListItemProps): React.JSX.El
       >
         <Avatar />
         <span className="flex min-w-0 flex-1 flex-col items-start">
-          <Text as="span">{thread.address}</Text>
+          <Text as="span">{thread.contact_name ?? thread.address}</Text>
           <Text as="span" size="xs" tone="muted">
             {formatLatest(thread.latest_ms)}
           </Text>

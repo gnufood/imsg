@@ -43,6 +43,7 @@ const meta = {
     onSendMessage: fn(),
     onToggleLeft: fn(),
     selectedAddress: undefined,
+    selectedContactName: undefined,
     sendError: undefined,
     sendPending: false,
     threads: undefined,

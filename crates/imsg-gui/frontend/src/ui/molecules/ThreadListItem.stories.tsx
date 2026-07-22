@@ -32,3 +32,9 @@ export const Unread: Story = {
     thread: { address: '00:11:22:33:44:55', contact_name: null, latest_ms: 1_752_700_800_000n, latest_outgoing_status: null, total: 12n, unread: 3n },
   },
 }
+
+export const WithContactName: Story = {
+  args: {
+    thread: { address: '00:11:22:33:44:55', contact_name: 'Jane Doe', latest_ms: 1_752_700_800_000n, latest_outgoing_status: null, total: 12n, unread: 0n },
+  },
+}

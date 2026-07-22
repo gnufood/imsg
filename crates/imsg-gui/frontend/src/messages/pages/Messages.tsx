@@ -1,5 +1,5 @@
 import type { MessageDto, ThreadDto } from '@/bindings.ts'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import ConfirmDialog from '@/ui/molecules/ConfirmDialog.tsx'
 import MessagesTemplate from '@/messages/templates/MessagesTemplate.tsx'
@@ -9,14 +9,14 @@ interface DeleteDialogArgs {
   deleting: boolean
   onCancelDelete: () => void
   onConfirmDelete: () => void
-  selectedAddress: string | undefined
+  selectedContactName: string | undefined
 }
 
-const renderDeleteDialog = ({ deleteError, deleting, onCancelDelete, onConfirmDelete, selectedAddress }: DeleteDialogArgs): React.JSX.Element => (
+const renderDeleteDialog = ({ deleteError, deleting, onCancelDelete, onConfirmDelete, selectedContactName }: DeleteDialogArgs): React.JSX.Element => (
   <ConfirmDialog
     confirmLabel="Delete"
     error={deleteError}
-    message={`Delete all messages with ${selectedAddress ?? 'this contact'}? This can't be undone.`}
+    message={`Delete all messages with ${selectedContactName ?? 'this contact'}? This can't be undone.`}
     onCancel={onCancelDelete}
     onConfirm={onConfirmDelete}
     pending={deleting}
@@ -61,6 +61,12 @@ interface MessagesProps {
   threadsPollFailed: boolean
 }
 
+// Derived from data this page already has (no extra IPC) — the same cached-display-name join
+// `ThreadListItem` uses, just looked up by address instead of iterated. Pulled out of `Messages`,
+// Same as `usePaneCollapse`, to stay under this repo's max-lines-per-function limit.
+const useSelectedContactName = (threads: ThreadDto[] | undefined, selectedAddress: string | undefined): string | undefined =>
+  useMemo(() => threads?.find((thread) => thread.address === selectedAddress)?.contact_name ?? undefined, [threads, selectedAddress])
+
 // Pane collapse/expand is presentation-only, per-session UI state — never persisted, never
 // Shared with the polling hooks — so it lives here rather than in `MessagesConnected`. The
 // Delete-confirm dialog's open/pending/error state, by contrast, comes from `useDeleteConversation`
@@ -85,6 +91,7 @@ const Messages = ({
   threadsPollFailed,
 }: MessagesProps): React.JSX.Element => {
   const { leftCollapsed, toggleLeft } = usePaneCollapse()
+  const selectedContactName = useSelectedContactName(threads, selectedAddress)
 
   return (
     <>
@@ -100,13 +107,14 @@ const Messages = ({
         onSendMessage={onSendMessage}
         onToggleLeft={toggleLeft}
         selectedAddress={selectedAddress}
+        selectedContactName={selectedContactName}
         sendError={sendError}
         sendPending={sendPending}
         threads={threads}
         threadsPollFailed={threadsPollFailed}
       />
       <AnimatePresence>
-        {deleteConfirmOpen && renderDeleteDialog({ deleteError, deleting, onCancelDelete, onConfirmDelete, selectedAddress })}
+        {deleteConfirmOpen && renderDeleteDialog({ deleteError, deleting, onCancelDelete, onConfirmDelete, selectedContactName })}
       </AnimatePresence>
     </>
   )

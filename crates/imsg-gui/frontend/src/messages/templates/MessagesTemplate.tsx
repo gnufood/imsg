@@ -19,6 +19,7 @@ interface MessagesTemplateProps {
   onSendMessage: (text: string) => void
   onToggleLeft: () => void
   selectedAddress: string | undefined
+  selectedContactName: string | undefined
   sendError: string | undefined
   sendPending: boolean
   threads: ThreadDto[] | undefined
@@ -37,6 +38,7 @@ const MessagesTemplate = ({
   onSendMessage,
   onToggleLeft,
   selectedAddress,
+  selectedContactName,
   sendError,
   sendPending,
   threads,
@@ -53,6 +55,7 @@ const MessagesTemplate = ({
     <div className="flex h-screen w-full bg-surface text-ink">
       <ThreadListPane collapsed={leftCollapsed} onSelect={onSelectThread} onToggle={onToggleLeft} threads={threads} />
       <ConversationPane
+        contactName={selectedContactName}
         deleting={deleting}
         messages={conversationMessages}
         onDelete={onRequestDelete}
