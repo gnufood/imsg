@@ -1,20 +1,26 @@
 //! Device actor serving: the `Active`-phase select loop, op dispatch, and MNS event handling
 //! (store write + subscriber fan-out).
 //!
-//! Second impl block for [`Actor`]; the connection lifecycle lives in [`super::inner`].
+//! Second impl block for [`Actor`]; the connection lifecycle lives in [`super::inner`], PBAP op
+//! dispatch lives in [`pbap`], and MNS event handling lives in [`mns`].
+
+mod mns;
+mod pbap;
 
 use std::time::Duration;
 
 use anyhow::Result;
-use ipc::{BrokerResponse, EventType, Reason, WatchEvent};
+use ipc::{BrokerResponse, Reason, WatchEvent};
 use map_core::client::MapClient;
+use mns::{on_mns_event, recv_mns};
 use pbap_core::client::PbapClient;
-use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
 use super::{dispatch, Actor, OpOutcome, ServeOutcome};
 use crate::runtime::types::DeviceOp;
+
+pub(in crate::runtime::actor) use mns::wants_mns;
 
 impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Serves [`DeviceOp`]s against the live `client` until idle timeout, all handles dropped
@@ -56,8 +62,8 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     }
 
     /// Dispatches one [`DeviceOp`]. Watch ops adjust the subscriber count; MAP ops run via
-    /// [`dispatch`] and finish through [`finish_map`][Self::finish_map]; `SyncContacts` runs
-    /// against the held PBAP session via [`run_sync_contacts`][Self::run_sync_contacts].
+    /// [`dispatch`] and finish through [`finish_map`][Self::finish_map]; PBAP ops (contacts sync
+    /// and live browsing) delegate to [`handle_pbap_op`][Self::handle_pbap_op].
     async fn handle_op(
         &mut self,
         client: &mut MapClient<T>,
@@ -103,11 +109,11 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
             DeviceOp::LiveThreads { reply } => {
                 Self::finish_map(dispatch::do_live_threads(client).await, reply)
             }
-            DeviceOp::SyncContacts { reply } => {
-                let resp = self.run_sync_contacts(pbap).await;
-                let _ = reply.send(resp);
-                OpOutcome::Continue
-            }
+            op @ (DeviceOp::SyncContacts { .. }
+            | DeviceOp::ListContacts { .. }
+            | DeviceOp::GetContact { .. }
+            | DeviceOp::LookupContact { .. }
+            | DeviceOp::PullAllContacts { .. }) => self.handle_pbap_op(pbap, op).await,
         }
     }
 
@@ -118,31 +124,6 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
             self.stop_mns();
         }
         OpOutcome::Continue
-    }
-
-    /// Syncs contacts against the actor's held PBAP session (connecting it first if needed),
-    /// converting any failure — connect or sync — into `BrokerResponse::Failed`. Never returns
-    /// `OpOutcome::SessionLost`: PBAP failures are unrelated to the (unaffected) MAP session's
-    /// health. A sync failure drops the cached session so the next PBAP op reconnects rather
-    /// than reusing a client that may be dead.
-    async fn run_sync_contacts(&mut self, pbap: &mut Option<PbapClient<T>>) -> BrokerResponse {
-        if let Err(reason) = self.ensure_pbap(pbap).await {
-            return BrokerResponse::Failed(reason);
-        }
-        // Invariant: `ensure_pbap`'s `Ok(())` always populates `pbap`; the `None` arm is
-        // unreachable in practice but handled rather than panicked on.
-        let Some(client) = pbap.as_mut() else {
-            return BrokerResponse::Failed(Reason::OperationFailed(
-                "pbap session missing after connect".to_owned(),
-            ));
-        };
-        match dispatch::do_sync_contacts(client, &self.store).await {
-            Ok(resp) => resp,
-            Err(e) => {
-                *pbap = None;
-                BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))
-            }
-        }
     }
 
     /// Replies to a MAP op and reports whether the session survived.
@@ -217,14 +198,6 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     }
 }
 
-/// Awaits the next MNS event, or `pending` when MNS is not running.
-async fn recv_mns(rx: &mut Option<mpsc::Receiver<session::MnsEvent>>) -> Option<session::MnsEvent> {
-    match rx {
-        Some(r) => r.recv().await,
-        None => std::future::pending().await,
-    }
-}
-
 /// Awaits the idle timeout, or `pending` forever when `idle` is `None` (daemon's persistent mode).
 async fn idle_sleep(idle: Option<Duration>) {
     match idle {
@@ -232,69 +205,3 @@ async fn idle_sleep(idle: Option<Duration>) {
         None => std::future::pending().await,
     }
 }
-
-/// Maps `session::EventType` (`map_core`) to the wire [`EventType`] — exhaustive, no wildcard
-/// arm, so a new `session::EventType` variant fails to compile here instead of silently
-/// dropping through as an unmapped event.
-const fn to_wire_event_type(ev: session::EventType) -> EventType {
-    match ev {
-        session::EventType::NewMessage => EventType::NewMessage,
-        session::EventType::DeliverySuccess => EventType::DeliverySuccess,
-        session::EventType::SendingSuccess => EventType::SendingSuccess,
-        session::EventType::DeliveryFailure => EventType::DeliveryFailure,
-        session::EventType::SendingFailure => EventType::SendingFailure,
-        session::EventType::MessageDeleted => EventType::MessageDeleted,
-        session::EventType::MessageShift => EventType::MessageShift,
-        session::EventType::MemoryFull => EventType::MemoryFull,
-        session::EventType::MemoryAvailable => EventType::MemoryAvailable,
-        session::EventType::ReadStatusChanged => EventType::ReadStatusChanged,
-    }
-}
-
-/// Flattens an [`session::MnsEvent`] into the wire [`WatchEvent`].
-fn mns_to_watch(ev: &session::MnsEvent) -> WatchEvent {
-    WatchEvent {
-        event_type: to_wire_event_type(ev.event_type()),
-        handle: ev.handle().map(str::to_owned),
-        folder: ev.folder().map(str::to_owned),
-        old_folder: ev.old_folder().map(str::to_owned),
-        msg_type: ev.msg_type().map(str::to_owned),
-        datetime: ev.datetime().map(str::to_owned),
-    }
-}
-
-/// Writes an MNS event to the store, then fans it out to `Watch` subscribers regardless of the
-/// write outcome — subscribers should still see the raw event even if persistence failed.
-///
-/// Returns [`OpOutcome::SessionLost`] when the MAP fetch behind a `NewMessage` event hits a fatal
-/// transport error — the caller should reconnect. Non-fatal store/MAP errors are logged and
-/// otherwise ignored; the event is not retried (`Store::reconcile_outgoing` and periodic backfill
-/// are the correctness fallback for anything missed).
-async fn on_mns_event<T: AsyncRead + AsyncWrite + Unpin>(
-    ev: &session::MnsEvent,
-    client: &mut MapClient<T>,
-    store: &Store,
-    watch_tx: &broadcast::Sender<WatchEvent>,
-) -> OpOutcome {
-    let now = session::util::now_ms();
-    let mut outcome = OpOutcome::Continue;
-    if let Err(e) = session::watch::handle_mns_event(ev, client, store, now).await {
-        if session::outbox::is_fatal_anyhow(&e) {
-            tracing::warn!("MNS event handling lost the session: {e:#}");
-            outcome = OpOutcome::SessionLost;
-        } else {
-            tracing::warn!("MNS event store write failed: {e:#}");
-        }
-    }
-    let _ = watch_tx.send(mns_to_watch(ev));
-    outcome
-}
-
-/// True when MNS should be running: a live `Watch` subscriber, or persistent (daemon) mode,
-/// signaled by `idle == None` (the mode switch introduced for the idle timeout).
-pub(in crate::runtime::actor) const fn wants_mns(watch_count: u32, idle: Option<Duration>) -> bool {
-    watch_count > 0 || idle.is_none()
-}
-
-#[cfg(test)]
-mod tests;

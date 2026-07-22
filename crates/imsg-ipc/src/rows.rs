@@ -72,3 +72,29 @@ pub struct BodyDto {
     /// Decoded message body text.
     pub text: String,
 }
+
+/// One phonebook listing entry from a live `list`, mirroring `pbap_core::CardEntry`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct CardEntryDto {
+    /// Opaque PBAP vCard handle assigned by the remote, e.g. `"41.vcf"`.
+    pub handle: String,
+    /// Display name from the listing XML `name` attribute; `None` if absent.
+    pub name: Option<String>,
+}
+
+/// One contact vCard from a live `get`/`lookup`/`pull_all`, mirroring
+/// `formats::vcard::Contact`.
+///
+/// Carries no handle by design — unlike [`CardEntryDto`], a pulled vCard doesn't retain the
+/// (volatile, listing-scoped) handle it was fetched by.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct ContactDto {
+    /// Value of the vCard FN property; `None` if absent.
+    pub display_name: Option<String>,
+    /// Value of the vCard UID property; `None` if absent. The durable per-contact key.
+    pub uid: Option<String>,
+    /// Whitespace-stripped, non-empty TEL values in vCard order.
+    pub phones: Vec<String>,
+}

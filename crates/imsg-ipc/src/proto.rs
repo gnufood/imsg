@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::rows::{BodyDto, MessageDto, ThreadDto};
+use crate::rows::{BodyDto, CardEntryDto, ContactDto, MessageDto, ThreadDto};
 use crate::{Reason, SessionState};
 
 /// Maximum frame size for broker IPC frames, in bytes.
@@ -81,6 +81,44 @@ pub enum BrokerRequest {
         /// UTF-8 message body.
         message: String,
     },
+    /// Query the device live for a phonebook listing (`contacts --list`). No store write;
+    /// pagination is device-side. The broker answers with [`BrokerResponse::ContactEntries`].
+    ListContacts {
+        /// Lowercase PBAP phonebook path name (`"pb"`/`"ich"`/`"och"`/`"mch"`/`"cch"`/`"spd"`/
+        /// `"fav"`); `None` defaults to `"pb"`.
+        path: Option<String>,
+        /// Maximum rows after `offset`; `None` keeps the device window.
+        limit: Option<u16>,
+        /// Rows to skip, in device-reported order.
+        offset: u16,
+    },
+    /// Fetch one contact vCard live by handle (`contacts --get`). No store write. The broker
+    /// answers with [`BrokerResponse::Contact`]; an unresolvable handle is a device failure,
+    /// not a `None` result — see [`BrokerRequest::LookupContact`] for the has-a-match-or-not case.
+    GetContact {
+        /// Lowercase PBAP phonebook path name; `None` defaults to `"pb"`.
+        path: Option<String>,
+        /// Opaque PBAP vCard handle.
+        handle: String,
+    },
+    /// Reverse-look up a contact by phone number live (`contacts --lookup`), then pull its
+    /// vCard. No store write. The broker answers with [`BrokerResponse::ContactLookup`].
+    LookupContact {
+        /// Lowercase PBAP phonebook path name; `None` defaults to `"pb"`.
+        path: Option<String>,
+        /// Phone number to search for; matching is whatever the device's own search implements.
+        number: String,
+    },
+    /// Pull every contact vCard in a phonebook live (`contacts` with no flags). No store write;
+    /// pagination is device-side. The broker answers with [`BrokerResponse::Contacts`].
+    PullAllContacts {
+        /// Lowercase PBAP phonebook path name; `None` defaults to `"pb"`.
+        path: Option<String>,
+        /// Maximum rows after `offset`; `None` keeps the device window.
+        limit: Option<u16>,
+        /// Rows to skip, in device-reported order.
+        offset: u16,
+    },
     /// Stream MAP notification events; broker sends zero or more [`BrokerResponse::WatchEvent`]
     /// frames until the client closes the connection.
     Watch,
@@ -141,6 +179,16 @@ pub enum BrokerResponse {
         /// Number of address rows upserted into the local contacts cache.
         count: usize,
     },
+    /// Live phonebook listing rows; sole answer to [`BrokerRequest::ListContacts`].
+    ContactEntries(Vec<CardEntryDto>),
+    /// One live contact vCard fetched by handle; sole answer to [`BrokerRequest::GetContact`].
+    Contact(ContactDto),
+    /// Live reverse-lookup result; `None` when the device reports no match. Sole answer to
+    /// [`BrokerRequest::LookupContact`].
+    ContactLookup(Option<ContactDto>),
+    /// Every live contact vCard in a phonebook; sole answer to
+    /// [`BrokerRequest::PullAllContacts`].
+    Contacts(Vec<ContactDto>),
 }
 
 /// MAP 1.4 MNS notification event type, mirroring `map_core::mns_event::EventType`.

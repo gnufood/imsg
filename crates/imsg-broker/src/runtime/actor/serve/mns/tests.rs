@@ -1,16 +1,20 @@
 //! Unit tests for [`super::wants_mns`] and [`super::on_mns_event`].
 
+use std::time::Duration;
+
 use bytes::Bytes;
 use futures::{SinkExt as _, StreamExt as _};
+use map_core::client::MapClient;
 use map_core::mns_event::parse_event_report;
 use secrecy::SecretBox;
 use store::{Direction, NewMessage, Store};
 use tokio::io::{duplex, DuplexStream};
+use tokio::sync::broadcast;
 
 use super::*;
 
 const CONNECT_RSP: &[u8] =
-    include_bytes!("../../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
+    include_bytes!("../../../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
 
 /// In-memory `Store` (temp-dir `SQLite`) plus the dir guard.
 async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {

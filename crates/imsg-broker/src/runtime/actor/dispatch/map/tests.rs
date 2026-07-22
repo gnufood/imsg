@@ -11,13 +11,13 @@ use tokio::sync::broadcast;
 use super::*;
 
 const CONNECT_RSP: &[u8] =
-    include_bytes!("../../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
+    include_bytes!("../../../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
 const TELECOM_RSP: &[u8] =
-    include_bytes!("../../../../../imsg-obex/tests/fixtures/setpath_telecom_rsp.bin");
+    include_bytes!("../../../../../../imsg-obex/tests/fixtures/setpath_telecom_rsp.bin");
 const MSG_RSP: &[u8] =
-    include_bytes!("../../../../../imsg-obex/tests/fixtures/setpath_msg_rsp.bin");
+    include_bytes!("../../../../../../imsg-obex/tests/fixtures/setpath_msg_rsp.bin");
 const INBOX_RSP: &[u8] =
-    include_bytes!("../../../../../imsg-obex/tests/fixtures/setpath_inbox_rsp.bin");
+    include_bytes!("../../../../../../imsg-obex/tests/fixtures/setpath_inbox_rsp.bin");
 // OBEX OK (0xA0), length 3, no headers — accepted response for the `SetMessageStatus` PUT.
 const OK_NO_HEADERS_RSP: &[u8] = &[0xA0, 0x00, 0x03];
 

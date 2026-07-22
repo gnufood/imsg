@@ -7,7 +7,8 @@
 //! [`dispatch`]: super::dispatch
 //! [`Reason`]: ipc::Reason
 
-use ipc::{BodyDto, Direction, MessageDto, ThreadDto};
+use ipc::{BodyDto, CardEntryDto, ContactDto, Direction, MessageDto, ThreadDto};
+use pbap_core::{CardEntry, Contact};
 use session::live::models::{Direction as LiveDirection, LiveBody, LiveMessage, LiveThread};
 
 pub(in crate::runtime::actor) fn to_message_dto(m: LiveMessage) -> MessageDto {
@@ -41,4 +42,13 @@ const fn to_direction(d: LiveDirection) -> Direction {
         LiveDirection::Received => Direction::Received,
         LiveDirection::Sent => Direction::Sent,
     }
+}
+
+pub(in crate::runtime::actor) fn to_card_entry_dto(e: &CardEntry) -> CardEntryDto {
+    CardEntryDto { handle: e.handle().to_owned(), name: e.name().map(str::to_owned) }
+}
+
+pub(in crate::runtime::actor) fn to_contact_dto(c: Contact) -> ContactDto {
+    let phones = c.phones().to_vec();
+    ContactDto { display_name: c.display_name, uid: c.uid, phones }
 }

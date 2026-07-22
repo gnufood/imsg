@@ -1,7 +1,7 @@
 //! Wire round-trip tests for [`super::BrokerRequest`]/[`super::BrokerResponse`].
 
 use super::*;
-use crate::Direction;
+use crate::{CardEntryDto, ContactDto, Direction};
 
 /// Regression: internally-tagged newtype-of-`String` variants fail to serialise. Adjacent
 /// tagging fixes it, so `Error`/`Text`/`Failed` frames must round-trip.
@@ -48,6 +48,26 @@ fn live_data_response_variants_roundtrip() -> Result<(), serde_json::Error> {
             text: "hi".into(),
         }),
         BrokerResponse::ContactsSynced { count: 3 },
+        BrokerResponse::ContactEntries(vec![CardEntryDto {
+            handle: "41.vcf".into(),
+            name: Some("Jane Doe".into()),
+        }]),
+        BrokerResponse::Contact(ContactDto {
+            display_name: Some("Jane Doe".into()),
+            uid: Some("uid-1".into()),
+            phones: vec!["+15550001".into()],
+        }),
+        BrokerResponse::ContactLookup(Some(ContactDto {
+            display_name: Some("Jane Doe".into()),
+            uid: Some("uid-1".into()),
+            phones: vec!["+15550001".into()],
+        })),
+        BrokerResponse::ContactLookup(None),
+        BrokerResponse::Contacts(vec![ContactDto {
+            display_name: None,
+            uid: Some("uid-2".into()),
+            phones: vec![],
+        }]),
     ];
     for resp in cases {
         let json = serde_json::to_string(&resp)?;
@@ -72,6 +92,10 @@ fn live_request_variants_roundtrip() -> Result<(), serde_json::Error> {
         BrokerRequest::Threads,
         BrokerRequest::MarkReadDevice { handle: "7".into() },
         BrokerRequest::SendLive { number: "+15550001".into(), message: "hi".into() },
+        BrokerRequest::ListContacts { path: Some("fav".into()), limit: Some(20), offset: 0 },
+        BrokerRequest::GetContact { path: None, handle: "41.vcf".into() },
+        BrokerRequest::LookupContact { path: None, number: "+15550001".into() },
+        BrokerRequest::PullAllContacts { path: None, limit: None, offset: 0 },
         BrokerRequest::SyncContacts,
         BrokerRequest::Shutdown,
     ];

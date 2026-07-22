@@ -85,6 +85,67 @@ async fn sync_contacts_reuses_persistent_pbap_session() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Builds a counting PBAP connector whose single connection answers two `ListContacts`
+/// request cycles (one `ListvCardObjects` GET each) before the fake server task ends.
+fn counting_two_list_pbap_connector(
+    calls: Arc<AtomicUsize>,
+) -> PbapConnector<tokio::io::DuplexStream> {
+    Box::new(move || {
+        calls.fetch_add(1, Ordering::SeqCst);
+        Box::pin(async {
+            let (client_io, server_io) = duplex(4096);
+            tokio::spawn(async move {
+                let mut t = obex_core::wrap(server_io);
+                t.next().await;
+                t.send(Bytes::from_static(PBAP_CONNECT_RSP)).await.ok();
+                for _ in 0..2 {
+                    t.next().await;
+                    if let Ok(pkt) = ok_body_packet(b"<vCard-listing></vCard-listing>") {
+                        t.send(pkt).await.ok();
+                    }
+                }
+            });
+            pbap_core::client::PbapClient::connect(client_io).await.map_err(SessionError::from)
+        })
+    })
+}
+
+/// Sends a `ListContacts` op through the actor's real `mpsc` channel and awaits its reply.
+async fn list_contacts(h: &ActorHandles) -> anyhow::Result<ipc::BrokerResponse> {
+    let (reply, rx) = tokio::sync::oneshot::channel();
+    h.handle.send(DeviceOp::ListContacts { path: None, limit: None, offset: 0, reply }).await?;
+    Ok(rx.await?)
+}
+
+/// A `ListContacts` op reuses the actor's held PBAP session exactly like `SyncContacts` does —
+/// proving the new live-browse ops inherit `run_pbap_op`'s reuse guarantee for free, as intended
+/// when it was factored out of `SyncContacts`'s original standalone handling.
+#[tokio::test]
+async fn list_contacts_reuses_persistent_pbap_session() -> anyhow::Result<()> {
+    let (store, _dir) = fake_store().await?;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let h = spawn(
+        fake_connector(),
+        counting_two_list_pbap_connector(calls.clone()),
+        store,
+        Some(Duration::from_secs(60)),
+        test_policy(),
+    );
+    let mut state = h.state.clone();
+    state.wait_for(|s| matches!(s, ConnState::Active)).await?;
+
+    for _ in 0..2 {
+        let resp = list_contacts(&h).await?;
+        assert!(matches!(resp, ipc::BrokerResponse::ContactEntries(entries) if entries.is_empty()));
+    }
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "second ListContacts reconnected instead of reusing the held PBAP session"
+    );
+    Ok(())
+}
+
 /// A PBAP transport error drops only the cached PBAP session (forcing a reconnect on the
 /// *next* PBAP op) — it must never mark the unrelated MAP session lost.
 #[tokio::test]

@@ -220,7 +220,11 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 | DeviceOp::LiveThreads { reply }
                 | DeviceOp::LiveMarkRead { reply, .. }
                 | DeviceOp::LiveSend { reply, .. }
-                | DeviceOp::SyncContacts { reply } => {
+                | DeviceOp::SyncContacts { reply }
+                | DeviceOp::ListContacts { reply, .. }
+                | DeviceOp::GetContact { reply, .. }
+                | DeviceOp::LookupContact { reply, .. }
+                | DeviceOp::PullAllContacts { reply, .. } => {
                     let _ = reply.send(resp);
                 }
                 DeviceOp::Subscribe { .. } | DeviceOp::Unsubscribe => {}

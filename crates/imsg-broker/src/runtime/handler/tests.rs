@@ -3,6 +3,7 @@
 use futures::SinkExt as _;
 use ipc::SessionState;
 use tokio::io::duplex;
+use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use super::*;
