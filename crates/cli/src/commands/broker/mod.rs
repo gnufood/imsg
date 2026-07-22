@@ -93,3 +93,20 @@ pub(crate) async fn sync(
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::sync(addr, folder).await?)
 }
+
+/// Refreshes the contacts cache via the broker (auto-starting if necessary); see [`send`] for
+/// why this isn't inlined at each call site.
+///
+/// # Errors
+///
+/// Returns an error if the broker cannot be started, or [`broker_client::ContactsError`] if the
+/// connection or the request itself fails.
+pub(crate) async fn sync_contacts(
+    cfg: &Config,
+    device: Option<&str>,
+    config_path: Option<&Path>,
+) -> Result<usize> {
+    let addr = device.unwrap_or_else(|| cfg.device.address());
+    spawn::ensure_running(cfg, device, config_path).await?;
+    Ok(broker_client::sync_contacts(addr).await?)
+}

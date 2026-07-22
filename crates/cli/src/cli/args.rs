@@ -123,3 +123,33 @@ pub(crate) enum PathArg {
     /// Favourites.
     Fav,
 }
+
+/// Lowers the PBAP phonebook argument to the wire name the broker's `resolve_path` expects
+/// (`imsg-broker`'s `dispatch/pbap.rs::parse_path`).
+pub(crate) const fn path_name(arg: PathArg) -> &'static str {
+    match arg {
+        PathArg::Pb => "pb",
+        PathArg::Ich => "ich",
+        PathArg::Och => "och",
+        PathArg::Mch => "mch",
+        PathArg::Cch => "cch",
+        PathArg::Spd => "spd",
+        PathArg::Fav => "fav",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn path_name_matches_broker_wire_names() {
+        assert_eq!(path_name(PathArg::Pb), "pb");
+        assert_eq!(path_name(PathArg::Ich), "ich");
+        assert_eq!(path_name(PathArg::Och), "och");
+        assert_eq!(path_name(PathArg::Mch), "mch");
+        assert_eq!(path_name(PathArg::Cch), "cch");
+        assert_eq!(path_name(PathArg::Spd), "spd");
+        assert_eq!(path_name(PathArg::Fav), "fav");
+    }
+}

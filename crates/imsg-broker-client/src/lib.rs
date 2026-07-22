@@ -9,12 +9,14 @@
 
 // `pub mod` (not `mod`) is required: `transport` has `pub(crate)` items, and `pub(crate)`
 // in a private module trips `redundant_pub_crate` while `pub` trips `unreachable_pub`.
+pub mod contacts;
 pub mod probe;
 pub mod query;
 pub mod response;
 pub mod transport;
 pub mod write;
 
+pub use contacts::{sync_contacts, ContactsError};
 pub use probe::{connect_retry, probe};
 pub use query::{query_persistent, query_state};
 pub use response::{text_result, CallError};

@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 
 pub(crate) use self::args::{
-    folder_of, path_of, BrokerCmd, ConfigCmd, DaemonCmd, FolderArg, PathArg, SpokeCmd,
+    folder_of, path_name, path_of, BrokerCmd, ConfigCmd, DaemonCmd, FolderArg, PathArg, SpokeCmd,
 };
 
 /// Top-level invocation: global transport/config options plus the chosen subcommand.
@@ -93,25 +93,30 @@ pub(crate) enum Command {
     },
     /// Pull contacts from a phonebook.
     Contacts {
-        /// List handles and names only, without full vCards.
-        #[arg(long, conflicts_with_all = ["get", "lookup"])]
+        /// List handles/UIDs and names only, without full vCards.
+        #[arg(long, conflicts_with_all = ["get", "lookup", "sync"])]
         list: bool,
-        /// Fetch a single contact by handle.
-        #[arg(long, value_name = "HANDLE", conflicts_with = "lookup")]
+        /// Fetch a single contact: a PBAP handle live/via broker, or a cached UID once opted in
+        /// (matches whatever `--list` just printed in that mode).
+        #[arg(long, value_name = "KEY", conflicts_with_all = ["lookup", "sync"])]
         get: Option<String>,
         /// Reverse-lookup a contact by phone number.
-        #[arg(long, value_name = "NUMBER")]
+        #[arg(long, value_name = "NUMBER", conflicts_with = "sync")]
         lookup: Option<String>,
-        /// Phonebook to read.
+        /// Refresh the local contacts cache from the device. No effect from `--raw`/`--limit`/
+        /// `--page`; always syncs the main phonebook regardless of `--path`.
+        #[arg(long)]
+        sync: bool,
+        /// Phonebook to read. No effect on `--sync` (always the main phonebook).
         #[arg(long, value_enum, default_value = "pb")]
         path: PathArg,
-        /// Show phone numbers as stored; skip E.164 normalisation. No effect on `--list`.
+        /// Show phone numbers as stored; skip E.164 normalisation. No effect on `--list`/`--sync`.
         #[arg(long)]
         raw: bool,
-        /// Maximum contacts per page; omit to show all.
+        /// Maximum contacts per page; omit to show all. No effect on `--sync`.
         #[arg(long, value_name = "N")]
         limit: Option<u16>,
-        /// Page number (1-indexed). Ignored when `--limit` is not set.
+        /// Page number (1-indexed). Ignored when `--limit` is not set. No effect on `--sync`.
         #[arg(long, value_name = "N")]
         page: Option<u16>,
     },

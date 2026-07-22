@@ -6,6 +6,7 @@ pub mod conn;
 pub mod contacts;
 pub mod daemon;
 pub mod delete;
+mod dispatch;
 pub mod folders;
 pub mod get;
 pub mod hub;
@@ -16,7 +17,9 @@ pub mod sync;
 pub mod threads;
 pub mod unsync;
 
-use std::path::{Path, PathBuf};
+use dispatch::{run_contacts, run_get, run_list, run_send, run_threads};
+
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
@@ -100,10 +103,10 @@ async fn run_command(
             let (cfg, db, bpath) = load_with_store(config_path).await?;
             Some(run_send(&cfg, spoke, device, number, message, &db, bpath.as_deref()).await?)
         }
-        Command::Contacts { list, get, lookup, path, raw, limit, page } => {
-            let cfg = load(config_path)?;
-            let opts = contacts::ContactsOpts { list, get, lookup, path, raw, limit, page };
-            Some(with_spinner("contacts", contacts::run(&cfg, spoke, device, opts)).await?)
+        Command::Contacts { list, get, lookup, sync, path, raw, limit, page } => {
+            let (cfg, db, bpath) = load_with_store(config_path).await?;
+            let opts = contacts::ContactsOpts { list, get, lookup, sync, path, raw, limit, page };
+            Some(run_contacts(&cfg, spoke, device, opts, &db, bpath.as_deref()).await?)
         }
         Command::Threads => {
             let (cfg, db, bpath) = load_with_store(config_path).await?;
@@ -149,76 +152,6 @@ async fn run_config(cmd: ConfigCmd, config_path: Option<PathBuf>) -> Result<Stri
     }
 }
 
-/// Dispatches `list` to the local store or phone based on opt-in state.
-async fn run_list(
-    cfg: &::config::Config,
-    spoke: Option<&transport::iroh::Endpoint>,
-    device: Option<&str>,
-    opts: list::ListOpts,
-    db: &store::Store,
-    config_path: Option<&Path>,
-) -> Result<String> {
-    if is_opted_in(db).await {
-        with_spinner("listing", list::run_store(opts, db)).await
-    } else {
-        with_spinner("listing", list::run(cfg, spoke, device, opts, config_path)).await
-    }
-}
-
-/// Dispatches `get` to the local store or phone based on opt-in state.
-async fn run_get(
-    cfg: &::config::Config,
-    spoke: Option<&transport::iroh::Endpoint>,
-    device: Option<&str>,
-    handle: String,
-    mark_read: bool,
-    db: &store::Store,
-    config_path: Option<&Path>,
-) -> Result<String> {
-    if is_opted_in(db).await {
-        with_spinner("fetching", get::run_store(handle, mark_read, db)).await
-    } else {
-        with_spinner("fetching", get::run(cfg, spoke, device, handle, mark_read, config_path)).await
-    }
-}
-
-/// Dispatches `threads` to the local store or phone based on opt-in state.
-async fn run_threads(
-    cfg: &::config::Config,
-    spoke: Option<&transport::iroh::Endpoint>,
-    device: Option<&str>,
-    db: &store::Store,
-    config_path: Option<&Path>,
-) -> Result<String> {
-    if is_opted_in(db).await {
-        with_spinner("threads", threads::run_store(db)).await
-    } else {
-        with_spinner("threads", threads::run(cfg, spoke, device, config_path)).await
-    }
-}
-
-/// Dispatches `send` to the store-backed outbox or a device-only push based on opt-in state.
-///
-/// Opted-in goes through `session::outbox::send_sms` (enqueue + push + reconcile); not opted-in
-/// pushes to the device only, leaving no local outbox row.
-async fn run_send(
-    cfg: &::config::Config,
-    spoke: Option<&transport::iroh::Endpoint>,
-    device: Option<&str>,
-    number: String,
-    message: String,
-    db: &store::Store,
-    config_path: Option<&Path>,
-) -> Result<String> {
-    if is_opted_in(db).await {
-        let fut = send::run(cfg, spoke, device, number, message, db, config_path);
-        with_spinner("sending", fut).await
-    } else {
-        let fut = send::run_live(cfg, spoke, device, number, message, config_path);
-        with_spinner("sending", fut).await
-    }
-}
-
 /// Disables sync, deleting the database if `purge` is set.
 async fn run_unsync(purge: bool, config_path: Option<PathBuf>) -> Result<String> {
     let cfg = load(config_path)?;
@@ -230,20 +163,6 @@ async fn run_unsync(purge: bool, config_path: Option<PathBuf>) -> Result<String>
     let db = open_store(&cfg).await?;
     unsync::disable(&db).await?;
     Ok("sync disabled; database preserved (re-enable with imsg sync)".to_owned())
-}
-
-/// Returns `true` when `sync_enabled = "true"` is set in the store `meta` table.
-///
-/// Any store error is treated as not opted in so the caller falls back to the phone path;
-/// a warning is emitted so the failure is visible in logs.
-async fn is_opted_in(store: &store::Store) -> bool {
-    match store.get_meta("sync_enabled").await {
-        Ok(v) => v.as_deref() == Some("true"),
-        Err(e) => {
-            tracing::warn!("failed to read sync_enabled from store, falling back to phone: {e}");
-            false
-        }
-    }
 }
 
 /// Appends the live-read footer, ensuring the body ends with a newline first.

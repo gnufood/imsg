@@ -9,7 +9,7 @@ use obex_core::{wrap, ObexTransport};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{
-    contacts::{normalize_number, parse_card_listing, parse_contacts, CardEntry},
+    contacts::{parse_card_listing, parse_contacts, CardEntry},
     metadata::PhonebookMetadata,
     params::{
         connect_params, list_params, metadata_params, pull_all_params, pull_entry_params,
@@ -197,33 +197,5 @@ impl<T: AsyncRead + AsyncWrite + Unpin> PbapClient<T> {
         let body = self.collect_body().await?;
         let text = std::str::from_utf8(&body).map_err(|_| PbapError::InvalidEncoding)?;
         Ok(Contact::from_vcard_str(text)?)
-    }
-
-    /// E.164-normalises both `number` and each contact's TEL before comparing. Returns the first match; skips `0.vcf`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PbapError::InvalidInput`] if `number` contains CR or LF.
-    /// Propagates all errors from [`list`](Self::list) and [`pull`](Self::pull).
-    pub async fn find_by_number(
-        &mut self,
-        path: PhonebookPath,
-        number: &str,
-    ) -> Result<Option<Contact>, PbapError> {
-        if number.contains(['\r', '\n']) {
-            return Err(PbapError::InvalidInput("number must not contain CR or LF"));
-        }
-        let target = normalize_number(number);
-        let entries = self.list(path, None, 0).await?;
-        for entry in &entries {
-            if entry.handle() == "0.vcf" {
-                continue;
-            }
-            let contact = self.pull(path, entry.handle()).await?;
-            if contact.phones().iter().any(|p| normalize_number(p) == target) {
-                return Ok(Some(contact));
-            }
-        }
-        Ok(None)
     }
 }
