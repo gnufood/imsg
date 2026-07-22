@@ -3,7 +3,7 @@
 //! equivalent (`crates/cli/src/commands/mod.rs`), which is untested for the same reason.
 
 use secrecy::SecretBox;
-use store::{Direction as StoreDirection, NewMessage, Store};
+use store::{Direction as StoreDirection, NewContact, NewMessage, Store};
 
 use super::*;
 
@@ -90,5 +90,66 @@ async fn threads_aggregates_by_address() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("thread missing"))?;
     assert_eq!(first.total, 2);
     assert_eq!(first.unread, 2);
+    Ok(())
+}
+
+fn sample_contact(uid: &str, name: &str, phones: &[&str]) -> NewContact {
+    NewContact {
+        uid: uid.to_owned(),
+        display_name: Some(name.to_owned()),
+        phones: phones.iter().map(|p| (*p).to_owned()).collect(),
+    }
+}
+
+#[tokio::test]
+async fn list_contacts_returns_entry_dtos_ordered_by_name() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert_contacts(vec![
+        sample_contact("U2", "Zed", &["+15550002"]),
+        sample_contact("U1", "Ada", &["+15550001"]),
+    ])
+    .await?;
+
+    let dtos = list_contacts(&db, 10, 0).await?;
+    assert_eq!(dtos.len(), 2);
+    assert_eq!(dtos.first().ok_or_else(|| anyhow::anyhow!("row missing"))?.uid, "U1");
+    assert_eq!(dtos.get(1).ok_or_else(|| anyhow::anyhow!("row missing"))?.uid, "U2");
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_contact_returns_none_for_missing() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    assert_eq!(get_contact(&db, "missing").await?, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_contact_returns_dto_with_phones_for_existing() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert_contacts(vec![sample_contact("U1", "Ada", &["+15550001", "+15550002"])]).await?;
+
+    let dto = get_contact(&db, "U1").await?.ok_or_else(|| anyhow::anyhow!("contact missing"))?;
+    assert_eq!(dto.display_name.as_deref(), Some("Ada"));
+    assert_eq!(dto.phones, vec!["+15550001".to_owned(), "+15550002".to_owned()]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn lookup_contact_finds_owner_by_address() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    db.upsert_contacts(vec![sample_contact("U1", "Ada", &["+15550001"])]).await?;
+
+    let dto = lookup_contact(&db, "+15550001")
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("contact missing"))?;
+    assert_eq!(dto.uid, "U1");
+    Ok(())
+}
+
+#[tokio::test]
+async fn lookup_contact_returns_none_for_unknown_address() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    assert_eq!(lookup_contact(&db, "+15559999").await?, None);
     Ok(())
 }

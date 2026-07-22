@@ -94,6 +94,21 @@ fn thread_dto_preserves_fields_and_maps_outgoing_status() {
     assert_eq!(dto.total, 4);
     assert_eq!(dto.unread, 2);
     assert_eq!(dto.latest_outgoing_status, Some(OutgoingStatus::SentConfirmed));
+    assert_eq!(dto.contact_name, None);
+}
+
+#[test]
+fn thread_dto_carries_cached_contact_name() {
+    let row = store::ThreadRow {
+        address: "+15550001".into(),
+        latest_ms: 1_700_000_000_000,
+        total: 1,
+        unread: 0,
+        latest_outgoing_status: None,
+        contact_name: Some("Jane Doe".into()),
+    };
+    let dto = ThreadDto::from(&row);
+    assert_eq!(dto.contact_name.as_deref(), Some("Jane Doe"));
 }
 
 async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {

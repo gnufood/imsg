@@ -1,7 +1,7 @@
 //! Local-store read path: opens the GUI's own `Store` connection (same pattern as the CLI's
 //! local `list`/`get`/`threads`, bypassing the broker) and returns `dto` types.
 
-use crate::dto::{MessageDto, ThreadDto};
+use crate::dto::{ContactDto, ContactEntryDto, MessageDto, ThreadDto};
 
 /// Errors from opening the local store.
 #[derive(Debug, thiserror::Error)]
@@ -81,6 +81,42 @@ pub async fn mark_read(db: &store::Store, handle: &str) -> Result<(), store::Err
 pub async fn threads(db: &store::Store) -> Result<Vec<ThreadDto>, store::Error> {
     let rows = db.threads().await?;
     Ok(rows.iter().map(ThreadDto::from).collect())
+}
+
+/// Returns lightweight cached contact identities (no phone numbers), ordered by display name.
+///
+/// # Errors
+///
+/// Returns [`store::Error`] if the underlying read fails.
+pub async fn list_contacts(
+    db: &store::Store,
+    limit: u16,
+    offset: u16,
+) -> Result<Vec<ContactEntryDto>, store::Error> {
+    let rows = db.list_contacts(limit, offset).await?;
+    Ok(rows.iter().map(ContactEntryDto::from).collect())
+}
+
+/// Returns the full cached contact for `uid`, including phone numbers, or `None` if uncached.
+///
+/// # Errors
+///
+/// Returns [`store::Error`] if the underlying read fails.
+pub async fn get_contact(db: &store::Store, uid: &str) -> Result<Option<ContactDto>, store::Error> {
+    Ok(db.get_contact(uid).await?.as_ref().map(ContactDto::from))
+}
+
+/// Returns the full cached contact that owns phone number `address`, or `None` if no cached
+/// contact has it.
+///
+/// # Errors
+///
+/// Returns [`store::Error`] if the underlying read fails.
+pub async fn lookup_contact(
+    db: &store::Store,
+    address: &str,
+) -> Result<Option<ContactDto>, store::Error> {
+    Ok(db.lookup_contact(address).await?.as_ref().map(ContactDto::from))
 }
 
 #[cfg(test)]

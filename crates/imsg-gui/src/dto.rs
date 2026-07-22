@@ -7,6 +7,9 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod contacts;
+pub use contacts::{ContactDto, ContactEntryDto};
+
 /// Whether a message was received from the remote or sent by this device.
 ///
 /// Mirrors `store::Direction`; kept as a separate type so a GUI-only frontend concern never
@@ -114,6 +117,8 @@ pub struct ThreadDto {
     pub unread: i64,
     /// Outbox delivery state of the most recent message; `None` when it was received.
     pub latest_outgoing_status: Option<OutgoingStatus>,
+    /// Cached PBAP display name for this address, if a synced contact claims it.
+    pub contact_name: Option<String>,
 }
 
 impl From<&store::ThreadRow> for ThreadDto {
@@ -124,6 +129,7 @@ impl From<&store::ThreadRow> for ThreadDto {
             total: row.total,
             unread: row.unread,
             latest_outgoing_status: row.latest_outgoing_status.map(Into::into),
+            contact_name: row.contact_name.clone(),
         }
     }
 }

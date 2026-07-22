@@ -53,6 +53,13 @@ fn write_error_maps_to_command_error() {
     assert!(!command_err.message.is_empty());
 }
 
+#[test]
+fn contacts_error_maps_to_command_error() {
+    let err = broker_client::ContactsError::Call(broker_client::CallError::Error("x".to_owned()));
+    let command_err = CommandError::from(err);
+    assert!(!command_err.message.is_empty());
+}
+
 /// Proves the actual wiring every command in this crate is built for — `super::builder`'s
 /// `collect_commands!` + `Builder::invoke_handler` — type-checks and constructs against real
 /// command paths, on Tauri's `MockRuntime`. Full IPC-frame dispatch

@@ -5,6 +5,7 @@
 //! domain) lives here.
 
 pub mod config;
+pub mod contacts;
 pub mod daemon;
 pub mod delete;
 pub mod discover;
@@ -64,6 +65,12 @@ impl From<broker_client::WriteError> for CommandError {
     }
 }
 
+impl From<broker_client::ContactsError> for CommandError {
+    fn from(err: broker_client::ContactsError) -> Self {
+        Self { message: err.to_string() }
+    }
+}
+
 impl From<transport::discover::DiscoverError> for CommandError {
     fn from(err: transport::discover::DiscoverError) -> Self {
         Self { message: err.to_string() }
@@ -88,6 +95,10 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             reads::list_messages,
             reads::mark_read,
             reads::threads,
+            contacts::list_contacts,
+            contacts::get_contact,
+            contacts::lookup_contact,
+            contacts::sync_contacts_now,
             config::config_show,
             config::config_set_device,
             config::config_set_map_channel,
