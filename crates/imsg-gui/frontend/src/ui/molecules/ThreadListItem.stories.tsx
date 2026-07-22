@@ -23,12 +23,12 @@ type Story = StoryObj<typeof meta>
 
 export const Read: Story = {
   args: {
-    thread: { address: '00:11:22:33:44:55', latest_ms: 1_752_700_800_000n, latest_outgoing_status: null, total: 12n, unread: 0n },
+    thread: { address: '00:11:22:33:44:55', contact_name: null, latest_ms: 1_752_700_800_000n, latest_outgoing_status: null, total: 12n, unread: 0n },
   },
 }
 
 export const Unread: Story = {
   args: {
-    thread: { address: '00:11:22:33:44:55', latest_ms: 1_752_700_800_000n, latest_outgoing_status: null, total: 12n, unread: 3n },
+    thread: { address: '00:11:22:33:44:55', contact_name: null, latest_ms: 1_752_700_800_000n, latest_outgoing_status: null, total: 12n, unread: 3n },
   },
 }
