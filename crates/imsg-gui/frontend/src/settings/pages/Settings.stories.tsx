@@ -41,6 +41,15 @@ const meta = {
       uninstalling: false,
       userInstalled: false,
     },
+    securityLevel: {
+      committedLevel: 'Medium',
+      draft: 'Medium',
+      onCancel: fn(),
+      onDraftChange: fn(),
+      onSave: fn(),
+      saveError: undefined,
+      saving: false,
+    },
     statusPanel: {
       address: '00:11:22:33:44:55',
       configFailed: false,

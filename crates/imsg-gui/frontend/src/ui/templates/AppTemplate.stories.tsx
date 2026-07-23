@@ -118,6 +118,16 @@ const statusPanelArgs = {
   statusPollFailed: false,
 }
 
+const securityLevelArgs = {
+  committedLevel: 'Medium' as const,
+  draft: 'Medium' as const,
+  onCancel: fn(),
+  onDraftChange: fn(),
+  onSave: fn(),
+  saveError: undefined,
+  saving: false,
+}
+
 interface DaemonSimState {
   installing: boolean
   systemInstalled: boolean
@@ -183,7 +193,15 @@ const useSimulatedDaemonControls = (): DaemonControlsArgs => {
 
 const InteractiveSettingsSlot = (): React.JSX.Element => {
   const daemonControls = useSimulatedDaemonControls()
-  return <Settings appearance={appearanceArgs} channelOverrides={channelOverridesArgs} daemonControls={daemonControls} statusPanel={statusPanelArgs} />
+  return (
+    <Settings
+      appearance={appearanceArgs}
+      channelOverrides={channelOverridesArgs}
+      daemonControls={daemonControls}
+      securityLevel={securityLevelArgs}
+      statusPanel={statusPanelArgs}
+    />
+  )
 }
 
 const settingsSlot = <InteractiveSettingsSlot />

@@ -5,6 +5,7 @@ import useConfig from '@/settings/application/use-config.ts'
 import useDaemonActions from '@/settings/application/use-daemon-actions.ts'
 import useDaemonStatus from '@/settings/application/use-daemon-status.ts'
 import { useMemo } from 'react'
+import useSecurityLevel from '@/settings/application/use-security-level.ts'
 
 // Production IPC-connected wrapper (see internal/GUI_ATOMIC_DESIGN.md) — the seam between the
 // Settings hooks' real backend calls and `Settings`'s presentational page. Also the one place
@@ -31,6 +32,7 @@ const SettingsConnected = ({ onPreferenceChange, preference }: AppearanceSetting
     saveError,
     saving: savingChannels,
   } = useChannelOverrides({ address, mapChannel: config?.map_channel, onSaved: reload, pbapChannel: config?.pbap_channel })
+  const securityLevel = useSecurityLevel({ committedLevel: config?.security_level, onSaved: reload })
 
   const appearance = useMemo(() => ({ onPreferenceChange, preference }), [onPreferenceChange, preference])
 
@@ -58,7 +60,9 @@ const SettingsConnected = ({ onPreferenceChange, preference }: AppearanceSetting
     [cancel, config?.map_channel, config?.pbap_channel, detect, detectError, detecting, mapDraft, onMapDraftChange, onPbapDraftChange, save, pbapDraft, saveError, savingChannels],
   )
 
-  return <Settings appearance={appearance} channelOverrides={channelOverrides} daemonControls={daemonControls} statusPanel={statusPanel} />
+  return (
+    <Settings appearance={appearance} channelOverrides={channelOverrides} daemonControls={daemonControls} securityLevel={securityLevel} statusPanel={statusPanel} />
+  )
 }
 
 export default SettingsConnected

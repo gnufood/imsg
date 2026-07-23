@@ -4,9 +4,16 @@ import type ChannelOverridesArgs from '@/settings/organisms/ChannelOverridesForm
 import ChannelOverridesForm from '@/settings/organisms/ChannelOverridesForm.tsx'
 import DaemonControls from '@/settings/organisms/DaemonControls.tsx'
 import type DaemonControlsArgs from '@/settings/organisms/DaemonControls.types.ts'
+import SecurityLevelForm from '@/settings/organisms/SecurityLevelForm.tsx'
 import StatusPanel from '@/settings/organisms/StatusPanel.tsx'
 import type StatusPanelArgs from '@/settings/organisms/StatusPanel.types.ts'
 import Text from '@/ui/atoms/Text.tsx'
+
+// `SecurityLevelForm.types.ts` is already imported by `SecurityLevelForm.tsx` itself and by
+// `use-security-level.ts` — deriving its props from the component here instead of a third import
+// Keeps this file under `import/max-dependencies` (10), which five organisms' component+types
+// Pairs plus `Text` would otherwise exceed by one.
+type SecurityLevelArgs = React.ComponentProps<typeof SecurityLevelForm>
 
 // Each organism already handles its own loading/error/pending states internally (see
 // `StatusPanel`/`DaemonControls`/`ChannelOverridesForm`), so unlike `MessagesTemplate` there's no
@@ -73,6 +80,26 @@ const renderAppearance = ({ onPreferenceChange, preference }: AppearanceSettings
   <AppearanceSettings onPreferenceChange={onPreferenceChange} preference={preference} />
 )
 
+const renderSecurityLevel = ({
+  committedLevel,
+  draft,
+  onCancel,
+  onDraftChange,
+  onSave,
+  saveError,
+  saving,
+}: SecurityLevelArgs): React.JSX.Element => (
+  <SecurityLevelForm
+    committedLevel={committedLevel}
+    draft={draft}
+    onCancel={onCancel}
+    onDraftChange={onDraftChange}
+    onSave={onSave}
+    saveError={saveError}
+    saving={saving}
+  />
+)
+
 const renderChannelOverrides = ({
   detectError,
   detecting,
@@ -109,6 +136,7 @@ interface SettingsTemplateProps {
   appearance: AppearanceSettingsArgs
   channelOverrides: ChannelOverridesArgs
   daemonControls: DaemonControlsArgs
+  securityLevel: SecurityLevelArgs
   statusPanel: StatusPanelArgs
 }
 
@@ -119,7 +147,7 @@ interface SettingsTemplateProps {
 // Fixed side-by-side rather than a responsive breakpoint: `tauri.conf.json`'s `minWidth: 800` is
 // A hard floor for this desktop window, not a browser viewport, so there's no narrow case to
 // Fall back from.
-const SettingsTemplate = ({ appearance, channelOverrides, daemonControls, statusPanel }: SettingsTemplateProps): React.JSX.Element => (
+const SettingsTemplate = ({ appearance, channelOverrides, daemonControls, securityLevel, statusPanel }: SettingsTemplateProps): React.JSX.Element => (
   <div className="mx-auto flex w-full max-w-3xl gap-x-10 p-6">
     <div className="flex flex-1 flex-col gap-8">
       <section className="flex flex-col gap-3">
@@ -135,6 +163,10 @@ const SettingsTemplate = ({ appearance, channelOverrides, daemonControls, status
       <section className="flex flex-col gap-3">
         <Text as="h2" tone="accent">Channels</Text>
         {renderChannelOverrides(channelOverrides)}
+      </section>
+      <section className="flex flex-col gap-3">
+        <Text as="h2" tone="accent">Security</Text>
+        {renderSecurityLevel(securityLevel)}
       </section>
       <section className="flex flex-col gap-3">
         <Text as="h2" tone="accent">Appearance</Text>
