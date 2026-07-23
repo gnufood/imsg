@@ -1,26 +1,26 @@
-import { useCallback, useState } from 'react'
-import Button from '@/ui/atoms/Button.tsx'
 import CompactButton from '@/ui/atoms/CompactButton.tsx'
 import LoadingState from '@/ui/molecules/LoadingState.tsx'
 import type SecurityLevelArgs from '@/settings/organisms/SecurityLevelForm.types.ts'
 import type { SecurityLevelDto } from '@/bindings.ts'
-import Select from '@/ui/atoms/Select.tsx'
-import SummaryRow from '@/ui/molecules/SummaryRow.tsx'
+import SegmentedControl from '@/ui/atoms/SegmentedControl.tsx'
 import Text from '@/ui/atoms/Text.tsx'
 
-// Matches `SecurityLevelDto`'s doc order (weakest to strongest); `Sdp` reads as its own acronym.
+// Matches `imsg-config::broker::SecurityLevel`'s own `BT_SECURITY_*` doc language and its
+// Weakest-to-strongest variant order; `Sdp` reads as its own acronym, same as the enum's doc.
 const LEVEL_LABELS: Record<SecurityLevelDto, string> = { High: 'High', Low: 'Low', Medium: 'Medium', Sdp: 'SDP' }
 
 const LEVEL_OPTIONS: { label: string; value: SecurityLevelDto }[] = [
-  { label: 'SDP (none)', value: 'Sdp' },
+  { label: 'SDP', value: 'Sdp' },
   { label: 'Low', value: 'Low' },
   { label: 'Medium', value: 'Medium' },
   { label: 'High', value: 'High' },
 ]
 
 // `null` means never explicitly configured — `config::BrokerConfig::security_level` then leaves
-// The kernel's already-negotiated pairing/bond security untouched. Distinct from `undefined`
-// (Still loading), which renders `LoadingState` instead below.
+// The kernel's already-negotiated pairing/bond security untouched. There's no "unset" segment in
+// `SecurityLevelDto` itself (the draft always resolves to one of the four tiers, `Sdp` by
+// Convention — see `use-security-level.ts`'s `UNSET_FALLBACK`), so this label is the only place
+// That distinction still surfaces once a segment is showing as selected.
 const summaryValue = (committedLevel: SecurityLevelDto | null): string => {
   if (committedLevel === null) {
     return 'Default'
@@ -28,89 +28,71 @@ const summaryValue = (committedLevel: SecurityLevelDto | null): string => {
   return LEVEL_LABELS[committedLevel]
 }
 
-const renderSummary = (committedLevel: SecurityLevelDto | null): React.JSX.Element => (
-  <div className="flex flex-col divide-y divide-line rounded-lg border border-line">
-    <SummaryRow mark="Security" value={summaryValue(committedLevel)} valueLabel="Level" />
-  </div>
-)
+// Verbatim from `imsg-config::broker::SecurityLevel`'s own variant doc comments, minus the
+// Leading `BT_SECURITY_*` constant name — the tier the draft would actually commit to.
+const TIER_DESCRIPTIONS: Record<SecurityLevelDto, string> = {
+  High: 'Encryption and authentication required (MITM protection).',
+  Low: 'No encryption or authentication required.',
+  Medium: 'Encryption required; no authentication (no MITM protection).',
+  Sdp: 'SDP-only traffic, no security.',
+}
 
-interface EditorArgs {
+interface ActionsArgs {
   draft: SecurityLevelDto
   onCancel: () => void
-  onDraftChange: (value: string) => void
   onSave: () => void
   pending: boolean
   saveError: string | undefined
 }
 
-const renderEditor = ({ draft, onCancel, onDraftChange, onSave, pending, saveError }: EditorArgs): React.JSX.Element => (
-  <div className="flex flex-col gap-3 rounded-lg border border-line p-4">
-    <Text as="h2" tone="accent">
-      RFCOMM security level
-    </Text>
-    <Select disabled={pending} onChange={onDraftChange} options={LEVEL_OPTIONS} value={draft} />
-    <Text size="xs" tone="muted">
-      Raising this above the negotiated pairing security can break the MAP connection.
-    </Text>
+const renderActions = ({ draft, onCancel, onSave, pending, saveError }: ActionsArgs): React.JSX.Element => (
+  <div className="flex flex-col gap-2">
     {saveError !== undefined && (
       <Text size="xs" tone="muted">
         {saveError}
       </Text>
     )}
-    <div className="flex justify-end gap-1.5">
-      <CompactButton disabled={pending} onClick={onCancel}>
-        Cancel
-      </CompactButton>
-      <CompactButton disabled={pending} onClick={onSave}>
-        Apply
-      </CompactButton>
+    <div className="flex items-center justify-between gap-3">
+      <Text size="xs" tone="muted">
+        {TIER_DESCRIPTIONS[draft]}
+      </Text>
+      <div className="flex shrink-0 gap-1.5">
+        <CompactButton disabled={pending} onClick={onCancel}>
+          Cancel
+        </CompactButton>
+        <CompactButton disabled={pending} onClick={onSave}>
+          Apply
+        </CompactButton>
+      </div>
     </div>
   </div>
 )
 
-// Read-only summary is always shown; the editor is progressive disclosure behind `isEditing` —
-// Same pattern as `ChannelOverridesForm`. `onCancel` reverts the hook's draft back to the last
-// Committed value (see `use-security-level.ts`), so the only way out of the editor is discard
-// (Cancel) or persist (Apply).
+// Single card, always showing the four `BT_SECURITY` tiers as connected segments — no separate
+// Read-only summary row or "Change…" reveal step. Selecting a segment only updates the draft;
+// Apply/Cancel only appear once the draft actually differs from the committed value, since raising
+// This above the negotiated pairing security can break the MAP connection and shouldn't apply on
+// A single click.
 const SecurityLevelForm = ({ committedLevel, draft, onCancel, onDraftChange, onSave, saveError, saving }: SecurityLevelArgs): React.JSX.Element => {
-  const [isEditing, setIsEditing] = useState(false)
-
-  const openEditor = useCallback(() => {
-    setIsEditing(true)
-  }, [])
-
-  const closeEditor = useCallback(() => {
-    onCancel()
-    setIsEditing(false)
-  }, [onCancel])
-
-  // `Select`'s `onChange` is string-typed (it's generic over any fixed option list, not just
-  // This enum) — `LEVEL_OPTIONS`' values are the only strings it can report, so this narrowing is
-  // Safe.
-  const handleDraftChange = useCallback(
-    (value: string) => {
-      onDraftChange(value as SecurityLevelDto)
-    },
-    [onDraftChange],
-  )
-
   if (committedLevel === undefined) {
     return <LoadingState message="Loading security level…" />
   }
 
+  const isDirty = draft !== (committedLevel ?? 'Sdp')
+
   return (
-    <div className="flex flex-col gap-3">
-      {renderSummary(committedLevel)}
-      {!isEditing && <Button onClick={openEditor}>Change…</Button>}
-      {isEditing &&
-        renderEditor({
-          draft,
-          onCancel: closeEditor,
-          onDraftChange: handleDraftChange,
-          onSave,
-          pending: saving,
-          saveError,
-        })}
+    <div className="flex flex-col gap-3 rounded-lg border border-line p-4">
+      <div className="flex items-center justify-between gap-3">
+        <Text as="h2" tone="accent">
+          RFCOMM
+        </Text>
+        <Text as="span">{summaryValue(committedLevel)}</Text>
+      </div>
+      <SegmentedControl disabled={saving} name="security-level" onChange={onDraftChange} options={LEVEL_OPTIONS} value={draft} />
+      <Text size="xs" tone="muted">
+        Raising this above the negotiated pairing security can break the MAP connection.
+      </Text>
+      {isDirty && renderActions({ draft, onCancel, onSave, pending: saving, saveError })}
     </div>
   )
 }

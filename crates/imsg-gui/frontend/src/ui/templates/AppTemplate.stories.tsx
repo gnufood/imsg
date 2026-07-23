@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import AppTemplate from '@/ui/templates/AppTemplate.tsx'
 import type DaemonControlsArgs from '@/settings/organisms/DaemonControls.types.ts'
 import Messages from '@/messages/pages/Messages.tsx'
+import type SecurityLevelArgs from '@/settings/organisms/SecurityLevelForm.types.ts'
 import Settings from '@/settings/pages/Settings.tsx'
 import { fn } from 'storybook/test'
 import { useArgs } from 'storybook/preview-api'
@@ -88,14 +89,37 @@ const statusPanelArgs = {
   statusPollFailed: false,
 }
 
-const securityLevelArgs = {
-  committedLevel: 'Medium' as const,
-  draft: 'Medium' as const,
-  onCancel: fn(),
-  onDraftChange: fn(),
-  onSave: fn(),
-  saveError: undefined,
-  saving: false,
+interface SecuritySimState {
+  committedLevel: SecurityLevelArgs['draft']
+  draft: SecurityLevelArgs['draft']
+  saving: boolean
+}
+
+const SECURITY_SIM_INITIAL: SecuritySimState = { committedLevel: 'Medium', draft: 'Medium', saving: false }
+const SECURITY_SIM_DELAY_MS = 400
+
+// Same reasoning as `useSimulatedDaemonControls` below — `SecurityLevelForm` is fully prop-driven
+// (no internal state of its own), so static `fn()` args would leave its segments looking dead in
+// This one story where the real `Settings` page is rendered instead of fixture args elsewhere.
+const useSimulatedSecurityLevel = (): SecurityLevelArgs => {
+  const [state, setState] = useState(SECURITY_SIM_INITIAL)
+
+  const onDraftChange = useCallback((draft: SecurityLevelArgs['draft']) => {
+    setState((current) => ({ ...current, draft }))
+  }, [])
+
+  const onCancel = useCallback(() => {
+    setState((current) => ({ ...current, draft: current.committedLevel }))
+  }, [])
+
+  const onSave = useCallback(() => {
+    setState((current) => ({ ...current, saving: true }))
+    setTimeout(() => {
+      setState((current) => ({ ...current, committedLevel: current.draft, saving: false }))
+    }, SECURITY_SIM_DELAY_MS)
+  }, [])
+
+  return { committedLevel: state.committedLevel, draft: state.draft, onCancel, onDraftChange, onSave, saveError: undefined, saving: state.saving }
 }
 
 interface DaemonSimState {
@@ -163,12 +187,13 @@ const useSimulatedDaemonControls = (): DaemonControlsArgs => {
 
 const InteractiveSettingsSlot = (): React.JSX.Element => {
   const daemonControls = useSimulatedDaemonControls()
+  const securityLevel = useSimulatedSecurityLevel()
   return (
     <Settings
       appearance={appearanceArgs}
       channelOverrides={channelOverridesArgs}
       daemonControls={daemonControls}
-      securityLevel={securityLevelArgs}
+      securityLevel={securityLevel}
       statusPanel={statusPanelArgs}
     />
   )
