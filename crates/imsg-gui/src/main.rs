@@ -40,9 +40,16 @@ async fn headless_main(args: HeadlessArgs) -> anyhow::Result<()> {
 
 fn gui_main() -> anyhow::Result<()> {
     let specta_builder = imsg_gui::commands::builder::<tauri::Wry>();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(GateState::default())
-        .invoke_handler(specta_builder.invoke_handler())
+        .invoke_handler(specta_builder.invoke_handler());
+    // Both plugins are optional Cargo deps behind the `webdriver` feature (see Cargo.toml) —
+    // this cfg keeps registration in step with that, since a default build never has them to
+    // register.
+    #[cfg(feature = "webdriver")]
+    let builder =
+        builder.plugin(tauri_plugin_wdio::init()).plugin(tauri_plugin_wdio_webdriver::init());
+    builder
         .setup(|app| {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {

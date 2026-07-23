@@ -52,6 +52,19 @@ tracing       = "0.1.44"
 # child's tracing output reaches its captured log file.
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
+# WebDriver testing support (WDIO's `@wdio/tauri-service`, embedded provider). `optional` +
+# gated behind the `webdriver` feature rather than `target.'cfg(debug_assertions)'` — Cargo
+# only evaluates target-cfg predicates against the target triple (`target_os`/`unix`/etc.), not
+# profile cfgs like `debug_assertions`; using it here is silently a no-op (Cargo warns and
+# includes the dependency unconditionally). A default-off feature is the real "excluded unless
+# explicitly opted into" mechanism — enable with `--features webdriver` for a test build. See
+# `main.rs`'s matching `#[cfg(feature = "webdriver")]` registration.
+tauri-plugin-wdio           = { version = "1", optional = true }
+tauri-plugin-wdio-webdriver = { version = "1", optional = true }
+
+[features]
+webdriver = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]
+
 [build-dependencies]
 tauri-build = "2.6.3"
 

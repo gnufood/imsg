@@ -39,6 +39,15 @@ gui-build:
 
 gui-ci: gui-typecheck gui-lint gui-build
 
+# WebDriver test build (`@wdio/tauri-service`, embedded provider): the one build where the
+# Rust `webdriver` feature, the frontend `VITE_WEBDRIVER` flag, and `withGlobalTauri` (via
+# `TAURI_CONFIG`, not the base `tauri.conf.json` — see main.rs/main.tsx) all need to line up.
+# Neither plugin nor `withGlobalTauri` is present in a plain `gui-build`/`cargo build -p
+# imsg-gui`, debug or release.
+gui-webdriver-build:
+    cd crates/imsg-gui/frontend && VITE_WEBDRIVER=true npm run build
+    TAURI_CONFIG='{"app":{"withGlobalTauri":true}}' cargo build -p imsg-gui --features webdriver
+
 pre-commit: fmt check lint
 
 pre-push: fmt-check check lint test
