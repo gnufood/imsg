@@ -11,9 +11,10 @@ interface ThreadListItemProps {
   onSelect: (address: string) => void
 }
 
-// `latest_ms` is a wall-clock instant, not a duration — `toLocaleString` (no added date lib)
-// Is enough for a thread-row timestamp.
-const formatLatest = (latestMs: bigint): string => new Date(Number(latestMs)).toLocaleString()
+// `latest_ms` is a wall-clock instant, not a duration. Explicit options (no seconds) rather than
+// Bare `toLocaleString()`, which includes them.
+const LATEST_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' })
+const formatLatest = (latestMs: bigint): string => LATEST_FORMAT.format(new Date(Number(latestMs)))
 
 // Expects a `<ul>`/`<ol>` ancestor — ThreadList owns the list semantics, this is just the `<li>`.
 const ThreadListItem = ({ thread, onSelect }: ThreadListItemProps): React.JSX.Element => {
@@ -25,7 +26,7 @@ const ThreadListItem = ({ thread, onSelect }: ThreadListItemProps): React.JSX.El
     <li>
       <button
         type="button"
-        className={`flex w-full items-center gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus}`}
+        className={`relative flex w-full items-center gap-3 rounded-md border border-line px-3.5 py-2.5 text-left text-sm text-ink ${interactiveStyles.hover} ${interactiveStyles.focus}`}
         onClick={handleClick}
       >
         <Avatar />
@@ -35,7 +36,7 @@ const ThreadListItem = ({ thread, onSelect }: ThreadListItemProps): React.JSX.El
             {formatLatest(thread.latest_ms)}
           </Text>
         </span>
-        {thread.unread > 0n && <Badge count={Number(thread.unread)} icon={MessageSquareDot} />}
+        {thread.unread > 0n && <Badge count={Number(thread.unread)} icon={MessageSquareDot} position="corner" />}
       </button>
     </li>
   )

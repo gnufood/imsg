@@ -5,7 +5,9 @@ interface MessageBubbleProps {
   message: MessageDto
 }
 
-const formatTimestamp = (timestampMs: bigint): string => new Date(Number(timestampMs)).toLocaleString()
+// Explicit options (no seconds) rather than bare `toLocaleString()`, which includes them.
+const TIMESTAMP_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' })
+const formatTimestamp = (timestampMs: bigint): string => TIMESTAMP_FORMAT.format(new Date(Number(timestampMs)))
 
 // Mirrors `store::OutgoingStatus`'s variants (see bindings.ts) — `None` (received messages)
 // Never reaches this map, guarded by the `outgoing_status !== null` check below.

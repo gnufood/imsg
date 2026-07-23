@@ -20,3 +20,17 @@ export const WithIcon: Story = {
     icon: MessageSquareDot,
   },
 }
+
+export const Corner: Story = {
+  args: {
+    icon: MessageSquareDot,
+    position: 'corner',
+  },
+  decorators: [
+    (Story) => (
+      <div className="relative size-8 rounded-full border border-line">
+        <Story />
+      </div>
+    ),
+  ],
+}
