@@ -63,6 +63,15 @@ tauri-plugin-wdio           = { version = "1", optional = true }
 tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 
 [features]
+# `custom-protocol` decides, at compile time, whether `generate_context!()` embeds
+# `frontend/dist` at all — without it (and with `devUrl` set in tauri.conf.json) it compiles
+# in an *empty* asset bundle and the window loads `devUrl` instead, expecting a live Vite dev
+# server. On by default here (self-contained binary is the common case — plain `cargo build`/
+# `cargo run` included); `cargo tauri dev` explicitly passes `--no-default-features` and
+# re-adds `tauri/custom-protocol` itself only for `cargo tauri build`, so this stays correct
+# for that workflow too.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
 webdriver = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]
 
 [build-dependencies]
