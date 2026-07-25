@@ -367,3 +367,6 @@ impl Store {
             .map_err(Error::Connection)
     }
 }
+
+#[cfg(test)]
+mod tests;
