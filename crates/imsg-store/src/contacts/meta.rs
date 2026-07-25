@@ -1,6 +1,6 @@
 //! PBAP phonebook identity/version watermark, cached in the generic `meta` table.
 
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension as _};
 
 use crate::contacts::types::PbapMeta;
 use crate::{Error, Store};
@@ -8,6 +8,7 @@ use crate::{Error, Store};
 const DATABASE_ID_KEY: &str = "pbap_database_id";
 const PRIMARY_VERSION_KEY: &str = "pbap_primary_version";
 const SECONDARY_VERSION_KEY: &str = "pbap_secondary_version";
+const CONTACTS_SYNCED_AT_KEY: &str = "contacts_synced_at";
 
 impl Store {
     /// Returns the cached PBAP phonebook identity/version watermark; fields are `None` if
@@ -71,5 +72,50 @@ impl Store {
             })
             .await
             .map_err(Error::Connection)
+    }
+
+    /// Returns the timestamp of the last successful `sync_contacts` run, or `None` if contacts
+    /// have never been synced.
+    ///
+    /// Freshness signal for the `contacts` command's read paths — a separate domain from the
+    /// message-sync `folder_cursors` anchor (see [`Store::latest_sync_at`]).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Connection`] if the query fails.
+    pub async fn contacts_synced_at(&self) -> Result<Option<i64>, Error> {
+        self.conn()
+            .call(|conn: &mut rusqlite::Connection| -> rusqlite::Result<Option<i64>> {
+                let value: Option<String> = conn
+                    .query_row(
+                        "SELECT value FROM meta WHERE key = ?1",
+                        params![CONTACTS_SYNCED_AT_KEY],
+                        |row| row.get(0),
+                    )
+                    .optional()?;
+                value
+                    .map(|v| {
+                        v.parse::<i64>().map_err(|e| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                0,
+                                rusqlite::types::Type::Text,
+                                Box::new(e),
+                            )
+                        })
+                    })
+                    .transpose()
+            })
+            .await
+            .map_err(Error::Connection)
+    }
+
+    /// Persists `ms` as the contacts-sync freshness anchor. Subsequent calls overwrite the
+    /// previous value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Connection`] if the write fails.
+    pub async fn set_contacts_synced_at(&self, ms: i64) -> Result<(), Error> {
+        self.set_meta(CONTACTS_SYNCED_AT_KEY, &ms.to_string()).await
     }
 }

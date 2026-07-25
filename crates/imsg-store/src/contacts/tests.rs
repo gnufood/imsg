@@ -168,3 +168,21 @@ async fn pbap_meta_defaults_to_none_when_never_set() -> anyhow::Result<()> {
     assert_eq!(db.pbap_meta().await?, PbapMeta::default());
     Ok(())
 }
+
+#[tokio::test]
+async fn contacts_synced_at_is_none_before_any_sync() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    assert_eq!(db.contacts_synced_at().await?, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn contacts_synced_at_returns_last_set_value() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+
+    db.set_contacts_synced_at(1_000).await?;
+    db.set_contacts_synced_at(2_000).await?;
+
+    assert_eq!(db.contacts_synced_at().await?, Some(2_000));
+    Ok(())
+}

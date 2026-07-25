@@ -37,6 +37,7 @@ async fn noop_when_metadata_unchanged() -> anyhow::Result<()> {
     server_result?;
     assert_eq!(synced?, 0);
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));
+    assert!(db.contacts_synced_at().await?.is_some());
     Ok(())
 }
 
@@ -80,6 +81,7 @@ async fn refreshes_without_wipe_when_only_counters_change() -> anyhow::Result<()
     assert!(db.get_contact("uid-old").await?.is_some(), "no-wipe path must preserve old contact");
     assert!(db.get_contact("uid-new").await?.is_some());
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));
+    assert!(db.contacts_synced_at().await?.is_some());
     Ok(())
 }
 
@@ -123,5 +125,6 @@ async fn wipes_when_database_id_changes() -> anyhow::Result<()> {
     assert!(db.get_contact("uid-stale").await?.is_none(), "changed database_id must wipe cache");
     assert!(db.get_contact("uid-new").await?.is_some());
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));
+    assert!(db.contacts_synced_at().await?.is_some());
     Ok(())
 }

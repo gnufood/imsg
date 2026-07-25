@@ -18,14 +18,14 @@ use super::ContactsOpts;
 ///
 /// # Errors
 ///
-/// Returns an error if the store read or `last_sync_at` query fails, or (for `--get`) if `uid`
-/// isn't cached.
+/// Returns an error if the store read or `contacts_synced_at` query fails, or (for `--get`) if
+/// `uid` isn't cached.
 pub(crate) async fn run(opts: &ContactsOpts, store: &Store) -> Result<String> {
     let mut out = render(opts, store).await?;
     if !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&crate::commands::freshness_line(store.last_sync_at().await?));
+    out.push_str(&crate::commands::freshness_line(store.contacts_synced_at().await?));
     Ok(out)
 }
 

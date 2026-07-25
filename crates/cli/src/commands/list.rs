@@ -72,7 +72,7 @@ pub(crate) async fn run(
 ///
 /// # Errors
 ///
-/// Returns an error if the store read or `last_sync_at` query fails.
+/// Returns an error if the store read or `latest_sync_at` query fails.
 pub(crate) async fn run_store(opts: ListOpts, store: &Store) -> Result<String> {
     let folder_str = folder_of(opts.folder).as_str();
     let since_ms = opts.since.as_deref().and_then(session::sync::datetime_to_ms);
@@ -91,7 +91,7 @@ pub(crate) async fn run_store(opts: ListOpts, store: &Store) -> Result<String> {
     if !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&crate::commands::freshness_line(store.last_sync_at().await?));
+    out.push_str(&crate::commands::freshness_line(store.latest_sync_at().await?));
     Ok(out)
 }
 

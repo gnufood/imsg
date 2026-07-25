@@ -95,7 +95,7 @@ pub(crate) async fn run_store(handle: String, mark_read: bool, store: &Store) ->
     if !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&crate::commands::freshness_line(store.last_sync_at().await?));
+    out.push_str(&crate::commands::freshness_line(store.latest_sync_at().await?));
     Ok(out)
 }
 

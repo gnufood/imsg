@@ -235,48 +235,6 @@ impl Store {
             .map_err(Error::Connection)
     }
 
-    /// Returns the `last_sync_at` timestamp from the `meta` table, or `None` if never set.
-    ///
-    /// A `None` result means no backfill has completed; callers should treat the store as empty.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Connection`] if the async dispatch or underlying `SQLite` read fails.
-    pub async fn last_sync_at(&self) -> Result<Option<i64>, Error> {
-        self.conn()
-            .call(|conn: &mut rusqlite::Connection| -> Result<Option<i64>, rusqlite::Error> {
-                let mut stmt =
-                    conn.prepare_cached("SELECT value FROM meta WHERE key = 'last_sync_at'")?;
-                let mut rows = stmt.query([])?;
-                rows.next()?.map_or_else(
-                    || Ok(None),
-                    |row| {
-                        row.get::<_, String>(0)?.parse::<i64>().map(Some).map_err(|e| {
-                            rusqlite::Error::FromSqlConversionFailure(
-                                0,
-                                rusqlite::types::Type::Text,
-                                Box::new(e),
-                            )
-                        })
-                    },
-                )
-            })
-            .await
-            .map_err(Error::Connection)
-    }
-
-    /// Persists `ms` as the `last_sync_at` anchor in the `meta` table.
-    ///
-    /// Subsequent calls overwrite the previous value. Callers set this only after
-    /// a backfill run completes successfully.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Connection`] if the async dispatch or underlying `SQLite` write fails.
-    pub async fn set_last_sync_at(&self, ms: i64) -> Result<(), Error> {
-        self.set_meta("last_sync_at", &ms.to_string()).await
-    }
-
     /// Deletes the message identified by `handle`.
     ///
     /// No-ops silently if the handle is not present.

@@ -49,7 +49,7 @@ pub(crate) async fn run(
 ///
 /// # Errors
 ///
-/// Returns an error if the store read or `last_sync_at` query fails.
+/// Returns an error if the store read or `latest_sync_at` query fails.
 pub(crate) async fn run_store(store: &Store) -> Result<String> {
     let rows = store.threads().await?;
     let lines: Vec<ThreadLine> = rows.iter().map(ThreadLine::from_row).collect();
@@ -57,7 +57,7 @@ pub(crate) async fn run_store(store: &Store) -> Result<String> {
     if !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&crate::commands::freshness_line(store.last_sync_at().await?));
+    out.push_str(&crate::commands::freshness_line(store.latest_sync_at().await?));
     Ok(out)
 }
 

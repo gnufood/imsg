@@ -7,6 +7,8 @@ use pbap_core::PhonebookMetadata;
 use store::{NewContact, PbapMeta, Store};
 use tokio::io::{AsyncRead, AsyncWrite};
 
+use crate::util::now_ms;
+
 /// Hex-encodes a 16-byte PBAP identifier/counter for storage in the text-only `meta` table.
 fn hex16(bytes: [u8; 16]) -> String {
     use std::fmt::Write as _;
@@ -66,7 +68,8 @@ async fn refresh_contacts<T: AsyncRead + AsyncWrite + Unpin>(
 ///
 /// Returns the number of contacts upserted. On any success path (including the no-op), sets the
 /// `contacts_synced` meta flag — the contacts-domain counterpart to `sync_enabled`, read by
-/// callers deciding whether the local contacts cache is trustworthy enough to read directly.
+/// callers deciding whether the local contacts cache is trustworthy enough to read directly —
+/// and stamps [`Store::set_contacts_synced_at`] for freshness display.
 ///
 /// # Errors
 ///
@@ -81,6 +84,7 @@ pub async fn sync_contacts<T: AsyncRead + AsyncWrite + Unpin>(
 
     if remote.database_id.is_some() && remote == cached {
         store.set_meta("contacts_synced", "true").await?;
+        store.set_contacts_synced_at(now_ms()).await?;
         return Ok(0);
     }
     if remote.database_id.is_some() && remote.database_id != cached.database_id {
@@ -90,6 +94,7 @@ pub async fn sync_contacts<T: AsyncRead + AsyncWrite + Unpin>(
     let count = refresh_contacts(client, store, path).await?;
     store.set_pbap_meta(&remote).await?;
     store.set_meta("contacts_synced", "true").await?;
+    store.set_contacts_synced_at(now_ms()).await?;
     Ok(count)
 }
 

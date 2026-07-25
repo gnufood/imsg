@@ -68,4 +68,25 @@ impl Store {
             .await
             .map_err(Error::Connection)
     }
+
+    /// Returns the most recent `last_sync_at` across all folder cursors, or `None` if no
+    /// folder has completed a sync yet.
+    ///
+    /// Freshness signal for read commands: unlike a single global anchor, this stays accurate
+    /// when folders are synced independently (e.g. `imsg sync --folder inbox`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Connection`] if the query fails.
+    pub async fn latest_sync_at(&self) -> Result<Option<i64>, Error> {
+        self.conn()
+            .call(|conn| {
+                conn.query_row("SELECT MAX(last_sync_at) FROM folder_cursors", [], |row| row.get(0))
+            })
+            .await
+            .map_err(Error::Connection)
+    }
 }
+
+#[cfg(test)]
+mod tests;
