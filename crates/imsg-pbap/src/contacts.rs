@@ -82,20 +82,6 @@ pub(crate) fn parse_card_listing(xml: &[u8]) -> Result<Vec<CardEntry>, CardListi
     Ok(entries)
 }
 
-/// Strips all non-digit, non-`+` characters. Prepends `+` for 11-digit strings starting with
-/// `1`; prepends `+1` for 10-digit strings. No E.164 validation.
-#[must_use]
-pub fn normalize_number(s: &str) -> String {
-    let mut d = String::with_capacity(s.len());
-    d.extend(s.chars().filter(|c| c.is_ascii_digit() || *c == '+'));
-    if d.starts_with('1') && d.len() == 11 {
-        d.insert(0, '+');
-    } else if d.len() == 10 {
-        d.insert_str(0, "+1");
-    }
-    d
-}
-
 // silently skips cards calcard cannot parse; errors on non-UTF-8 blob
 pub(crate) fn parse_contacts(body: &[u8]) -> Result<Vec<Contact>, PbapError> {
     let text = std::str::from_utf8(body).map_err(|_| PbapError::InvalidEncoding)?;

@@ -3,8 +3,9 @@
 
 use std::fmt::Write as _;
 
+use formats::phone::{normalize_number, Normalization};
 use ipc::{CardEntryDto, ContactDto};
-use pbap_core::{normalize_number, CardEntry, Contact};
+use pbap_core::{CardEntry, Contact};
 use store::{ContactEntryRow, ContactRow};
 
 /// A full contact, borrowed from whichever of the three sources produced it.
@@ -50,6 +51,18 @@ impl<'a> EntryView<'a> {
     }
 }
 
+/// Resolves one TEL value for display: the E.164 form when it normalises cleanly, the raw
+/// value otherwise — normalisation is best-effort and never blanks out a number.
+fn display_number(tel: &str, raw: bool) -> String {
+    if raw {
+        return tel.to_owned();
+    }
+    match normalize_number(tel, None) {
+        Normalization::E164(number) => number,
+        _ => tel.to_owned(),
+    }
+}
+
 /// Renders one contact: name (`(unknown)` when absent), then each phone number on its own
 /// indented line. Normalises numbers to E.164 unless `raw` is true.
 pub(super) fn render_contact_view(v: &ContactView, raw: bool) -> String {
@@ -58,7 +71,7 @@ pub(super) fn render_contact_view(v: &ContactView, raw: bool) -> String {
         String::with_capacity(name.len().saturating_add(v.phones.len().saturating_mul(20)));
     out.push_str(name);
     for tel in v.phones {
-        let number = if raw { tel.clone() } else { normalize_number(tel) };
+        let number = display_number(tel, raw);
         let _ = write!(out, "\n  {number}");
     }
     out

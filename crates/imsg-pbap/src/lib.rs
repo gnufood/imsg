@@ -6,7 +6,6 @@ pub mod metadata;
 pub mod params;
 pub mod phonebook;
 
-pub use contacts::normalize_number;
 pub use contacts::CardEntry;
 pub use contacts::CardListingError;
 pub use formats::vcard::{Contact, ContactError};

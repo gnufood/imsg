@@ -27,6 +27,7 @@ interprocess         = { version = "2.4.2", features = ["tokio"] }
 tokio-util           = "0.7.18"
 bluer                = { version = "0.17.4", default-features = false }
 config               = { package = "imsg-config",    version = "0.3.1", path = "../imsg-config" }
+formats              = { package = "imsg-formats",   version = "0.3.1", path = "../imsg-formats" }
 ipc                  = { package = "imsg-ipc",        version = "0.3.1", path = "../imsg-ipc" }
 imsg-broker          = { version = "0.3.1", path = "../imsg-broker" }
 broker-client        = { package = "imsg-broker-client", version = "0.3.1", path = "../imsg-broker-client" }

@@ -35,13 +35,21 @@ fn render_contact_view_shows_unknown_for_missing_name() -> Result<(), ContactErr
 fn render_contact_view_normalises_unless_raw() -> Result<(), ContactError> {
     // `Contact::from_vcard_str` whitespace-strips TEL values at parse time regardless of `raw`
     // (see `phones()`'s doc) — `raw` only controls E.164 normalisation in `render_contact_view`.
-    let c = contact(Some("Ada Lovelace"), &["(555) 000-1111"])?;
+    // UK trunk-prefix case: the country code (+44) is enough context to resolve without a
+    // configured fallback region.
+    let c = contact(Some("Ada Lovelace"), &["+44(0)1753866488"])?;
     let view = ContactView::from_contact(&c);
-    let normalized = render_contact_view(&view, false);
-    let raw = render_contact_view(&view, true);
-    assert_eq!(raw, "Ada Lovelace\n  (555)000-1111");
-    assert_ne!(normalized, raw);
-    assert!(normalized.starts_with("Ada Lovelace\n  "));
+    assert_eq!(render_contact_view(&view, true), "Ada Lovelace\n  +44(0)1753866488");
+    assert_eq!(render_contact_view(&view, false), "Ada Lovelace\n  +441753866488");
+    Ok(())
+}
+
+#[test]
+fn render_contact_view_falls_back_to_raw_when_unresolvable() -> Result<(), ContactError> {
+    // No country code and no configured fallback region — MissingRegion, not a blank/error.
+    let c = contact(Some("Bare Number"), &["4085550100"])?;
+    let view = ContactView::from_contact(&c);
+    assert_eq!(render_contact_view(&view, false), "Bare Number\n  4085550100");
     Ok(())
 }
 
