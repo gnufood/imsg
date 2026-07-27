@@ -90,6 +90,41 @@ pub async fn connect(
     Ok(stream)
 }
 
+/// Subscribes to `BlueZ`'s connection reports for `addr`.
+///
+/// Yields `true` when the device is reachable and `false` when `BlueZ` reports it gone. The
+/// first item is the state at subscription time, not a transition — a caller that subscribes
+/// after the device already dropped is told so immediately instead of waiting for an edge that
+/// has already passed.
+///
+/// The stream ends when `BlueZ` stops reporting at all (`bluetoothd` restart, D-Bus loss, the
+/// device removed). Termination says nothing about the link, so callers must resubscribe rather
+/// than read the end of the stream as "still connected".
+///
+/// This reports the *device*'s ACL link, which is coarser than one profile's channel: a phone
+/// still connected for another profile reads as `true` even when this RFCOMM channel is gone.
+///
+/// # Errors
+///
+/// Returns [`TransportError::Io`] if the D-Bus session or default adapter cannot be reached, or
+/// if `addr` is unknown to `BlueZ`.
+pub async fn link_events(
+    addr: bluer::Address,
+) -> Result<impl futures::Stream<Item = bool>, TransportError> {
+    let session = bluer::Session::new().await.map_err(std::io::Error::from)?;
+    let adapter = session.default_adapter().await.map_err(std::io::Error::from)?;
+    let device = adapter.device(addr).map_err(std::io::Error::from)?;
+    let events = device.events().await.map_err(std::io::Error::from)?;
+    let initial = device.is_connected().await.map_err(std::io::Error::from)?;
+    let transitions = events.filter_map(|ev| async move {
+        match ev {
+            bluer::DeviceEvent::PropertyChanged(bluer::DeviceProperty::Connected(up)) => Some(up),
+            bluer::DeviceEvent::PropertyChanged(_) => None,
+        }
+    });
+    Ok(futures::stream::once(async move { initial }).chain(transitions))
+}
+
 /// Polls `is_connected` every 25 ms until it returns `true` or `deadline` is exceeded.
 ///
 /// In production `is_connected` wraps `stream.peer_addr().is_ok()`.  The plain `Fn`
