@@ -31,10 +31,9 @@ pub(crate) async fn run(opts: &ContactsOpts, store: &Store) -> Result<String> {
 
 async fn render(opts: &ContactsOpts, store: &Store) -> Result<String> {
     if let Some(number) = &opts.lookup {
-        // The store matches on canonical; normalise the user input to match. (The live path
-        // sends the raw number to device-side PBAP search instead — see contacts::live::lookup.)
-        let canonical = crate::commands::dispatch::canonical_number(number);
-        return Ok(store.lookup_contact(&canonical).await?.map_or_else(
+        // Already normalised by the dispatcher (crate::commands::dispatch::run_contacts), before
+        // the store/live fork.
+        return Ok(store.lookup_contact(number).await?.map_or_else(
             || format!("no contact found for {number}"),
             |c| render_contact_view(&ContactView::from_row(&c), opts.raw),
         ));

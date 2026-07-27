@@ -44,7 +44,7 @@ pub(in crate::commands) async fn run_contacts(
     cfg: &::config::Config,
     spoke: Option<&Endpoint>,
     device: Option<&str>,
-    opts: contacts::ContactsOpts,
+    mut opts: contacts::ContactsOpts,
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
@@ -53,6 +53,9 @@ pub(in crate::commands) async fn run_contacts(
         let count = with_spinner("syncing contacts", fut).await?;
         return Ok(format!("synced {count} contacts"));
     }
+    // Normalise `--lookup` once, before the fork: the store path matches on canonical, and the
+    // live path now sends the same canonical form to the device's own PBAP search.
+    opts.lookup = opts.lookup.map(|n| canonical_number(&n));
     if is_opted_in(db, "contacts_synced").await {
         with_spinner("contacts", contacts::run_store(&opts, db)).await
     } else {
@@ -105,6 +108,9 @@ pub(in crate::commands) async fn run_send(
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
+    // Normalise once, before the fork: covers the stored recipient, the outbox replay payload,
+    // and the number dialed to the device on all four send paths (store/live x broker/hub).
+    let number = canonical_number(&number);
     if is_opted_in(db, "sync_enabled").await {
         let fut = send::run(cfg, spoke, device, number, message, db, config_path);
         with_spinner("sending", fut).await
