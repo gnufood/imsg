@@ -40,7 +40,8 @@ fn build_list_query(
     offset: u16,
 ) -> (String, Vec<Box<dyn rusqlite::ToSql>>) {
     let mut sql = String::from(
-        "SELECT rowid, map_handle, timestamp_ms, folder, direction, address, \
+        "SELECT rowid, map_handle, timestamp_ms, folder, direction, \
+         COALESCE(address_e164, address) AS address, \
          status, synced_at, text, outgoing_status FROM messages WHERE 1=1",
     );
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::with_capacity(6);
@@ -53,7 +54,7 @@ fn build_list_query(
         params.push(Box::new(STATUS_UNREAD));
     }
     if let Some(addr) = from {
-        sql.push_str(" AND address = ?");
+        sql.push_str(" AND COALESCE(address_e164, address) = ?");
         params.push(Box::new(addr));
     }
     if let Some(since) = since_ms {
@@ -77,7 +78,8 @@ impl Store {
         self.conn()
             .call(move |conn: &mut rusqlite::Connection| {
                 conn.prepare_cached(
-                    "SELECT rowid, map_handle, timestamp_ms, folder, direction, address, \
+                    "SELECT rowid, map_handle, timestamp_ms, folder, direction, \
+                     COALESCE(address_e164, address) AS address, \
                      status, synced_at, text, outgoing_status \
                      FROM messages WHERE map_handle = ?1 LIMIT 1",
                 )?
@@ -125,10 +127,10 @@ impl Store {
 
     /// Returns a per-address thread summary, most-recent-first.
     ///
-    /// Groups all stored messages by `address`, counting total messages and unread received
-    /// messages (`status = 0`, `direction = 0`). Rows with an empty address are excluded.
-    /// `contact_name` is joined via `contact_phones` (exact address match) to its owning
-    /// `contacts` row.
+    /// Groups all stored messages by canonical address (E.164 when resolved, else raw), counting
+    /// total messages and unread received messages (`status = 0`, `direction = 0`). Rows with an
+    /// empty address are excluded. `contact_name` is joined via `contact_phones` on the canonical
+    /// form, so a message and a contact phone that differ only in formatting still resolve.
     ///
     /// # Errors
     ///
@@ -136,24 +138,26 @@ impl Store {
     pub async fn threads(&self) -> Result<Vec<ThreadRow>, Error> {
         self.conn()
             .call(|conn: &mut rusqlite::Connection| {
-                // Correlated subquery for latest_outgoing_status is efficient because
-                // idx_messages_address_time covers (address, timestamp_ms DESC). The
-                // contact_phones join uses idx_contact_phones_address.
+                // Grouping/joining on COALESCE(address_e164, address) can't use
+                // idx_messages_address_time or idx_contact_phones_address; acceptable for the
+                // thread-summary read (bounded by distinct conversations).
                 let mut stmt = conn.prepare_cached(
-                    "SELECT m.address, \
+                    "SELECT COALESCE(m.address_e164, m.address) AS addr, \
                             MAX(m.timestamp_ms) AS latest_ms, \
                             COUNT(*) AS total, \
                             SUM(CASE WHEN m.status = 0 AND m.direction = 0 THEN 1 ELSE 0 END) \
                                 AS unread, \
                             (SELECT m2.outgoing_status FROM messages m2 \
-                             WHERE m2.address = m.address \
+                             WHERE COALESCE(m2.address_e164, m2.address) \
+                                 = COALESCE(m.address_e164, m.address) \
                              ORDER BY m2.timestamp_ms DESC LIMIT 1) AS latest_outgoing_status, \
                             c.display_name AS contact_name \
                      FROM messages m \
-                     LEFT JOIN contact_phones cp ON cp.address = m.address \
+                     LEFT JOIN contact_phones cp \
+                         ON COALESCE(cp.address_e164, cp.address) = COALESCE(m.address_e164, m.address) \
                      LEFT JOIN contacts c ON c.uid = cp.uid \
                      WHERE m.address != '' \
-                     GROUP BY m.address ORDER BY latest_ms DESC",
+                     GROUP BY COALESCE(m.address_e164, m.address) ORDER BY latest_ms DESC",
                 )?;
                 let rows = stmt.query_map([], |row| {
                     Ok(ThreadRow {

@@ -7,7 +7,7 @@ use map_core::BMessage;
 use obex_core::headers::Header;
 use obex_core::packet::{OpCode, Packet, PacketExtra};
 use secrecy::SecretBox;
-use store::{OutgoingStatus, STATUS_READ};
+use store::{OutgoingStatus, PhoneField, STATUS_READ};
 use tokio::io::{duplex, DuplexStream};
 
 use super::*;
@@ -31,7 +31,7 @@ fn sample_message(direction: Direction, outgoing_status: Option<OutgoingStatus>)
         timestamp_ms: 0,
         folder: folder.to_owned(),
         direction,
-        address: "+1".to_owned(),
+        address: PhoneField::new("+1", None),
         status: STATUS_READ,
         synced_at: 0,
         text: "hi".to_owned(),

@@ -1,5 +1,7 @@
 //! Row and input types for the cached-contacts domain.
 
+use formats::phone::PhoneField;
+
 /// A cached PBAP contact, keyed by its durable vCard `UID` — not the volatile PBAP list
 /// handle, which the device re-assigns on every listing.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -8,10 +10,9 @@ pub struct ContactRow {
     pub uid: String,
     /// vCard `FN` property value, or `None` if the device omitted it.
     pub display_name: Option<String>,
-    /// All cached phone numbers, stored exactly as the device's vCard reported them
-    /// (unnormalized) — must match `messages.address`'s format for [`crate::Store::threads`]'s
-    /// join to resolve.
-    pub phones: Vec<String>,
+    /// All cached phone numbers, each carrying the raw device-reported form and, when resolvable,
+    /// its E.164 canonical form.
+    pub phones: Vec<PhoneField>,
 }
 
 /// A lightweight contact identity without phone numbers, returned by
@@ -34,8 +35,9 @@ pub struct NewContact {
     pub uid: String,
     /// vCard `FN` property value, or `None` if the device omitted it.
     pub display_name: Option<String>,
-    /// Current phone numbers, stored exactly as the device's vCard reported them.
-    pub phones: Vec<String>,
+    /// Current phone numbers, each carrying the raw device-reported form and, when resolvable,
+    /// its E.164 canonical form.
+    pub phones: Vec<PhoneField>,
 }
 
 /// Cached PBAP phonebook identity/version watermark, stored in the `meta` table.

@@ -6,6 +6,8 @@
 use calcard::vcard::{VCardProperty, VCardValue};
 use thiserror::Error;
 
+use crate::phone::PhoneField;
+
 /// Contact parsing errors — calcard cannot parse the vCard input.
 #[derive(Debug, Error)]
 pub enum ContactError {
@@ -16,8 +18,8 @@ pub enum ContactError {
 
 /// Normalised contact extracted from a PBAP vCard.
 ///
-/// Phone numbers are whitespace-stripped but otherwise preserved as-is; no
-/// E.164 normalisation is attempted.
+/// Phone numbers are normalised to E.164 at parse time (the PBAP ingress chokepoint), retaining
+/// the whitespace-stripped raw form; see [`PhoneField`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Contact {
     /// Value of the FN property; `None` if absent.
@@ -25,14 +27,15 @@ pub struct Contact {
     /// Value of the UID property; `None` if absent. A durable per-contact key — unlike PBAP
     /// handles, which are volatile and re-resolved on every sync.
     pub uid: Option<String>,
-    phones: Vec<String>,
+    phones: Vec<PhoneField>,
 }
 
 impl Contact {
-    /// Whitespace-stripped, non-empty TEL values in vCard order.
+    /// Non-empty TEL values in vCard order, each carrying its whitespace-stripped raw form and,
+    /// when resolvable, its E.164 canonical form.
     #[inline]
     #[must_use]
-    pub fn phones(&self) -> &[String] {
+    pub fn phones(&self) -> &[PhoneField] {
         &self.phones
     }
 }
@@ -65,6 +68,7 @@ impl Contact {
             .filter_map(VCardValue::as_text)
             .map(|s| s.split_whitespace().collect::<String>())
             .filter(|s| !s.is_empty())
+            .map(|s| PhoneField::new(&s, None))
             .collect();
 
         Ok(Self { display_name, uid, phones })

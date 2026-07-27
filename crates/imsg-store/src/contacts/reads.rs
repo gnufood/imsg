@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use formats::phone::PhoneField;
 use rusqlite::OptionalExtension;
 
 use crate::contacts::types::{ContactEntryRow, ContactRow};
@@ -10,32 +11,35 @@ use crate::{Error, Store};
 const PAGE_ORDER: &str = "ORDER BY display_name COLLATE NOCASE ASC, uid ASC LIMIT ?1 OFFSET ?2";
 
 /// Returns every cached phone number for `uid`, in insertion (vCard) order.
-fn phones_of(conn: &rusqlite::Connection, uid: &str) -> rusqlite::Result<Vec<String>> {
-    conn.prepare_cached("SELECT address FROM contact_phones WHERE uid = ?1 ORDER BY rowid ASC")?
-        .query_map([uid], |row| row.get(0))?
-        .collect()
+fn phones_of(conn: &rusqlite::Connection, uid: &str) -> rusqlite::Result<Vec<PhoneField>> {
+    conn.prepare_cached(
+        "SELECT address, address_e164 FROM contact_phones WHERE uid = ?1 ORDER BY rowid ASC",
+    )?
+    .query_map([uid], |row| Ok(PhoneField::from_parts(row.get(0)?, row.get(1)?)))?
+    .collect()
 }
 
 /// Returns cached phone numbers for every UID in `uids`, grouped by UID.
 fn phones_for(
     conn: &rusqlite::Connection,
     uids: &[String],
-) -> rusqlite::Result<HashMap<String, Vec<String>>> {
+) -> rusqlite::Result<HashMap<String, Vec<PhoneField>>> {
     if uids.is_empty() {
         return Ok(HashMap::new());
     }
     let placeholders = vec!["?"; uids.len()].join(",");
     let sql = format!(
-        "SELECT uid, address FROM contact_phones WHERE uid IN ({placeholders}) ORDER BY rowid ASC"
+        "SELECT uid, address, address_e164 FROM contact_phones \
+         WHERE uid IN ({placeholders}) ORDER BY rowid ASC"
     );
     let bound: Vec<&dyn rusqlite::ToSql> =
         uids.iter().map(|u| -> &dyn rusqlite::ToSql { u }).collect();
-    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    let mut out: HashMap<String, Vec<PhoneField>> = HashMap::new();
     for row in conn.prepare(&sql)?.query_map(bound.as_slice(), |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        Ok((row.get::<_, String>(0)?, PhoneField::from_parts(row.get(1)?, row.get(2)?)))
     })? {
-        let (uid, address) = row?;
-        out.entry(uid).or_default().push(address);
+        let (uid, phone) = row?;
+        out.entry(uid).or_default().push(phone);
     }
     Ok(out)
 }
@@ -64,8 +68,9 @@ impl Store {
             .map_err(Error::Connection)
     }
 
-    /// Returns the full contact that owns phone number `address` (exact string match against
-    /// `contact_phones.address`), or `None` if no cached contact has that number.
+    /// Returns the full contact that owns phone number `address`, matched on the canonical form
+    /// (E.164 when resolved, else raw), or `None` if no cached contact has that number. Pass an
+    /// already-canonical address so formatting differences don't cause a miss.
     ///
     /// # Errors
     ///
@@ -76,7 +81,8 @@ impl Store {
             .call(move |conn: &mut rusqlite::Connection| {
                 let uid: Option<String> = conn
                     .query_row(
-                        "SELECT uid FROM contact_phones WHERE address = ?1 LIMIT 1",
+                        "SELECT uid FROM contact_phones \
+                         WHERE COALESCE(address_e164, address) = ?1 LIMIT 1",
                         [&address],
                         |row| row.get(0),
                     )

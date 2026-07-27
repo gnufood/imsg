@@ -6,8 +6,9 @@
 
 use std::fmt::Write as _;
 
+use ipc::PhoneDto;
 use pbap_core::{Contact, ContactError};
-use store::{ContactEntryRow, ContactRow};
+use store::{ContactEntryRow, ContactRow, PhoneField};
 
 use super::*;
 
@@ -33,10 +34,9 @@ fn render_contact_view_shows_unknown_for_missing_name() -> Result<(), ContactErr
 
 #[test]
 fn render_contact_view_normalises_unless_raw() -> Result<(), ContactError> {
-    // `Contact::from_vcard_str` whitespace-strips TEL values at parse time regardless of `raw`
-    // (see `phones()`'s doc) — `raw` only controls E.164 normalisation in `render_contact_view`.
-    // UK trunk-prefix case: the country code (+44) is enough context to resolve without a
-    // configured fallback region.
+    // Numbers are normalised to E.164 at parse time (the PBAP ingress chokepoint); `raw` only
+    // selects which retained form to render. UK trunk-prefix case: the country code (+44) is
+    // enough context to resolve without a configured fallback region.
     let c = contact(Some("Ada Lovelace"), &["+44(0)1753866488"])?;
     let view = ContactView::from_contact(&c);
     assert_eq!(render_contact_view(&view, true), "Ada Lovelace\n  +44(0)1753866488");
@@ -58,7 +58,7 @@ fn render_contact_view_from_dto_matches_from_contact() {
     let dto = ContactDto {
         display_name: Some("Grace Hopper".to_owned()),
         uid: Some("uid-1".to_owned()),
-        phones: vec!["+15550002".to_owned()],
+        phones: vec![PhoneDto { raw: "+15550002".to_owned(), e164: None }],
     };
     let view = ContactView::from_dto(&dto);
     assert_eq!(render_contact_view(&view, true), "Grace Hopper\n  +15550002");
@@ -69,7 +69,7 @@ fn render_contact_view_from_row_matches_from_contact() {
     let row = ContactRow {
         uid: "uid-2".to_owned(),
         display_name: Some("Margaret Hamilton".to_owned()),
-        phones: vec!["+15550003".to_owned()],
+        phones: vec![PhoneField::new("+15550003", None)],
     };
     let view = ContactView::from_row(&row);
     assert_eq!(render_contact_view(&view, true), "Margaret Hamilton\n  +15550003");

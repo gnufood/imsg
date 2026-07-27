@@ -2,7 +2,7 @@
 //! `SQLite`, no mocks) and a real `tauri::test::mock_app()` supplying the managed `State`.
 
 use secrecy::SecretBox;
-use store::{Direction as StoreDirection, NewMessage, Store};
+use store::{Direction as StoreDirection, NewMessage, PhoneField, Store};
 use tauri::Manager;
 
 use super::*;
@@ -20,7 +20,7 @@ fn sample_message(handle: &str, address: &str) -> NewMessage {
         timestamp_ms: 1_700_000_000_000,
         folder: "telecom/msg/inbox".to_owned(),
         direction: StoreDirection::Received,
-        address: address.to_owned(),
+        address: PhoneField::new(address, None),
         status: store::STATUS_UNREAD,
         synced_at: 1_700_000_000_500,
         text: "hi".to_owned(),

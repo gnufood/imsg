@@ -4,7 +4,7 @@ use bytes::Bytes;
 use futures::{SinkExt, StreamExt};
 use pbap_core::client::PbapClient;
 use pbap_core::phonebook::PhonebookPath;
-use store::{NewContact, PbapMeta};
+use store::{NewContact, PbapMeta, PhoneField};
 
 use super::{body_rsp, fake_store, hex16, list_body, metadata_rsp, sync_contacts, vcard};
 use super::{A, B, C, CONNECT_RSP, D};
@@ -47,7 +47,7 @@ async fn refreshes_without_wipe_when_only_counters_change() -> anyhow::Result<()
     db.upsert_contacts(vec![NewContact {
         uid: "uid-old".to_owned(),
         display_name: Some("Old".to_owned()),
-        phones: vec!["+15559999".to_owned()],
+        phones: vec![PhoneField::new("+15559999", None)],
     }])
     .await?;
     db.set_pbap_meta(&PbapMeta {
@@ -91,7 +91,7 @@ async fn wipes_when_database_id_changes() -> anyhow::Result<()> {
     db.upsert_contacts(vec![NewContact {
         uid: "uid-stale".to_owned(),
         display_name: Some("Stale".to_owned()),
-        phones: vec!["+15559999".to_owned()],
+        phones: vec![PhoneField::new("+15559999", None)],
     }])
     .await?;
     db.set_pbap_meta(&PbapMeta {

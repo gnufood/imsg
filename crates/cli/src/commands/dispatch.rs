@@ -4,20 +4,30 @@
 use std::path::Path;
 
 use anyhow::Result;
+use formats::phone::PhoneField;
 use transport::iroh::Endpoint;
 
 use crate::commands::{contacts, get, list, send, threads};
 use crate::progress::with_spinner;
+
+/// Normalises a user-typed phone number to its canonical form (E.164 when resolvable, else the
+/// raw input) so it matches addresses stored/grouped in canonical form.
+pub(in crate::commands) fn canonical_number(value: &str) -> String {
+    PhoneField::new(value, None).display().to_owned()
+}
 
 /// Dispatches `list` to the local store or phone based on opt-in state.
 pub(in crate::commands) async fn run_list(
     cfg: &::config::Config,
     spoke: Option<&Endpoint>,
     device: Option<&str>,
-    opts: list::ListOpts,
+    mut opts: list::ListOpts,
     db: &store::Store,
     config_path: Option<&Path>,
 ) -> Result<String> {
+    // Normalise the `--from` filter once, before the fork: the store path matches on canonical,
+    // and the live path's own filter re-normalises idempotently.
+    opts.from = opts.from.map(|f| canonical_number(&f));
     if is_opted_in(db, "sync_enabled").await {
         with_spinner("listing", list::run_store(opts, db)).await
     } else {

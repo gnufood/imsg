@@ -1,3 +1,4 @@
+use formats::phone::PhoneField;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use strum_macros::{Display, EnumIs, EnumString};
 
@@ -97,8 +98,9 @@ pub struct NewMessage {
     pub folder: String,
     /// Whether the message was received or sent.
     pub direction: Direction,
-    /// Remote phone number or address associated with the message.
-    pub address: String,
+    /// Remote phone number, carrying the raw device-reported form and, when resolvable, its
+    /// E.164 canonical form. Normalised at the session ingress boundary before construction.
+    pub address: PhoneField,
     /// Raw MAP message status integer; interpretation is caller-defined.
     pub status: i32,
     /// Milliseconds since Unix epoch when this sync run fetched the message.

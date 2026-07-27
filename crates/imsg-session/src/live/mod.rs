@@ -13,6 +13,7 @@ use map_core::client::MapClient;
 use map_core::folders::Folder;
 use map_core::messages::{ListMessagesFilter, MessageEntry, ReadStatus};
 use map_core::{BMessage, MessageStatus};
+use store::PhoneField;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::fetch::{fetch_folder, list_folder};
@@ -60,7 +61,7 @@ pub async fn list<T: AsyncRead + AsyncWrite + Unpin>(
         .map(|m| LiveMessage {
             handle: m.handle,
             timestamp_ms: m.timestamp_ms,
-            address: m.address,
+            address: canonical(&m.address),
             folder: m.folder,
             read: m.read,
             text: m.text,
@@ -75,8 +76,15 @@ fn read_status_for(f: &ListFilter) -> Option<ReadStatus> {
     f.unread.then_some(ReadStatus::Unread)
 }
 
+/// Best-effort E.164 for grouping/matching; the raw form when it can't be resolved.
+fn canonical(raw: &str) -> String {
+    PhoneField::new(raw, None).display().to_owned()
+}
+
 fn keep(m: &LiveMessage, f: &ListFilter) -> bool {
-    if f.from.as_deref().is_some_and(|addr| addr != m.address) {
+    // `m.address` is already canonical; normalise the filter value so formatting differences
+    // don't cause a miss.
+    if f.from.as_deref().is_some_and(|addr| canonical(addr) != m.address) {
         return false;
     }
     f.since_ms.is_none_or(|since| m.timestamp_ms >= since)
@@ -118,6 +126,8 @@ fn accumulate(acc: &mut HashMap<String, LiveThread>, entry: &MessageEntry) {
     if address.is_empty() {
         return;
     }
+    // Group on the canonical form so formatting variants collapse into one thread.
+    let address = canonical(&address);
     let ts = datetime_to_ms(&entry.datetime).unwrap_or(0);
     let t = acc.entry(address.clone()).or_insert_with(|| LiveThread {
         address,
@@ -167,7 +177,7 @@ fn to_live_body(handle: String, bmsg: &BMessage) -> LiveBody {
     LiveBody {
         handle,
         direction,
-        address,
+        address: canonical(&address),
         folder: bmsg.folder().to_owned(),
         read: matches!(bmsg.status(), MessageStatus::Read),
         text: bmsg.envelope().body.text.clone(),

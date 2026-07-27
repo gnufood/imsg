@@ -29,14 +29,15 @@ impl Store {
                     let mut clear_phones =
                         tx.prepare_cached("DELETE FROM contact_phones WHERE uid = ?1")?;
                     let mut insert_phone = tx.prepare_cached(
-                        "INSERT INTO contact_phones (address, uid) VALUES (?1, ?2) \
-                         ON CONFLICT(address) DO UPDATE SET uid = excluded.uid",
+                        "INSERT INTO contact_phones (address, address_e164, uid) VALUES (?1, ?2, ?3) \
+                         ON CONFLICT(address) DO UPDATE SET \
+                             uid = excluded.uid, address_e164 = excluded.address_e164",
                     )?;
                     for c in &contacts {
                         upsert.execute(params![c.uid, c.display_name])?;
                         clear_phones.execute(params![c.uid])?;
                         for phone in &c.phones {
-                            insert_phone.execute(params![phone, c.uid])?;
+                            insert_phone.execute(params![phone.raw(), phone.e164(), c.uid])?;
                         }
                     }
                 }

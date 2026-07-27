@@ -69,7 +69,8 @@ async fn pull_all_pb_returns_contacts() -> Result<(), PbapError> {
     assert_eq!(contacts.len(), 1);
     let first = contacts.first().ok_or(PbapError::UnexpectedEof)?;
     assert_eq!(first.display_name.as_deref(), Some("Test"));
-    assert_eq!(first.phones(), ["+1111"]);
+    let phone = first.phones().first().ok_or(PbapError::UnexpectedEof)?;
+    assert_eq!(phone.raw(), "+1111");
     Ok(())
 }
 
@@ -388,7 +389,8 @@ async fn pull_entry_returns_contact() -> Result<(), PbapError> {
     server_result?;
     let contact = client_result?;
     assert_eq!(contact.display_name.as_deref(), Some("Bob"));
-    assert_eq!(contact.phones(), ["+15551234567"]);
+    let phone = contact.phones().first().ok_or(PbapError::UnexpectedEof)?;
+    assert_eq!(phone.raw(), "+15551234567");
     Ok(())
 }
 

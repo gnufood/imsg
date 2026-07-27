@@ -6,7 +6,7 @@ pub use crate::util::{datetime_to_ms, ms_to_display};
 use map_core::client::MapClient;
 use map_core::folders::Folder;
 use map_core::messages::ListMessagesFilter;
-use store::{Direction, FolderSyncStatus, NewMessage, Store};
+use store::{Direction, FolderSyncStatus, NewMessage, PhoneField, Store};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::fetch::{fetch_folder, FetchedMessage};
@@ -21,7 +21,7 @@ fn to_new_message(msg: FetchedMessage, synced_at: i64) -> NewMessage {
         timestamp_ms: msg.timestamp_ms,
         folder: msg.folder,
         direction: if msg.sent { Direction::Sent } else { Direction::Received },
-        address: msg.address,
+        address: PhoneField::new(&msg.address, None),
         status: i32::from(msg.read),
         synced_at,
         text: msg.text,

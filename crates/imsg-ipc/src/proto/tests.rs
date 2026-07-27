@@ -1,7 +1,7 @@
 //! Wire round-trip tests for [`super::BrokerRequest`]/[`super::BrokerResponse`].
 
 use super::*;
-use crate::{CardEntryDto, ContactDto, Direction};
+use crate::{CardEntryDto, ContactDto, Direction, PhoneDto};
 
 /// Regression: internally-tagged newtype-of-`String` variants fail to serialise. Adjacent
 /// tagging fixes it, so `Error`/`Text`/`Failed` frames must round-trip.
@@ -55,12 +55,12 @@ fn live_data_response_variants_roundtrip() -> Result<(), serde_json::Error> {
         BrokerResponse::Contact(ContactDto {
             display_name: Some("Jane Doe".into()),
             uid: Some("uid-1".into()),
-            phones: vec!["+15550001".into()],
+            phones: vec![PhoneDto { raw: "+15550001".to_owned(), e164: None }],
         }),
         BrokerResponse::ContactLookup(Some(ContactDto {
             display_name: Some("Jane Doe".into()),
             uid: Some("uid-1".into()),
-            phones: vec!["+15550001".into()],
+            phones: vec![PhoneDto { raw: "+15550001".to_owned(), e164: None }],
         })),
         BrokerResponse::ContactLookup(None),
         BrokerResponse::Contacts(vec![ContactDto {

@@ -3,7 +3,9 @@
 //! equivalent (`crates/cli/src/commands/mod.rs`), which is untested for the same reason.
 
 use secrecy::SecretBox;
-use store::{Direction as StoreDirection, NewContact, NewMessage, Store};
+use store::{Direction as StoreDirection, NewContact, NewMessage, PhoneField, Store};
+
+use crate::dto::PhoneDto;
 
 use super::*;
 
@@ -20,7 +22,7 @@ fn sample_message(handle: &str, address: &str) -> NewMessage {
         timestamp_ms: 1_700_000_000_000,
         folder: "telecom/msg/inbox".to_owned(),
         direction: StoreDirection::Received,
-        address: address.to_owned(),
+        address: PhoneField::new(address, None),
         status: store::STATUS_UNREAD,
         synced_at: 1_700_000_000_500,
         text: "hi".to_owned(),
@@ -97,7 +99,7 @@ fn sample_contact(uid: &str, name: &str, phones: &[&str]) -> NewContact {
     NewContact {
         uid: uid.to_owned(),
         display_name: Some(name.to_owned()),
-        phones: phones.iter().map(|p| (*p).to_owned()).collect(),
+        phones: phones.iter().map(|p| PhoneField::new(p, None)).collect(),
     }
 }
 
@@ -131,7 +133,13 @@ async fn get_contact_returns_dto_with_phones_for_existing() -> anyhow::Result<()
 
     let dto = get_contact(&db, "U1").await?.ok_or_else(|| anyhow::anyhow!("contact missing"))?;
     assert_eq!(dto.display_name.as_deref(), Some("Ada"));
-    assert_eq!(dto.phones, vec!["+15550001".to_owned(), "+15550002".to_owned()]);
+    assert_eq!(
+        dto.phones,
+        vec![
+            PhoneDto { raw: "+15550001".to_owned(), e164: None },
+            PhoneDto { raw: "+15550002".to_owned(), e164: None },
+        ]
+    );
     Ok(())
 }
 

@@ -7,7 +7,7 @@ use futures::{SinkExt as _, StreamExt as _};
 use map_core::client::MapClient;
 use map_core::mns_event::parse_event_report;
 use secrecy::SecretBox;
-use store::{Direction, NewMessage, Store};
+use store::{Direction, NewMessage, PhoneField, Store};
 use tokio::io::{duplex, DuplexStream};
 use tokio::sync::broadcast;
 
@@ -47,7 +47,7 @@ async fn on_mns_event_writes_store_and_fans_out_watch_tx() -> anyhow::Result<()>
             timestamp_ms: 0,
             folder: "telecom/msg/inbox".to_owned(),
             direction: Direction::Received,
-            address: "+1".to_owned(),
+            address: PhoneField::new("+1", None),
             status: 0,
             synced_at: 0,
             text: "hi".to_owned(),

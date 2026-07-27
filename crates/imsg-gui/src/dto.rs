@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod contacts;
-pub use contacts::{ContactDto, ContactEntryDto};
+pub use contacts::{ContactDto, ContactEntryDto, PhoneDto};
 
 /// Whether a message was received from the remote or sent by this device.
 ///

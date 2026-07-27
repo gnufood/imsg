@@ -2,7 +2,7 @@
 
 use bytes::Bytes;
 use futures::{SinkExt as _, StreamExt as _};
-use ipc::{CardEntryDto, ContactDto, Reason};
+use ipc::{CardEntryDto, ContactDto, PhoneDto, Reason};
 use obex_core::headers::Header;
 use obex_core::packet::{OpCode, Packet, PacketExtra};
 use pbap_core::client::PbapClient;
@@ -149,7 +149,7 @@ TEL:+15551110000\r\nEND:VCARD\r\n";
         ContactDto {
             display_name: Some("Alice".into()),
             uid: Some("uid-alice".into()),
-            phones: vec!["+15551110000".into()],
+            phones: vec![PhoneDto { raw: "+15551110000".to_owned(), e164: None }],
         }
     );
     Ok(())
@@ -172,7 +172,7 @@ TEL:+15551110000\r\nEND:VCARD\r\n";
         vec![ContactDto {
             display_name: Some("Alice".into()),
             uid: Some("uid-alice".into()),
-            phones: vec!["+15551110000".into()],
+            phones: vec![PhoneDto { raw: "+15551110000".to_owned(), e164: None }],
         }]
     );
     Ok(())

@@ -13,16 +13,17 @@ impl Store {
             .call(move |conn: &mut rusqlite::Connection| -> Result<(), rusqlite::Error> {
                 let mut stmt = conn.prepare_cached(
                     "INSERT OR IGNORE INTO messages \
-                     (map_handle, timestamp_ms, folder, direction, address, \
+                     (map_handle, timestamp_ms, folder, direction, address, address_e164, \
                       status, synced_at, text, outgoing_status) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 )?;
                 stmt.execute(params![
                     msg.map_handle,
                     msg.timestamp_ms,
                     msg.folder,
                     msg.direction,
-                    msg.address,
+                    msg.address.raw(),
+                    msg.address.e164(),
                     msg.status,
                     msg.synced_at,
                     msg.text,
@@ -73,15 +74,16 @@ impl Store {
                 let placeholder = format!("local:{outbox_id}");
                 tx.execute(
                     "INSERT INTO messages \
-                     (map_handle, timestamp_ms, folder, direction, address, \
+                     (map_handle, timestamp_ms, folder, direction, address, address_e164, \
                       status, synced_at, text, outgoing_status) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                     params![
                         placeholder,
                         msg.timestamp_ms,
                         msg.folder,
                         msg.direction,
-                        msg.address,
+                        msg.address.raw(),
+                        msg.address.e164(),
                         msg.status,
                         msg.synced_at,
                         msg.text,

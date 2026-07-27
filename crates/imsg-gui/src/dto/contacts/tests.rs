@@ -21,12 +21,21 @@ fn contact_dto_preserves_uid_name_and_phones() {
     let row = store::ContactRow {
         uid: "U1".into(),
         display_name: Some("Jane Doe".into()),
-        phones: vec!["+15550001".into(), "+15550002".into()],
+        phones: vec![
+            store::PhoneField::new("+15550001", None),
+            store::PhoneField::new("+15550002", None),
+        ],
     };
     let dto = ContactDto::from(&row);
     assert_eq!(dto.uid, "U1");
     assert_eq!(dto.display_name.as_deref(), Some("Jane Doe"));
-    assert_eq!(dto.phones, vec!["+15550001".to_owned(), "+15550002".to_owned()]);
+    assert_eq!(
+        dto.phones,
+        vec![
+            PhoneDto { raw: "+15550001".to_owned(), e164: None },
+            PhoneDto { raw: "+15550002".to_owned(), e164: None },
+        ]
+    );
 }
 
 #[test]

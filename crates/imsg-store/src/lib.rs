@@ -14,6 +14,7 @@ mod row;
 mod store;
 
 pub use contacts::{ContactEntryRow, ContactRow, NewContact, PbapMeta};
+pub use formats::phone::PhoneField;
 pub use row::{
     Direction, FolderCursor, FolderSyncStatus, MessageRow, NewMessage, OutboxRow, OutboxStatus,
     OutgoingStatus, ThreadRow, STATUS_READ, STATUS_UNREAD,

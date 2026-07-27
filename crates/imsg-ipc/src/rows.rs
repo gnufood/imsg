@@ -83,6 +83,19 @@ pub struct CardEntryDto {
     pub name: Option<String>,
 }
 
+/// One phone number in both its raw device-reported form and its canonical E.164 form.
+///
+/// `e164` is `None` when the number could not be normalised. The raw form is always carried so
+/// the client can honour `contacts --raw`, which must show the number as the device reported it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct PhoneDto {
+    /// The number exactly as the device's vCard reported it (whitespace-stripped).
+    pub raw: String,
+    /// The canonical E.164 form, or `None` if the number could not be resolved.
+    pub e164: Option<String>,
+}
+
 /// One contact vCard from a live `get`/`lookup`/`pull_all`, mirroring
 /// `formats::vcard::Contact`.
 ///
@@ -95,6 +108,6 @@ pub struct ContactDto {
     pub display_name: Option<String>,
     /// Value of the vCard UID property; `None` if absent. The durable per-contact key.
     pub uid: Option<String>,
-    /// Whitespace-stripped, non-empty TEL values in vCard order.
-    pub phones: Vec<String>,
+    /// Non-empty TEL values in vCard order, each carrying raw and canonical forms.
+    pub phones: Vec<PhoneDto>,
 }

@@ -3,7 +3,7 @@
 use secrecy::SecretBox;
 
 use crate::row::{Direction, OutboxStatus};
-use crate::{NewMessage, Store};
+use crate::{NewMessage, PhoneField, Store};
 
 async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
     let dir = tempfile::tempdir()?;
@@ -18,7 +18,7 @@ fn sample_outgoing() -> NewMessage {
         timestamp_ms: 1_700_000_000_000,
         folder: "telecom/msg/sent".to_owned(),
         direction: Direction::Sent,
-        address: "+15550001".to_owned(),
+        address: PhoneField::new("+15550001", None),
         status: crate::STATUS_READ,
         synced_at: 1_700_000_000_500,
         text: "hi".to_owned(),

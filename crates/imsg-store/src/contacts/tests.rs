@@ -1,5 +1,6 @@
 //! End-to-end checks against a real `Store` (temp-dir `SQLite`, no mocks).
 
+use formats::phone::PhoneField;
 use secrecy::SecretBox;
 
 use crate::{ContactRow, NewContact, PbapMeta, Store};
@@ -15,7 +16,7 @@ fn alice() -> NewContact {
     NewContact {
         uid: "uid-alice".to_owned(),
         display_name: Some("Alice".to_owned()),
-        phones: vec!["+15550001".to_owned(), "+15550002".to_owned()],
+        phones: vec![PhoneField::new("+15550001", None), PhoneField::new("+15550002", None)],
     }
 }
 
@@ -32,7 +33,7 @@ async fn upsert_contacts_writes_contact_and_phones() -> anyhow::Result<()> {
         ContactRow {
             uid: "uid-alice".to_owned(),
             display_name: Some("Alice".to_owned()),
-            phones: vec!["+15550001".to_owned(), "+15550002".to_owned()],
+            phones: vec![PhoneField::new("+15550001", None), PhoneField::new("+15550002", None)],
         }
     );
     Ok(())
@@ -46,13 +47,33 @@ async fn upsert_contacts_replaces_phone_set_on_second_call() -> anyhow::Result<(
     db.upsert_contacts(vec![NewContact {
         uid: "uid-alice".to_owned(),
         display_name: Some("Alice Smith".to_owned()),
-        phones: vec!["+15559999".to_owned()],
+        phones: vec![PhoneField::new("+15559999", None)],
     }])
     .await?;
 
     let got = db.get_contact("uid-alice").await?.ok_or_else(|| anyhow::anyhow!("missing"))?;
     assert_eq!(got.display_name.as_deref(), Some("Alice Smith"));
-    assert_eq!(got.phones, vec!["+15559999".to_owned()]);
+    assert_eq!(got.phones, vec![PhoneField::new("+15559999", None)]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn upsert_persists_e164_column_and_round_trips() -> anyhow::Result<()> {
+    let (db, _dir) = fake_store().await?;
+    let phone = PhoneField::new("+44 (0)1753 866488", None);
+    assert_eq!(phone.e164(), Some("+441753866488"));
+
+    db.upsert_contacts(vec![NewContact {
+        uid: "uid-ada".to_owned(),
+        display_name: Some("Ada".to_owned()),
+        phones: vec![phone],
+    }])
+    .await?;
+
+    let got = db.get_contact("uid-ada").await?.ok_or_else(|| anyhow::anyhow!("missing"))?;
+    let phone = got.phones.first().ok_or_else(|| anyhow::anyhow!("no phone"))?;
+    assert_eq!(phone.raw(), "+44 (0)1753 866488");
+    assert_eq!(phone.e164(), Some("+441753866488"));
     Ok(())
 }
 
@@ -131,7 +152,10 @@ async fn all_contacts_returns_full_rows_with_phones() -> anyhow::Result<()> {
 
     assert_eq!(all.len(), 1);
     let first = all.first().ok_or_else(|| anyhow::anyhow!("missing"))?;
-    assert_eq!(first.phones, vec!["+15550001".to_owned(), "+15550002".to_owned()]);
+    assert_eq!(
+        first.phones,
+        vec![PhoneField::new("+15550001", None), PhoneField::new("+15550002", None)]
+    );
     Ok(())
 }
 

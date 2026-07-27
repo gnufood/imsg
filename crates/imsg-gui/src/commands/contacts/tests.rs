@@ -9,7 +9,7 @@ use interprocess::local_socket::tokio::Listener;
 use interprocess::local_socket::ListenerOptions;
 use ipc::{BrokerResponse, MAX_FRAME_LEN};
 use secrecy::SecretBox;
-use store::{NewContact, Store};
+use store::{NewContact, PhoneField, Store};
 use tauri::Manager;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
@@ -26,7 +26,7 @@ fn sample_contact(uid: &str, name: &str, phones: &[&str]) -> NewContact {
     NewContact {
         uid: uid.to_owned(),
         display_name: Some(name.to_owned()),
-        phones: phones.iter().map(|p| (*p).to_owned()).collect(),
+        phones: phones.iter().map(|p| PhoneField::new(p, None)).collect(),
     }
 }
 

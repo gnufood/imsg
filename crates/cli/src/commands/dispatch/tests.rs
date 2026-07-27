@@ -4,7 +4,17 @@
 use secrecy::SecretBox;
 use store::Store;
 
-use super::is_opted_in;
+use super::{canonical_number, is_opted_in};
+
+#[test]
+fn canonical_number_normalises_resolvable_input() {
+    assert_eq!(canonical_number("+44 (0)1753 866488"), "+441753866488");
+}
+
+#[test]
+fn canonical_number_falls_back_to_raw_when_unresolvable() {
+    assert_eq!(canonical_number("01753 866488"), "01753 866488");
+}
 
 async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
     let dir = tempfile::tempdir()?;

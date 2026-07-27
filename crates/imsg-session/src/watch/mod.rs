@@ -3,7 +3,7 @@
 use map_core::client::MapClient;
 use map_core::folders::Folder;
 use map_core::MessageStatus;
-use store::{Direction, NewMessage, OutgoingStatus, Store};
+use store::{Direction, NewMessage, OutgoingStatus, PhoneField, Store};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{mpsc, watch};
 
@@ -108,7 +108,7 @@ async fn handle_new_message<T: AsyncRead + AsyncWrite + Unpin>(
         timestamp_ms: now,
         folder: folder_raw.to_owned(),
         direction: Direction::Received,
-        address,
+        address: PhoneField::new(&address, None),
         status,
         synced_at: now,
         text: bmsg.envelope().body.text.clone(),

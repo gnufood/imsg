@@ -3,7 +3,8 @@
 
 use secrecy::SecretBox;
 use store::{
-    Direction as StoreDirection, NewMessage, OutgoingStatus as StoreOutgoingStatus, Store,
+    Direction as StoreDirection, NewMessage, OutgoingStatus as StoreOutgoingStatus, PhoneField,
+    Store,
 };
 
 use super::*;
@@ -129,7 +130,7 @@ async fn message_dto_reflects_real_store_row() -> anyhow::Result<()> {
             timestamp_ms: 1_700_000_000_000,
             folder: "telecom/msg/sent".to_owned(),
             direction: StoreDirection::Sent,
-            address: "+15550001".to_owned(),
+            address: PhoneField::new("+15550001", None),
             status: store::STATUS_READ,
             synced_at: 1_700_000_000_500,
             text: "on my way".to_owned(),

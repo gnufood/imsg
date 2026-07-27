@@ -1,7 +1,7 @@
 //! Outbox drain: push-error classification, single-message send, and outbox flush.
 
 use map_core::{client::MapClient, folders::Folder, MapError};
-use store::{Direction, NewMessage, OutboxStatus, OutgoingStatus, Store, STATUS_READ};
+use store::{Direction, NewMessage, OutboxStatus, OutgoingStatus, PhoneField, Store, STATUS_READ};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 /// Classifies a MAP push error into the appropriate outbox and message delivery states.
@@ -80,7 +80,7 @@ pub async fn send_sms<T: AsyncRead + AsyncWrite + Unpin>(
                 timestamp_ms: now,
                 folder: Folder::Sent.as_str().to_owned(),
                 direction: Direction::Sent,
-                address: number.to_owned(),
+                address: PhoneField::new(number, None),
                 status: STATUS_READ,
                 synced_at: now,
                 text: message.to_owned(),

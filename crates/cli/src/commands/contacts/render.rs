@@ -3,28 +3,51 @@
 
 use std::fmt::Write as _;
 
-use formats::phone::{normalize_number, Normalization};
 use ipc::{CardEntryDto, ContactDto};
 use pbap_core::{CardEntry, Contact};
-use store::{ContactEntryRow, ContactRow};
+use store::{ContactEntryRow, ContactRow, PhoneField};
+
+/// One phone number borrowed from its source, exposing both forms so the renderer can pick.
+///
+/// `display` is the E.164 canonical form when the number resolved, else the raw form; numbers are
+/// normalised at ingress, so this borrow never re-parses.
+struct PhoneRef<'a> {
+    raw: &'a str,
+    display: &'a str,
+}
+
+impl<'a> From<&'a PhoneField> for PhoneRef<'a> {
+    fn from(p: &'a PhoneField) -> Self {
+        Self { raw: p.raw(), display: p.display() }
+    }
+}
+
+impl<'a> From<&'a ipc::PhoneDto> for PhoneRef<'a> {
+    fn from(p: &'a ipc::PhoneDto) -> Self {
+        Self { raw: &p.raw, display: p.e164.as_deref().unwrap_or(&p.raw) }
+    }
+}
 
 /// A full contact, borrowed from whichever of the three sources produced it.
 pub(super) struct ContactView<'a> {
     name: Option<&'a str>,
-    phones: &'a [String],
+    phones: Vec<PhoneRef<'a>>,
 }
 
 impl<'a> ContactView<'a> {
     pub(super) fn from_contact(c: &'a Contact) -> Self {
-        Self { name: c.display_name.as_deref(), phones: c.phones() }
+        Self {
+            name: c.display_name.as_deref(),
+            phones: c.phones().iter().map(Into::into).collect(),
+        }
     }
 
     pub(super) fn from_dto(c: &'a ContactDto) -> Self {
-        Self { name: c.display_name.as_deref(), phones: &c.phones }
+        Self { name: c.display_name.as_deref(), phones: c.phones.iter().map(Into::into).collect() }
     }
 
     pub(super) fn from_row(c: &'a ContactRow) -> Self {
-        Self { name: c.display_name.as_deref(), phones: &c.phones }
+        Self { name: c.display_name.as_deref(), phones: c.phones.iter().map(Into::into).collect() }
     }
 }
 
@@ -51,27 +74,16 @@ impl<'a> EntryView<'a> {
     }
 }
 
-/// Resolves one TEL value for display: the E.164 form when it normalises cleanly, the raw
-/// value otherwise — normalisation is best-effort and never blanks out a number.
-fn display_number(tel: &str, raw: bool) -> String {
-    if raw {
-        return tel.to_owned();
-    }
-    match normalize_number(tel, None) {
-        Normalization::E164(number) => number,
-        _ => tel.to_owned(),
-    }
-}
-
 /// Renders one contact: name (`(unknown)` when absent), then each phone number on its own
-/// indented line. Normalises numbers to E.164 unless `raw` is true.
+/// indented line. Numbers are normalised to E.164 at ingress; `raw` selects the original
+/// device-reported form instead.
 pub(super) fn render_contact_view(v: &ContactView, raw: bool) -> String {
     let name = v.name.unwrap_or("(unknown)");
     let mut out =
         String::with_capacity(name.len().saturating_add(v.phones.len().saturating_mul(20)));
     out.push_str(name);
-    for tel in v.phones {
-        let number = display_number(tel, raw);
+    for tel in &v.phones {
+        let number = if raw { tel.raw } else { tel.display };
         let _ = write!(out, "\n  {number}");
     }
     out
