@@ -10,6 +10,7 @@ mod pbap;
 use std::time::Duration;
 
 use anyhow::Result;
+use futures::StreamExt as _;
 use ipc::{BrokerResponse, Reason, WatchEvent};
 use map_core::client::MapClient;
 use mns::{on_mns_event, recv_mns};
@@ -18,9 +19,13 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
 use super::{dispatch, Actor, OpOutcome, ServeOutcome};
-use crate::runtime::types::DeviceOp;
+use crate::runtime::types::{DeviceOp, LinkEvents, LinkState};
 
 pub(in crate::runtime::actor) use mns::wants_mns;
+
+/// Pause before re-subscribing to link events, bounding the retry rate when the transport can
+/// only hand back streams that end immediately.
+const LINK_RESUBSCRIBE_BACKOFF: Duration = Duration::from_millis(250);
 
 impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Serves [`DeviceOp`]s against the live `client` until idle timeout, all handles dropped
@@ -36,8 +41,18 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         pbap: &mut Option<PbapClient<T>>,
     ) -> ServeOutcome {
         loop {
+            if self.link.is_none() {
+                self.link = Some(self.resubscribe_link().await);
+            }
             tokio::select! {
                 biased;
+                maybe_link = recv_link(&mut self.link) => match maybe_link {
+                    Some(LinkState::Down) => return ServeOutcome::Dropped,
+                    Some(LinkState::Up) => {}
+                    // Stream end means the transport stopped reporting, not that the link is
+                    // healthy — drop it so the next iteration resubscribes.
+                    None => self.link = None,
+                },
                 maybe_ev = recv_mns(&mut self.mns_rx) => if let Some(ev) = maybe_ev {
                     let outcome = on_mns_event(&ev, client, &self.store, &self.watch_tx).await;
                     if matches!(outcome, OpOutcome::SessionLost) {
@@ -189,12 +204,32 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
         }
     }
 
+    /// Subscribes to link events, pausing first if the previous subscription ended.
+    ///
+    /// A transport that hands back an already-ended stream would otherwise spin the serve loop
+    /// at full speed, since an ended stream reports `None` immediately and forever.
+    async fn resubscribe_link(&mut self) -> LinkEvents {
+        if self.link_subscribed {
+            tokio::time::sleep(LINK_RESUBSCRIBE_BACKOFF).await;
+        }
+        self.link_subscribed = true;
+        (self.link_watch)().await
+    }
+
     /// Cancels the MNS listener task, if running.
     pub(in crate::runtime::actor) fn stop_mns(&mut self) {
         if let Some(tx) = self.mns_cancel.take() {
             let _ = tx.send(true);
         }
         self.mns_rx = None;
+    }
+}
+
+/// Awaits the next link transition, or `pending` when not subscribed — mirrors [`recv_mns`].
+async fn recv_link(link: &mut Option<LinkEvents>) -> Option<LinkState> {
+    match link {
+        Some(events) => events.next().await,
+        None => std::future::pending().await,
     }
 }
 

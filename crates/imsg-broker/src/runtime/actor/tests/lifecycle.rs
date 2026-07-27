@@ -9,6 +9,7 @@ async fn reaches_active_then_shuts_down_when_handle_dropped() -> anyhow::Result<
     let h = spawn(
         fake_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
@@ -28,6 +29,7 @@ async fn failed_connect_goes_terminal() -> anyhow::Result<()> {
     let h = spawn(
         failing_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
@@ -46,6 +48,7 @@ async fn failed_connect_reports_permanent_failure() -> anyhow::Result<()> {
     let h = spawn(
         failing_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
@@ -62,6 +65,7 @@ async fn idle_timeout_shuts_down_when_some() -> anyhow::Result<()> {
     let h = spawn(
         fake_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_millis(50)),
         test_policy(),
@@ -79,7 +83,14 @@ async fn idle_timeout_shuts_down_when_some() -> anyhow::Result<()> {
 #[tokio::test]
 async fn no_idle_timeout_when_none() -> anyhow::Result<()> {
     let (store, _dir) = fake_store().await?;
-    let h = spawn(fake_connector(), fake_pbap_connector(), store, None, test_policy());
+    let h = spawn(
+        fake_connector(),
+        fake_pbap_connector(),
+        no_link_events(),
+        store,
+        None,
+        test_policy(),
+    );
     let mut state = h.state.clone();
     state.wait_for(|s| matches!(s, ConnState::Active)).await?;
     let mut shutdown = h.shutdown;
@@ -96,6 +107,7 @@ async fn bounded_policy_still_gives_up_past_cap() -> anyhow::Result<()> {
     let h = spawn(
         flaky_connector(3),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
@@ -125,6 +137,7 @@ async fn permanent_classification_fails_fast_under_unbounded_policy() -> anyhow:
     let h = spawn(
         permission_denied_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         policy,
@@ -147,6 +160,7 @@ async fn unbounded_policy_survives_past_bounded_cap() -> anyhow::Result<()> {
     let h = spawn(
         flaky_connector(3),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         policy,

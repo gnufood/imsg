@@ -11,6 +11,7 @@ use session::SessionError;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 use super::*;
+use crate::runtime::types::{no_link_events, Connector, PbapConnector};
 
 const MAP_CONNECT_RSP: &[u8] =
     include_bytes!("../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
@@ -116,6 +117,7 @@ async fn cancel_stops_accept_and_drain_even_with_no_connections() -> anyhow::Res
     let handles = super::super::actor::spawn(
         fake_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         None,
         test_policy(),
@@ -152,6 +154,7 @@ async fn shutdown_request_is_served_then_drain_converges() -> anyhow::Result<()>
     let handles = super::super::actor::spawn(
         fake_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         None,
         test_policy(),
@@ -190,6 +193,7 @@ async fn permanent_connect_failure_surfaces_as_error() -> anyhow::Result<()> {
     let handles = super::super::actor::spawn(
         failing_connector(),
         fake_pbap_connector(),
+        no_link_events(),
         store,
         None,
         test_policy(),

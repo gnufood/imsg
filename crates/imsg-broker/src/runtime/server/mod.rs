@@ -12,13 +12,17 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use bluer::rfcomm::Stream;
 use config::Config;
+use futures::StreamExt as _;
 use interprocess::local_socket::{
     tokio::prelude::*, tokio::Listener as IpcListener, ListenerOptions,
 };
 use store::Store;
 
 use super::handler::handle_connection;
-use crate::runtime::types::{ActorHandles, ConnectPolicy, Connector, Connectors, PbapConnector};
+use crate::runtime::types::{
+    ActorHandles, ConnectPolicy, Connector, Connectors, LinkEvents, LinkState, LinkWatcher,
+    PbapConnector,
+};
 
 /// Binds the abstract socket for `addr`.
 ///
@@ -90,10 +94,12 @@ pub(in crate::runtime) async fn serve_daemon(
     let policy = build_daemon_policy(&cfg);
     let readiness_wait = cfg.broker.readiness_wait();
     let security = security_from_config(cfg.broker.security_level);
-    let connector = make_connector(addr, channel, cfg.broker.bt_connected(), security);
-    let pbap_connector = make_pbap_connector(addr, cfg.device.pbap_channel);
-    super::shutdown::run(connector, pbap_connector, store, policy, listener, device, readiness_wait)
-        .await
+    let connectors = Connectors {
+        map: make_connector(addr, channel, cfg.broker.bt_connected(), security),
+        pbap: make_pbap_connector(addr, cfg.device.pbap_channel),
+        link: make_link_watcher(addr),
+    };
+    super::shutdown::run(connectors, store, policy, listener, device, readiness_wait).await
 }
 
 /// Shared by [`serve`] and [`serve_daemon`]; `idle` is their only difference.
@@ -112,6 +118,7 @@ async fn serve_with_idle(
     let connectors = Connectors {
         map: make_connector(addr, channel, cfg.broker.bt_connected(), security),
         pbap: make_pbap_connector(addr, cfg.device.pbap_channel),
+        link: make_link_watcher(addr),
     };
     serve_actor(connectors, store, idle, policy, &listener, device, readiness_wait).await
 }
@@ -154,7 +161,8 @@ async fn serve_actor<T>(
 where
     T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
-    let handles = super::actor::spawn(connectors.map, connectors.pbap, store, idle, policy);
+    let handles =
+        super::actor::spawn(connectors.map, connectors.pbap, connectors.link, store, idle, policy);
     serve_loop(handles, listener, device, readiness_wait).await
 }
 
@@ -169,6 +177,30 @@ fn make_connector(
     security: Option<bluer::rfcomm::Security>,
 ) -> Connector<Stream> {
     Box::new(move || Box::pin(session::lifecycle::connect_map(addr, channel, bt_gate, security)))
+}
+
+/// Builds the production link watcher: each subscription asks `BlueZ` for `addr`'s connection
+/// reports.
+///
+/// A subscription that cannot be established yields a stream that never reports, so a D-Bus
+/// failure degrades to the pre-existing mid-op detection instead of being mistaken for a drop.
+fn make_link_watcher(addr: bluer::Address) -> LinkWatcher {
+    Box::new(move || {
+        Box::pin(async move {
+            let events: LinkEvents = match transport::rfcomm::link_events(addr).await {
+                Ok(events) => {
+                    Box::pin(events.map(|up| if up { LinkState::Up } else { LinkState::Down }))
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "link watch for {addr} unavailable, falling back to mid-op detection: {e}"
+                    );
+                    Box::pin(futures::stream::pending())
+                }
+            };
+            events
+        })
+    })
 }
 
 /// Maps the configured [`config::SecurityLevel`] to the `bluer::rfcomm::Security` value

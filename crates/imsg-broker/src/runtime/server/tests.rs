@@ -6,6 +6,7 @@ use interprocess::local_socket::{GenericNamespaced, ListenerOptions, ToNsName as
 use secrecy::SecretBox;
 
 use super::*;
+use crate::runtime::types::no_link_events;
 
 const MAP_CONNECT_RSP: &[u8] =
     include_bytes!("../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
@@ -86,7 +87,11 @@ async fn serve_actor_never_exits_on_idle_when_none() -> anyhow::Result<()> {
 
     let task = tokio::spawn(async move {
         serve_actor(
-            Connectors { map: fake_connector(), pbap: fake_pbap_connector() },
+            Connectors {
+                map: fake_connector(),
+                pbap: fake_pbap_connector(),
+                link: no_link_events(),
+            },
             store,
             None,
             test_policy(),

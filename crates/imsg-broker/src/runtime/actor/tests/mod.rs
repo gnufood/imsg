@@ -1,9 +1,13 @@
 //! Shared fake-OBEX-server fixtures for the device actor's connect/reconnect/session tests.
 
 mod lifecycle;
+mod link;
 mod pbap_session;
 
+use std::sync::{Arc, Mutex};
+
 use bytes::Bytes;
+use futures::future::BoxFuture;
 use futures::{SinkExt as _, StreamExt as _};
 use obex_core::headers::Header;
 use obex_core::packet::{OpCode, Packet, PacketExtra};
@@ -12,6 +16,7 @@ use session::SessionError;
 use tokio::io::duplex;
 
 use super::*;
+use crate::runtime::types::{no_link_events, LinkEvents, LinkState, LinkWatcher};
 
 const MAP_CONNECT_RSP: &[u8] =
     include_bytes!("../../../../../imsg-obex/tests/fixtures/connect_rsp.bin");
@@ -138,6 +143,56 @@ fn flaky_connector(mut fails: u32) -> Connector<tokio::io::DuplexStream> {
             session::lifecycle::establish_map_session(client_io).await
         })
     })
+}
+
+/// Connects successfully once, then never completes another connect.
+///
+/// Parks the actor in `Reconnecting` after a drop, so the transition is observable without
+/// racing a successful reconnect straight back to `Active`.
+fn connect_once_then_hang() -> Connector<tokio::io::DuplexStream> {
+    let mut connected = false;
+    Box::new(move || {
+        if connected {
+            return Box::pin(std::future::pending());
+        }
+        connected = true;
+        Box::pin(async {
+            let (client_io, server_io) = duplex(4096);
+            tokio::spawn(async move {
+                let mut t = obex_core::wrap(server_io);
+                t.send(Bytes::from_static(MAP_CONNECT_RSP)).await.ok();
+                t.next().await;
+                t.send(Bytes::from_static(NOTIF_REG_OK)).await.ok();
+                while t.next().await.is_some() {
+                    t.send(Bytes::from_static(GENERIC_OK)).await.ok();
+                }
+            });
+            session::lifecycle::establish_map_session(client_io).await
+        })
+    })
+}
+
+/// A [`LinkWatcher`] driven by the returned sender: each value sent becomes one link event.
+///
+/// Only the first subscription is backed by the channel; later ones yield a never-ending
+/// stream, so a test can assert what a resubscribe does without the sender feeding it.
+fn link_channel() -> (mpsc::Sender<LinkState>, LinkWatcher) {
+    let (tx, rx) = mpsc::channel(8);
+    let slot = Arc::new(Mutex::new(Some(rx)));
+    let watcher = Box::new(move || {
+        let taken = slot.lock().map_or(None, |mut g| g.take());
+        let fut: BoxFuture<'static, LinkEvents> = Box::pin(async move {
+            let events: LinkEvents = match taken {
+                Some(rx) => Box::pin(futures::stream::unfold(rx, |mut rx| async move {
+                    rx.recv().await.map(|ev| (ev, rx))
+                })),
+                None => Box::pin(futures::stream::pending()),
+            };
+            events
+        });
+        fut
+    });
+    (tx, watcher)
 }
 
 /// In-memory `Store` (temp-dir `SQLite`) plus the dir guard.

@@ -3,9 +3,11 @@
 //! and scoped to `crate::runtime` — every runtime submodule reads these, but nothing here
 //! escapes the crate.
 
+use std::pin::Pin;
 use std::time::Duration;
 
 use futures::future::BoxFuture;
+use futures::Stream;
 use ipc::{Reason, SessionState};
 use map_core::client::MapClient;
 use pbap_core::client::PbapClient;
@@ -35,12 +37,56 @@ pub(in crate::runtime) type Connector<T> =
 pub(in crate::runtime) type PbapConnector<T> =
     Box<dyn FnMut() -> BoxFuture<'static, Result<PbapClient<T>, SessionError>> + Send>;
 
+/// Physical reachability of the device, as reported by the transport itself.
+///
+/// Independent of MAP traffic: the transport knows the link is gone even when the actor is idle
+/// and no operation has failed. Carries no reason — the actor treats any `Down` the same way it
+/// treats a session that died mid-op.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::runtime) enum LinkState {
+    /// The transport reports the device reachable.
+    Up,
+    /// The transport reports the device unreachable.
+    Down,
+}
+
+/// A stream of [`LinkState`] transitions for one device.
+///
+/// Termination means the transport can no longer report on the link — never that the link is
+/// healthy. The actor resubscribes via its [`LinkWatcher`] rather than treating the end of the
+/// stream as silence.
+pub(in crate::runtime) type LinkEvents = Pin<Box<dyn Stream<Item = LinkState> + Send>>;
+
+/// On-demand factory that subscribes to the device's link-state transitions.
+///
+/// Same contract as [`Connector`]: called by the actor on first use and again after a stream
+/// ends, so the actor owns the subscription lifecycle. A transport with no notion of link
+/// liveness supplies a stream that never yields.
+pub(in crate::runtime) type LinkWatcher = Box<dyn FnMut() -> BoxFuture<'static, LinkEvents> + Send>;
+
+/// A [`LinkWatcher`] that never reports a transition, leaving the actor to learn of a dead
+/// session mid-op as it did before link watching existed.
+///
+/// Test-only: every production path is BlueZ-backed. A transport with no link-liveness notion
+/// of its own (the deferred hub/spoke path) would want this shape.
+#[cfg(test)]
+pub(in crate::runtime) fn no_link_events() -> LinkWatcher {
+    Box::new(|| {
+        Box::pin(async {
+            let events: LinkEvents = Box::pin(futures::stream::pending());
+            events
+        })
+    })
+}
+
 /// The MAP and PBAP connectors, bundled — every caller constructs and passes both together.
 pub(in crate::runtime) struct Connectors<T> {
     /// Establishes the persistent MAP session the actor owns for its whole lifetime.
     pub(in crate::runtime) map: Connector<T>,
     /// Establishes the persistent PBAP session, connected lazily on first use.
     pub(in crate::runtime) pbap: PbapConnector<T>,
+    /// Subscribes to the device's link-state reports, so a drop is noticed without traffic.
+    pub(in crate::runtime) link: LinkWatcher,
 }
 
 /// Backoff and attempt limits for establishing (and re-establishing) the MAP session.

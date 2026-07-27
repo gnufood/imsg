@@ -22,8 +22,8 @@ use store::Store;
 use tokio::sync::{broadcast, mpsc, watch};
 
 use super::types::{
-    ActorHandles, ConnState, ConnectPolicy, Connector, DeviceHandle, DeviceOp, PbapConnector,
-    TerminalReason,
+    ActorHandles, ConnState, ConnectPolicy, Connector, DeviceHandle, DeviceOp, LinkEvents,
+    LinkWatcher, PbapConnector, TerminalReason,
 };
 
 /// Owns the connection lifecycle and serves [`DeviceOp`]s from connection tasks.
@@ -42,6 +42,11 @@ struct Actor<T> {
     watch_count: u32,
     mns_rx: Option<mpsc::Receiver<session::MnsEvent>>,
     mns_cancel: Option<watch::Sender<bool>>,
+    link_watch: LinkWatcher,
+    link: Option<LinkEvents>,
+    /// Whether a link subscription has been made yet — gates the resubscribe backoff so the
+    /// first subscription is immediate.
+    link_subscribed: bool,
     state_tx: watch::Sender<ConnState>,
     shutdown_tx: watch::Sender<Option<TerminalReason>>,
 }
@@ -72,6 +77,7 @@ enum OpOutcome {
 pub(in crate::runtime) fn spawn<T>(
     connector: Connector<T>,
     pbap_connector: PbapConnector<T>,
+    link_watch: LinkWatcher,
     store: Store,
     idle: Option<Duration>,
     policy: ConnectPolicy,
@@ -88,6 +94,9 @@ where
         rx: op_rx,
         connect: connector,
         pbap_connect: pbap_connector,
+        link_watch,
+        link: None,
+        link_subscribed: false,
         store,
         idle,
         policy,

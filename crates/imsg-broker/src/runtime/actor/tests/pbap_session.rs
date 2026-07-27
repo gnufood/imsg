@@ -66,6 +66,7 @@ async fn sync_contacts_reuses_persistent_pbap_session() -> anyhow::Result<()> {
     let h = spawn(
         fake_connector(),
         counting_two_cycle_pbap_connector(calls.clone()),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
@@ -127,6 +128,7 @@ async fn list_contacts_reuses_persistent_pbap_session() -> anyhow::Result<()> {
     let h = spawn(
         fake_connector(),
         counting_two_list_pbap_connector(calls.clone()),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
@@ -155,6 +157,7 @@ async fn pbap_failure_reconnects_independently_of_map_session() -> anyhow::Resul
     let h = spawn(
         fake_connector(),
         counting_one_cycle_pbap_connector(calls.clone()),
+        no_link_events(),
         store,
         Some(Duration::from_secs(60)),
         test_policy(),
