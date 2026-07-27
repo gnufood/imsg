@@ -1,6 +1,6 @@
 //! Integration tests for phone-number normalisation.
 
-use imsg_formats::phone::{normalize_number, Normalization};
+use imsg_formats::phone::{normalize_number, Normalization, PhoneField};
 use phonenumber::country;
 
 #[test]
@@ -64,4 +64,53 @@ fn chinese_mobile_number_resolves_with_configured_region() {
 fn chinese_landline_strips_trunk_prefix_with_configured_region() {
     let result = normalize_number("01012345678", Some(country::Id::CN));
     assert!(matches!(result, Normalization::E164(ref n) if n == "+861012345678"));
+}
+
+#[test]
+fn phone_field_new_resolves_and_retains_raw() {
+    let field = PhoneField::new("+44(0)1753866488", None);
+    assert_eq!(field.raw(), "+44(0)1753866488");
+    assert_eq!(field.e164(), Some("+441753866488"));
+    assert_eq!(field.canonical(), "+441753866488");
+    assert_eq!(field.display(), "+441753866488");
+}
+
+#[test]
+fn phone_field_new_falls_back_to_raw_when_unresolved() {
+    let field = PhoneField::new("01753 866488", None);
+    assert_eq!(field.raw(), "01753 866488");
+    assert_eq!(field.e164(), None);
+    assert_eq!(field.canonical(), "01753 866488");
+    assert_eq!(field.display(), "01753 866488");
+}
+
+#[test]
+fn phone_field_new_resolves_with_configured_region() {
+    let field = PhoneField::new("01753 866488", Some(country::Id::GB));
+    assert_eq!(field.raw(), "01753 866488");
+    assert_eq!(field.e164(), Some("+441753866488"));
+}
+
+#[test]
+fn phone_field_from_parts_trusts_stored_columns() {
+    let field =
+        PhoneField::from_parts("+44(0)1753866488".to_owned(), Some("+441753866488".to_owned()));
+    assert_eq!(field.raw(), "+44(0)1753866488");
+    assert_eq!(field.e164(), Some("+441753866488"));
+    assert_eq!(field.canonical(), "+441753866488");
+}
+
+#[test]
+fn phone_field_from_parts_without_e164_uses_raw_as_canonical() {
+    let field = PhoneField::from_parts("01753 866488".to_owned(), None);
+    assert_eq!(field.e164(), None);
+    assert_eq!(field.canonical(), "01753 866488");
+    assert_eq!(field.display(), "01753 866488");
+}
+
+#[test]
+fn phone_fields_with_same_parts_are_equal() {
+    let a = PhoneField::new("+44(0)1753866488", None);
+    let b = PhoneField::from_parts("+44(0)1753866488".to_owned(), Some("+441753866488".to_owned()));
+    assert_eq!(a, b);
 }
