@@ -54,7 +54,9 @@ async fn refresh_contacts<T: AsyncRead + AsyncWrite + Unpin>(
             Some(NewContact { uid: c.uid?, display_name: c.display_name, phones })
         })
         .collect();
-    Ok(store.upsert_contacts(new_contacts).await?)
+    let written = new_contacts.len();
+    store.upsert_contacts(new_contacts).await?;
+    Ok(written)
 }
 
 /// Syncs the store's contact cache with the device's phonebook at `path`, skipping the refresh

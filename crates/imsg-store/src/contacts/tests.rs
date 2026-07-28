@@ -24,9 +24,8 @@ fn alice() -> NewContact {
 async fn upsert_contacts_writes_contact_and_phones() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
 
-    let written = db.upsert_contacts(vec![alice()]).await?;
+    db.upsert_contacts(vec![alice()]).await?;
 
-    assert_eq!(written, 1);
     let got = db.get_contact("uid-alice").await?.ok_or_else(|| anyhow::anyhow!("missing"))?;
     assert_eq!(
         got,

@@ -11,13 +11,10 @@ impl Store {
     /// currently owned by a different contact (the device reported it on two cards), the
     /// later entry in `contacts` steals ownership — `contact_phones.address` is unique.
     ///
-    /// Returns the number of contacts written.
-    ///
     /// # Errors
     ///
     /// Returns [`Error::Connection`] if the transaction fails.
-    pub async fn upsert_contacts(&self, contacts: Vec<NewContact>) -> Result<usize, Error> {
-        let count = contacts.len();
+    pub async fn upsert_contacts(&self, contacts: Vec<NewContact>) -> Result<(), Error> {
         self.conn()
             .call(move |conn: &mut rusqlite::Connection| -> Result<(), rusqlite::Error> {
                 let tx = conn.transaction()?;
@@ -44,7 +41,6 @@ impl Store {
                 tx.commit()
             })
             .await
-            .map(|()| count)
             .map_err(Error::Connection)
     }
 
