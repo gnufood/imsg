@@ -8,7 +8,7 @@ use map_core::folders::Folder;
 use map_core::MessageStatus;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use super::super::super::dto::{to_body_dto, to_message_dto, to_thread_dto};
+use super::super::super::dto::{to_body_dto, to_folder_dto, to_message_dto, to_thread_dto};
 use super::parse_folder;
 
 /// Lists a folder live and returns lean message DTOs, applying the client-side filters.
@@ -70,6 +70,21 @@ pub(in crate::runtime::actor) async fn do_live_threads<T: AsyncRead + AsyncWrite
     match session::live::threads(client).await {
         Ok(threads) => {
             Ok(BrokerResponse::Threads(threads.into_iter().map(to_thread_dto).collect()))
+        }
+        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
+        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+    }
+}
+
+/// Lists the device's MAP message folders live and returns their DTOs. No store write.
+///
+/// Propagates fatal transport errors; wraps non-fatal errors in [`BrokerResponse::Failed`].
+pub(in crate::runtime::actor) async fn do_live_folders<T: AsyncRead + AsyncWrite + Unpin>(
+    client: &mut MapClient<T>,
+) -> Result<BrokerResponse> {
+    match session::live::folders(client).await {
+        Ok(folders) => {
+            Ok(BrokerResponse::Folders(folders.into_iter().map(to_folder_dto).collect()))
         }
         Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
         Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),

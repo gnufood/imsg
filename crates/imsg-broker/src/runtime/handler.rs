@@ -156,6 +156,7 @@ fn req_to_op(
         }
         BrokerRequest::GetMessage { handle } => DeviceOp::LiveGet { handle, reply },
         BrokerRequest::Threads => DeviceOp::LiveThreads { reply },
+        BrokerRequest::Folders => DeviceOp::LiveFolders { reply },
         BrokerRequest::MarkReadDevice { handle } => DeviceOp::LiveMarkRead { handle, reply },
         BrokerRequest::SendLive { number, message } => {
             DeviceOp::LiveSend { number, message, reply }

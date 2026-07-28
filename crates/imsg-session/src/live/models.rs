@@ -51,6 +51,16 @@ pub struct LiveThread {
     pub unread: u32,
 }
 
+/// One MAP message folder from a live folder listing.
+///
+/// The name is a single path segment relative to `telecom/msg` (e.g. `inbox`), as the device
+/// reported it — no normalisation, no full path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LiveFolder {
+    /// Folder name from the listing XML `name` attribute.
+    pub name: String,
+}
+
 /// One message body fetched live by handle.
 ///
 /// `get`-path carrier. Structurally carries no timestamp — a `BMessage` has no datetime — and

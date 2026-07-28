@@ -20,6 +20,8 @@ const INBOX_RSP: &[u8] =
     include_bytes!("../../../../../../imsg-obex/tests/fixtures/setpath_inbox_rsp.bin");
 // OBEX OK (0xA0), length 3, no headers — accepted response for the `SetMessageStatus` PUT.
 const OK_NO_HEADERS_RSP: &[u8] = &[0xA0, 0x00, 0x03];
+const FOLDER_LISTING_RSP: &[u8] =
+    include_bytes!("../../../../../../imsg-obex/tests/fixtures/get_folder_listing_000_rsp.bin");
 
 /// In-memory `Store` (temp-dir `SQLite`) plus the dir guard.
 async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
@@ -43,6 +45,38 @@ async fn fake_client() -> anyhow::Result<MapClient<DuplexStream>> {
         }
     });
     Ok(MapClient::connect(client_io).await?)
+}
+
+/// A connected client whose fake server answers CONNECT, the `telecom` → `msg` SETPATHs, then
+/// the captured folder-listing GET — the sequence `do_live_folders` drives.
+async fn fake_folders_client() -> anyhow::Result<MapClient<DuplexStream>> {
+    let (client_io, server_io) = duplex(4096);
+    tokio::spawn(async move {
+        let mut srv = obex_core::wrap(server_io);
+        let _ = srv.next().await;
+        let _ = srv.send(Bytes::from_static(CONNECT_RSP)).await;
+        for rsp in [TELECOM_RSP, MSG_RSP, FOLDER_LISTING_RSP] {
+            let _ = srv.next().await;
+            let _ = srv.send(Bytes::copy_from_slice(rsp)).await;
+        }
+    });
+    Ok(MapClient::connect(client_io).await?)
+}
+
+/// The device's document order is the contract — the CLI prints the listing as-is, so the
+/// mapping to DTOs must not sort or dedupe.
+#[tokio::test]
+async fn do_live_folders_returns_device_listing_in_order() -> anyhow::Result<()> {
+    let mut client = fake_folders_client().await?;
+
+    let resp = do_live_folders(&mut client).await?;
+
+    let BrokerResponse::Folders(rows) = resp else {
+        anyhow::bail!("expected Folders, got {resp:?}");
+    };
+    let names: Vec<String> = rows.into_iter().map(|f| f.name).collect();
+    assert_eq!(names, ["inbox", "sent", "outbox", "deleted"]);
+    Ok(())
 }
 
 /// A successful delete must fan a `MessageDeleted` event out to `Watch` subscribers — the only

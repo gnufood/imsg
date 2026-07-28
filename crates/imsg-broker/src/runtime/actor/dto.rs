@@ -9,12 +9,14 @@
 //! [`Reason`]: ipc::Reason
 
 use ipc::{
-    BodyDto, CardEntryDto, ContactDto, Direction, MessageDto, PhoneDto, RefreshDto, SyncReportDto,
-    ThreadDto,
+    BodyDto, CardEntryDto, ContactDto, Direction, FolderDto, MessageDto, PhoneDto, RefreshDto,
+    SyncReportDto, ThreadDto,
 };
 use pbap_core::{CardEntry, Contact};
 use session::contacts::{Refresh, SyncReport};
-use session::live::models::{Direction as LiveDirection, LiveBody, LiveMessage, LiveThread};
+use session::live::models::{
+    Direction as LiveDirection, LiveBody, LiveFolder, LiveMessage, LiveThread,
+};
 
 pub(in crate::runtime::actor) fn to_message_dto(m: LiveMessage) -> MessageDto {
     MessageDto {
@@ -38,6 +40,10 @@ pub(in crate::runtime::actor) const fn to_sync_report_dto(r: SyncReport) -> Sync
 
 pub(in crate::runtime::actor) fn to_thread_dto(t: LiveThread) -> ThreadDto {
     ThreadDto { address: t.address, latest_ms: t.latest_ms, total: t.total, unread: t.unread }
+}
+
+pub(in crate::runtime::actor) fn to_folder_dto(f: LiveFolder) -> FolderDto {
+    FolderDto { name: f.name }
 }
 
 pub(in crate::runtime::actor) fn to_body_dto(b: LiveBody) -> BodyDto {

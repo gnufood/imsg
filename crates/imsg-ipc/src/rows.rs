@@ -73,6 +73,17 @@ pub struct BodyDto {
     pub text: String,
 }
 
+/// One MAP message folder from a live `folders`, mirroring `formats::xml::FolderEntry`.
+///
+/// The name is a single path segment relative to `telecom/msg` (e.g. `inbox`), not a full path
+/// — the device reports the level it was asked to list, never the parents above it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct FolderDto {
+    /// Folder name decoded from the listing XML `name` attribute.
+    pub name: String,
+}
+
 /// Outcome of a contacts cache sync, mirroring `session::contacts::SyncReport`.
 ///
 /// Adjacently tagged for the same reason [`crate::BrokerResponse`] is: the newtype variant

@@ -174,6 +174,21 @@ async fn watch_exits_promptly_on_shutdown_cancel() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// `Folders` must reach the device actor as a live op. Anything else — a rejection, or the
+/// one-shot internal-error arm — puts `imsg folders` back on its own RFCOMM connection,
+/// competing with this broker for the device's single MAP channel.
+#[test]
+fn folders_request_maps_to_live_folders_op() -> anyhow::Result<()> {
+    let (reply, _rx) = oneshot::channel();
+
+    let Ok(op) = req_to_op(BrokerRequest::Folders, reply) else {
+        return Err(anyhow::anyhow!("Folders must map to a device op, not the rejection arm"));
+    };
+
+    assert!(matches!(op, DeviceOp::LiveFolders { .. }));
+    Ok(())
+}
+
 fn secs(n: u64) -> Duration {
     Duration::from_secs(n)
 }

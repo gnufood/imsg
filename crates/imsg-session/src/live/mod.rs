@@ -18,7 +18,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::fetch::{fetch_folder, list_folder};
 use crate::util::{datetime_to_ms, now_ms};
-use models::{Direction, LiveBody, LiveMessage, LiveThread};
+use models::{Direction, LiveBody, LiveFolder, LiveMessage, LiveThread};
 
 /// Filters for a live [`list`], mirroring `store::list_messages` semantics.
 ///
@@ -119,6 +119,22 @@ pub async fn threads<T: AsyncRead + AsyncWrite + Unpin>(
     let mut threads: Vec<LiveThread> = acc.into_values().collect();
     threads.sort_by(|a, b| b.latest_ms.cmp(&a.latest_ms));
     Ok(threads)
+}
+
+/// Lists the device's MAP message folders under `telecom/msg`, in device-reported document order.
+///
+/// Navigates to `telecom/msg` first, so the result is the message-folder level rather than
+/// whatever directory the session was left in. Leaves the client parked there. No store access.
+///
+/// # Errors
+///
+/// Returns an error if any SETPATH fails, the device rejects the listing, or the listing XML is
+/// malformed.
+pub async fn folders<T: AsyncRead + AsyncWrite + Unpin>(
+    client: &mut MapClient<T>,
+) -> anyhow::Result<Vec<LiveFolder>> {
+    let listing = client.list_message_folders().await?;
+    Ok(listing.folders().iter().map(|f| LiveFolder { name: f.name().to_owned() }).collect())
 }
 
 fn accumulate(acc: &mut HashMap<String, LiveThread>, entry: &MessageEntry) {

@@ -2,8 +2,8 @@
 
 use super::*;
 use crate::{
-    BodyDto, CardEntryDto, ContactDto, Direction, MessageDto, PhoneDto, Reason, RefreshDto,
-    SessionState, SyncReportDto, ThreadDto,
+    BodyDto, CardEntryDto, ContactDto, Direction, FolderDto, MessageDto, PhoneDto, Reason,
+    RefreshDto, SessionState, SyncReportDto, ThreadDto,
 };
 
 /// Regression: internally-tagged newtype-of-`String` variants fail to serialise. Adjacent
@@ -80,6 +80,11 @@ fn live_data_response_variants_roundtrip() -> Result<(), serde_json::Error> {
             uid: Some("uid-2".into()),
             phones: vec![],
         }]),
+        BrokerResponse::Folders(vec![
+            FolderDto { name: "inbox".into() },
+            FolderDto { name: "sent".into() },
+        ]),
+        BrokerResponse::Folders(vec![]),
     ];
     for resp in cases {
         let json = serde_json::to_string(&resp)?;
@@ -102,6 +107,7 @@ fn live_request_variants_roundtrip() -> Result<(), serde_json::Error> {
         },
         BrokerRequest::GetMessage { handle: "7".into() },
         BrokerRequest::Threads,
+        BrokerRequest::Folders,
         BrokerRequest::MarkReadDevice { handle: "7".into() },
         BrokerRequest::SendLive { number: "+15550001".into(), message: "hi".into() },
         BrokerRequest::ListContacts { path: Some("fav".into()), limit: Some(20), offset: 0 },

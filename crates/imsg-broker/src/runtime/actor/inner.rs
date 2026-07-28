@@ -218,6 +218,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 | DeviceOp::LiveList { reply, .. }
                 | DeviceOp::LiveGet { reply, .. }
                 | DeviceOp::LiveThreads { reply }
+                | DeviceOp::LiveFolders { reply }
                 | DeviceOp::LiveMarkRead { reply, .. }
                 | DeviceOp::LiveSend { reply, .. }
                 | DeviceOp::SyncContacts { reply }

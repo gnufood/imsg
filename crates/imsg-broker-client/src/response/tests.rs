@@ -1,6 +1,6 @@
 //! Pure data transformation — no I/O, no fakes needed.
 
-use ipc::{BrokerResponse, Reason, SessionState};
+use ipc::{BrokerResponse, FolderDto, Reason, SessionState};
 
 use super::*;
 
@@ -29,6 +29,50 @@ fn error_maps_to_call_error_error() -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("expected an error for an Error response"));
     };
     assert!(matches!(err, CallError::Error(msg) if msg == "broker shutting down"));
+    Ok(())
+}
+
+#[test]
+fn folders_extracts_rows_preserving_order() -> anyhow::Result<()> {
+    let resp = BrokerResponse::Folders(vec![
+        FolderDto { name: "inbox".to_owned() },
+        FolderDto { name: "deleted".to_owned() },
+    ]);
+
+    let rows = folders_result(resp).map_err(|e| anyhow::anyhow!("expected Ok, got {e}"))?;
+
+    let names: Vec<String> = rows.into_iter().map(|f| f.name).collect();
+    assert_eq!(names, ["inbox", "deleted"]);
+    Ok(())
+}
+
+/// An empty listing is a successful read, not a failure — the device genuinely reporting no
+/// folders must not be indistinguishable from a rejected request.
+#[test]
+fn folders_extracts_empty_listing_as_success() -> anyhow::Result<()> {
+    let rows = folders_result(BrokerResponse::Folders(vec![]))
+        .map_err(|e| anyhow::anyhow!("expected Ok, got {e}"))?;
+    assert!(rows.is_empty());
+    Ok(())
+}
+
+#[test]
+fn folders_maps_failed_response_to_call_error() -> anyhow::Result<()> {
+    let Err(err) = folders_result(BrokerResponse::Failed(Reason::DeviceUnreachable)) else {
+        return Err(anyhow::anyhow!("expected an error for a Failed response"));
+    };
+    assert!(matches!(err, CallError::Failed(Reason::DeviceUnreachable)));
+    Ok(())
+}
+
+#[test]
+fn folders_maps_wrong_row_type_to_unexpected() -> anyhow::Result<()> {
+    let Err(err) = folders_result(BrokerResponse::Threads(vec![])) else {
+        return Err(anyhow::anyhow!("expected an error for a Threads response"));
+    };
+    assert!(
+        matches!(err, CallError::Unexpected(boxed) if matches!(*boxed, BrokerResponse::Threads(_)))
+    );
     Ok(())
 }
 

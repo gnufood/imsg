@@ -53,6 +53,8 @@ pub(in crate::runtime) enum DeviceOp {
     },
     /// Aggregate live Inbox+Sent listings into per-contact thread DTOs; no store write.
     LiveThreads { reply: oneshot::Sender<ipc::BrokerResponse> },
+    /// List the device's MAP message folders under `telecom/msg`; no store write.
+    LiveFolders { reply: oneshot::Sender<ipc::BrokerResponse> },
     /// Mark a message read on the device only (non-opted-in `get --read`); no store write.
     LiveMarkRead {
         /// Opaque MAP message handle.

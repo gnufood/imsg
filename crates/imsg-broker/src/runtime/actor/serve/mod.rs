@@ -124,6 +124,9 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
             DeviceOp::LiveThreads { reply } => {
                 Self::finish_map(dispatch::do_live_threads(client).await, reply)
             }
+            DeviceOp::LiveFolders { reply } => {
+                Self::finish_map(dispatch::do_live_folders(client).await, reply)
+            }
             op @ (DeviceOp::SyncContacts { .. }
             | DeviceOp::ListContacts { .. }
             | DeviceOp::GetContact { .. }

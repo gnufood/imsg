@@ -3,7 +3,7 @@
 //! Shared by every consumer (`Send`, `SendLive`, `Delete`, `SyncContacts`, ...) instead of
 //! each one hand-rolling the same match over response variants.
 
-use ipc::{BrokerResponse, Reason, SyncReportDto};
+use ipc::{BrokerResponse, FolderDto, Reason, SyncReportDto};
 
 /// A text-returning broker request answered with something other than
 /// [`BrokerResponse::Text`].
@@ -30,6 +30,24 @@ pub enum CallError {
 pub fn text_result(resp: BrokerResponse) -> Result<String, CallError> {
     match resp {
         BrokerResponse::Text(s) => Ok(s),
+        BrokerResponse::Failed(reason) => Err(CallError::Failed(reason)),
+        BrokerResponse::Error(e) => Err(CallError::Error(e)),
+        other => Err(CallError::Unexpected(Box::new(other))),
+    }
+}
+
+/// Extracts the folder rows from a [`BrokerResponse::Folders`], or the typed [`CallError`]
+/// describing why it didn't succeed.
+///
+/// An empty listing is a success, not an error — the device may genuinely report no folders.
+///
+/// # Errors
+///
+/// Returns [`CallError::Failed`] for a device/session rejection, [`CallError::Error`] for an
+/// IPC-plumbing failure, or [`CallError::Unexpected`] for any other response shape.
+pub fn folders_result(resp: BrokerResponse) -> Result<Vec<FolderDto>, CallError> {
+    match resp {
+        BrokerResponse::Folders(rows) => Ok(rows),
         BrokerResponse::Failed(reason) => Err(CallError::Failed(reason)),
         BrokerResponse::Error(e) => Err(CallError::Error(e)),
         other => Err(CallError::Unexpected(Box::new(other))),

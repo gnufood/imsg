@@ -1,15 +1,53 @@
-//! Unit tests for live normalization, filtering, and aggregation helpers.
+//! Unit tests for live normalization, filtering, and aggregation helpers, plus the one live
+//! read driven end-to-end against a scripted OBEX server ([`super::folders`]).
 
 use std::collections::HashMap;
 
+use bytes::Bytes;
+use futures::{SinkExt as _, StreamExt as _};
+use map_core::client::MapClient;
 use map_core::messages::{MessageEntry, ReadStatus};
 use map_core::BMessage;
+use tokio::io::{duplex, DuplexStream};
 
 use super::models::{Direction, LiveMessage};
 use super::{
-    accumulate, direction_of, keep, peer_address, read_status_for, to_live_body, window, ListFilter,
+    accumulate, direction_of, folders, keep, peer_address, read_status_for, to_live_body, window,
+    ListFilter,
 };
 use crate::util::datetime_to_ms;
+
+const CONNECT_RSP: &[u8] = include_bytes!("../../../imsg-obex/tests/fixtures/connect_rsp.bin");
+const TELECOM_RSP: &[u8] =
+    include_bytes!("../../../imsg-obex/tests/fixtures/setpath_telecom_rsp.bin");
+const MSG_RSP: &[u8] = include_bytes!("../../../imsg-obex/tests/fixtures/setpath_msg_rsp.bin");
+const FOLDER_LISTING_RSP: &[u8] =
+    include_bytes!("../../../imsg-obex/tests/fixtures/get_folder_listing_000_rsp.bin");
+
+/// A connected client whose fake server answers CONNECT, the `telecom` → `msg` SETPATHs, then
+/// the captured folder-listing GET — the full sequence `list_message_folders` drives. A freshly
+/// connected client is at depth 0, so its `reset_to_root` issues no backup SETPATHs.
+async fn fake_folders_client(listing: &'static [u8]) -> anyhow::Result<MapClient<DuplexStream>> {
+    let (client_io, server_io) = duplex(4096);
+    tokio::spawn(async move {
+        let mut srv = obex_core::wrap(server_io);
+        let _ = srv.next().await;
+        let _ = srv.send(Bytes::from_static(CONNECT_RSP)).await;
+        for rsp in [TELECOM_RSP, MSG_RSP, listing] {
+            let _ = srv.next().await;
+            let _ = srv.send(Bytes::copy_from_slice(rsp)).await;
+        }
+    });
+    Ok(MapClient::connect(client_io).await?)
+}
+
+#[tokio::test]
+async fn folders_returns_listing_in_device_document_order() -> anyhow::Result<()> {
+    let mut client = fake_folders_client(FOLDER_LISTING_RSP).await?;
+    let names: Vec<String> = folders(&mut client).await?.into_iter().map(|f| f.name).collect();
+    assert_eq!(names, ["inbox", "sent", "outbox", "deleted"]);
+    Ok(())
+}
 
 fn entry(sent: bool, read: bool, datetime: &str, sender: &str, recipient: &str) -> MessageEntry {
     MessageEntry {

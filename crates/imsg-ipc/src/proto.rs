@@ -68,6 +68,9 @@ pub enum BrokerRequest {
     /// Aggregate live Inbox+Sent listings into per-contact threads (non-opted-in `threads`). No
     /// store write; the broker answers with [`BrokerResponse::Threads`].
     Threads,
+    /// List the device's MAP message folders under `telecom/msg` (`folders`). No store write;
+    /// the broker answers with [`BrokerResponse::Folders`].
+    Folders,
     /// Mark a message read on the device only (non-opted-in `get --read`). No store write — the
     /// message is not persisted on this path. The broker answers with [`BrokerResponse::Ok`].
     MarkReadDevice {

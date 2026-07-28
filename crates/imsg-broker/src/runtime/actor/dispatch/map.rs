@@ -18,7 +18,7 @@ use tokio::sync::broadcast;
 mod live;
 
 pub(in crate::runtime::actor) use live::{
-    do_live_get, do_live_list, do_live_mark_read, do_live_send, do_live_threads,
+    do_live_folders, do_live_get, do_live_list, do_live_mark_read, do_live_send, do_live_threads,
 };
 
 /// Drains the outbox then backfills MAP folders.

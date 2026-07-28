@@ -8,8 +8,8 @@ mod map;
 mod pbap;
 
 pub(in crate::runtime::actor) use map::{
-    do_backfill, do_delete, do_live_get, do_live_list, do_live_mark_read, do_live_send,
-    do_live_threads, do_send, do_sync,
+    do_backfill, do_delete, do_live_folders, do_live_get, do_live_list, do_live_mark_read,
+    do_live_send, do_live_threads, do_send, do_sync,
 };
 pub(in crate::runtime::actor) use pbap::{
     do_contacts_get, do_contacts_list, do_contacts_lookup, do_contacts_pull_all, do_sync_contacts,

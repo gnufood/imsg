@@ -76,6 +76,23 @@ pub(crate) async fn delete(
     Ok(broker_client::delete(addr, handle, folder).await?)
 }
 
+/// Lists the device's MAP message folders via the broker (auto-starting if necessary); see
+/// [`send`] for why this isn't inlined at each call site.
+///
+/// # Errors
+///
+/// Returns an error if the broker cannot be started, or [`broker_client::ReadError`] if the
+/// connection or the request itself fails.
+pub(crate) async fn folders(
+    cfg: &Config,
+    device: Option<&str>,
+    config_path: Option<&Path>,
+) -> Result<Vec<ipc::FolderDto>> {
+    let addr = device.unwrap_or_else(|| cfg.device.address());
+    spawn::ensure_running(cfg, device, config_path).await?;
+    Ok(broker_client::folders(addr).await?)
+}
+
 /// Backfills MAP folders via the broker (auto-starting if necessary); see [`send`] for why this
 /// isn't inlined at each call site.
 ///

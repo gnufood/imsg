@@ -10,7 +10,7 @@ mod state;
 
 pub use proto::{BrokerRequest, BrokerResponse, EventType, WatchEvent, MAX_FRAME_LEN};
 pub use rows::{
-    BodyDto, CardEntryDto, ContactDto, Direction, MessageDto, PhoneDto, RefreshDto, SyncReportDto,
-    ThreadDto,
+    BodyDto, CardEntryDto, ContactDto, Direction, FolderDto, MessageDto, PhoneDto, RefreshDto,
+    SyncReportDto, ThreadDto,
 };
 pub use state::{Reason, SessionState};

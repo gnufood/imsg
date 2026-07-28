@@ -91,7 +91,12 @@ async fn run_command(
             Some(run_list(&cfg, spoke, device, opts, &db, bpath.as_deref()).await?)
         }
         Command::Folders => {
-            Some(with_spinner("folders", folders::run(&load(config_path)?, spoke, device)).await?)
+            // Cloned before `load` consumes it: the broker path forwards `--config` to the
+            // subprocess it may have to spawn.
+            let bpath = config_path.clone();
+            let cfg = load(config_path)?;
+            let fut = folders::run(&cfg, spoke, device, bpath.as_deref());
+            Some(with_spinner("folders", fut).await?)
         }
         Command::Get { handle, folder: _, mark_read } => {
             let (cfg, db, bpath) = load_with_store(config_path).await?;

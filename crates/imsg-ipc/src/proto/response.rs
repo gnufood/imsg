@@ -3,7 +3,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::rows::{BodyDto, CardEntryDto, ContactDto, MessageDto, SyncReportDto, ThreadDto};
+use crate::rows::{
+    BodyDto, CardEntryDto, ContactDto, FolderDto, MessageDto, SyncReportDto, ThreadDto,
+};
 use crate::{Reason, SessionState};
 
 /// A single response frame from the broker.
@@ -35,6 +37,9 @@ pub enum BrokerResponse {
     Threads(Vec<ThreadDto>),
     /// One live message body; sole answer to [`super::BrokerRequest::GetMessage`].
     Body(BodyDto),
+    /// Live MAP folder rows in device-reported document order; sole answer to
+    /// [`super::BrokerRequest::Folders`].
+    Folders(Vec<FolderDto>),
     /// Broker health snapshot; always sent in response to [`super::BrokerRequest::Status`].
     StatusInfo {
         /// Current MAP session lifecycle state (`Active` means connected).
