@@ -1,7 +1,10 @@
 //! Wire round-trip tests for [`super::BrokerRequest`]/[`super::BrokerResponse`].
 
 use super::*;
-use crate::{CardEntryDto, ContactDto, Direction, PhoneDto, RefreshDto, SyncReportDto};
+use crate::{
+    BodyDto, CardEntryDto, ContactDto, Direction, MessageDto, PhoneDto, Reason, RefreshDto,
+    SessionState, SyncReportDto, ThreadDto,
+};
 
 /// Regression: internally-tagged newtype-of-`String` variants fail to serialise. Adjacent
 /// tagging fixes it, so `Error`/`Text`/`Failed` frames must round-trip.
