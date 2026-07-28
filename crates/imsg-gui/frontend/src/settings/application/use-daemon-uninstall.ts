@@ -2,14 +2,20 @@ import { useCallback, useReducer } from 'react'
 import type UseDaemonUninstallResult from '@/settings/application/use-daemon-uninstall.types.ts'
 import { commands } from '@/bindings.ts'
 
+type Outcome = UseDaemonUninstallResult['outcome']
+
 interface State {
   error: string | undefined
+  outcome: Outcome
   uninstalling: boolean
 }
 
-const initialState: State = { error: undefined, uninstalling: false }
+const initialState: State = { error: undefined, outcome: undefined, uninstalling: false }
 
-type Action = { type: 'uninstallStarted' } | { type: 'uninstallSucceeded' } | { message: string; type: 'uninstallFailed' }
+type Action =
+  | { type: 'uninstallStarted' }
+  | { outcome: NonNullable<Outcome>; type: 'uninstallSucceeded' }
+  | { message: string; type: 'uninstallFailed' }
 
 // Pure — every transition names the state it lands on explicitly.
 const reduce = (state: State, action: Action): State => {
@@ -18,7 +24,7 @@ const reduce = (state: State, action: Action): State => {
       return { ...state, error: undefined, uninstalling: true }
     }
     case 'uninstallSucceeded': {
-      return { ...state, error: undefined, uninstalling: false }
+      return { ...state, error: undefined, outcome: action.outcome, uninstalling: false }
     }
     case 'uninstallFailed': {
       return { ...state, error: action.message, uninstalling: false }
@@ -39,7 +45,7 @@ const uninstallDaemon = async ({ dispatch, onUninstalled, system }: UninstallArg
     dispatch({ message: result.error.message, type: 'uninstallFailed' })
     return
   }
-  dispatch({ type: 'uninstallSucceeded' })
+  dispatch({ outcome: result.data, type: 'uninstallSucceeded' })
   onUninstalled()
 }
 

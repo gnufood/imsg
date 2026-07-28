@@ -30,14 +30,33 @@ pub fn install(addr: &str, config_path: Option<&Path>, system: bool) -> Result<(
     service::install(Some(addr), config_path, level(system))
 }
 
-/// Unregisters the daemon service. A no-op if it was never installed.
+/// Outcome of an [`uninstall`], mirrored from [`service::UninstallOutcome`] (that type has no
+/// `Serialize`/`specta::Type` derive of its own).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum UninstallResult {
+    /// Nothing was registered at this level; no change was made.
+    NotInstalled,
+    /// The registration was removed.
+    Uninstalled,
+}
+
+impl From<service::UninstallOutcome> for UninstallResult {
+    fn from(outcome: service::UninstallOutcome) -> Self {
+        match outcome {
+            service::UninstallOutcome::NotInstalled => Self::NotInstalled,
+            service::UninstallOutcome::Uninstalled => Self::Uninstalled,
+        }
+    }
+}
+
+/// Unregisters the daemon service, reporting whether anything was there to remove.
 ///
 /// # Errors
 ///
 /// Returns [`service::Error`] if no native service manager is available or it rejects the
 /// uninstall.
-pub fn uninstall(system: bool) -> Result<(), service::Error> {
-    service::uninstall(level(system))
+pub fn uninstall(system: bool) -> Result<UninstallResult, service::Error> {
+    service::uninstall(level(system)).map(UninstallResult::from)
 }
 
 /// Returns the daemon's current session state, or `None` if nothing answers at `addr`.

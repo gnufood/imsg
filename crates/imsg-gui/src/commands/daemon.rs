@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use ipc::SessionState;
 
 use super::CommandError;
+use crate::daemon::UninstallResult;
 
 /// Registers the daemon with the native OS service manager.
 ///
@@ -29,7 +30,7 @@ pub fn daemon_install(
     Ok(crate::daemon::install(&addr, config_path.as_deref(), system)?)
 }
 
-/// Unregisters the daemon service. A no-op if it was never installed.
+/// Unregisters the daemon service, reporting whether anything was there to remove.
 ///
 /// # Errors
 ///
@@ -37,7 +38,7 @@ pub fn daemon_install(
 /// uninstall.
 #[tauri::command]
 #[specta::specta]
-pub fn daemon_uninstall(system: bool) -> Result<(), CommandError> {
+pub fn daemon_uninstall(system: bool) -> Result<UninstallResult, CommandError> {
     Ok(crate::daemon::uninstall(system)?)
 }
 

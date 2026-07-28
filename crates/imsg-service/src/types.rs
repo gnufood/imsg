@@ -46,3 +46,15 @@ impl From<SmServiceStatus> for ServiceState {
         }
     }
 }
+
+/// What an [`uninstall`](crate::uninstall) call actually did.
+///
+/// Distinguishes a removal from a no-op so callers don't report work that never happened —
+/// uninstalling something absent is success, but it is not a removal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UninstallOutcome {
+    /// Nothing was registered at this level; no change was made.
+    NotInstalled,
+    /// The registration was removed.
+    Uninstalled,
+}

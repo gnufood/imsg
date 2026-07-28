@@ -190,13 +190,27 @@ fn install(addr: &str, config_path: Option<&Path>, system: bool) -> Result<Strin
     Ok(format!("daemon service installed ({lvl:?})"))
 }
 
-/// Unregisters the daemon service via [`service::uninstall`]. A no-op if never installed.
+/// Unregisters the daemon service via [`service::uninstall`], reporting whether anything was
+/// there to remove.
 ///
 /// # Errors
 ///
 /// Returns an error if no native service manager is available or it rejects the uninstall.
 fn uninstall(system: bool) -> Result<String> {
     let lvl = level(system);
-    service::uninstall(lvl).context("uninstalling daemon service")?;
-    Ok(format!("daemon service uninstalled ({lvl:?})"))
+    let outcome = service::uninstall(lvl).context("uninstalling daemon service")?;
+    Ok(uninstall_message(outcome, lvl))
 }
+
+/// Renders [`service::uninstall`]'s outcome, keeping a no-op from reading as a removal.
+fn uninstall_message(outcome: service::UninstallOutcome, lvl: service::ServiceLevel) -> String {
+    match outcome {
+        service::UninstallOutcome::Uninstalled => format!("daemon service uninstalled ({lvl:?})"),
+        service::UninstallOutcome::NotInstalled => {
+            format!("no daemon service installed ({lvl:?})")
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

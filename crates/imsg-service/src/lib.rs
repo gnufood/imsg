@@ -21,7 +21,7 @@ use service_manager::{
 };
 use thiserror::Error;
 
-pub use types::{ServiceLevel, ServiceState};
+pub use types::{ServiceLevel, ServiceState, UninstallOutcome};
 
 const LABEL_ORGANIZATION: &str = "imsg";
 const LABEL_APPLICATION: &str = "daemon";
@@ -131,8 +131,17 @@ pub fn install(
     manager(level)?.install(ctx).map_err(Error::Operation)
 }
 
-/// Unregisters the daemon service. A no-op (per the underlying service manager's
-/// behavior) if it was never installed.
+/// Unregisters the daemon service, reporting whether anything was actually removed.
+///
+/// Uninstalling something absent is [`UninstallOutcome::NotInstalled`], not an error —
+/// matching `stop`'s convention that undoing a state you're already in is success. The
+/// no-op is decided by [`status`] rather than by interpreting the manager's error text,
+/// so it holds wherever that backend reports absence faithfully. Verified against systemd;
+/// `OpenRC` and `winsw` detect absence by string-matching their own output upstream, so the
+/// guarantee is only as good as theirs.
+///
+/// Not atomic: a service installed between the status check and the removal is still
+/// removed, and one removed in that window surfaces as an error rather than a no-op.
 ///
 /// Stops the service first, best-effort: `uninstall` alone only removes the service
 /// definition, leaving an already-running instance behind as an orphaned,
@@ -141,12 +150,17 @@ pub fn install(
 ///
 /// # Errors
 ///
-/// Returns an error if no native service manager is available or it rejects the
-/// uninstall.
-pub fn uninstall(level: ServiceLevel) -> Result<(), Error> {
+/// Returns an error if no native service manager is available, if it fails to report
+/// status (distinct from reporting absence), or if it rejects the uninstall.
+pub fn uninstall(level: ServiceLevel) -> Result<UninstallOutcome, Error> {
     let mgr = manager(level)?;
+    let state = mgr.status(ServiceStatusCtx { label: label() }).map_err(Error::Operation)?;
+    if ServiceState::from(state) == ServiceState::NotInstalled {
+        return Ok(UninstallOutcome::NotInstalled);
+    }
     let _ = mgr.stop(ServiceStopCtx { label: label() });
-    mgr.uninstall(ServiceUninstallCtx { label: label() }).map_err(Error::Operation)
+    mgr.uninstall(ServiceUninstallCtx { label: label() }).map_err(Error::Operation)?;
+    Ok(UninstallOutcome::Uninstalled)
 }
 
 /// Starts the installed daemon service.

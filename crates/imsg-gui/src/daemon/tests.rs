@@ -54,6 +54,18 @@ fn service_install_state_mirrors_service_state() {
     );
 }
 
+#[test]
+fn uninstall_result_mirrors_uninstall_outcome() {
+    assert_eq!(
+        UninstallResult::from(service::UninstallOutcome::Uninstalled),
+        UninstallResult::Uninstalled
+    );
+    assert_eq!(
+        UninstallResult::from(service::UninstallOutcome::NotInstalled),
+        UninstallResult::NotInstalled
+    );
+}
+
 #[tokio::test]
 async fn status_reports_session_state() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:02:01";
