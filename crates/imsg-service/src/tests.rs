@@ -1,3 +1,5 @@
+use service_manager::ServiceStatus as SmServiceStatus;
+
 use super::*;
 
 /// `ExecStart` args always lead with the foreground subcommand, regardless of

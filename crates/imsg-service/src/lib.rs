@@ -8,6 +8,7 @@
 // `pub mod` (not `mod`) is required: items inside are `pub(crate)`, and `pub(crate)` in a
 // private module trips `redundant_pub_crate` while `pub` trips `unreachable_pub`.
 pub mod identity;
+mod types;
 
 use std::env;
 use std::ffi::OsString;
@@ -15,57 +16,15 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use service_manager::{
-    RestartPolicy, ServiceInstallCtx, ServiceLabel, ServiceLevel as SmServiceLevel,
-    ServiceManager as _, ServiceStartCtx, ServiceStatus as SmServiceStatus, ServiceStatusCtx,
-    ServiceStopCtx, ServiceUninstallCtx, TypedServiceManager,
+    RestartPolicy, ServiceInstallCtx, ServiceLabel, ServiceManager as _, ServiceStartCtx,
+    ServiceStatusCtx, ServiceStopCtx, ServiceUninstallCtx, TypedServiceManager,
 };
 use thiserror::Error;
 
+pub use types::{ServiceLevel, ServiceState};
+
 const LABEL_ORGANIZATION: &str = "imsg";
 const LABEL_APPLICATION: &str = "daemon";
-
-/// Whether the daemon service is registered system-wide or for the current user only.
-///
-/// System-level services on Linux/macOS typically require elevated privileges to
-/// install; user-level services do not, but only run while the user session exists
-/// (or lingers, on Linux with `loginctl enable-linger`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ServiceLevel {
-    /// Registered for all users; typically requires elevated privileges to install.
-    System,
-    /// Registered for the current user only.
-    User,
-}
-
-impl From<ServiceLevel> for SmServiceLevel {
-    fn from(level: ServiceLevel) -> Self {
-        match level {
-            ServiceLevel::System => Self::System,
-            ServiceLevel::User => Self::User,
-        }
-    }
-}
-
-/// Observed state of the registered daemon service.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ServiceState {
-    /// No service is registered under imsg's label at the queried [`ServiceLevel`].
-    NotInstalled,
-    /// The service is registered and currently running.
-    Running,
-    /// The service is registered but not running, with a reason if the platform reports one.
-    Stopped(Option<String>),
-}
-
-impl From<SmServiceStatus> for ServiceState {
-    fn from(status: SmServiceStatus) -> Self {
-        match status {
-            SmServiceStatus::NotInstalled => Self::NotInstalled,
-            SmServiceStatus::Running => Self::Running,
-            SmServiceStatus::Stopped(reason) => Self::Stopped(reason),
-        }
-    }
-}
 
 /// Failure registering, controlling, or querying the daemon's OS service entry.
 #[derive(Debug, Error)]
