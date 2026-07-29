@@ -124,12 +124,11 @@ const useSimulatedSecurityLevel = (): SecurityLevelArgs => {
 
 interface DaemonSimState {
   installing: boolean
-  systemInstalled: boolean
   uninstalling: boolean
   userInstalled: boolean
 }
 
-const DAEMON_SIM_INITIAL: DaemonSimState = { installing: false, systemInstalled: false, uninstalling: false, userInstalled: false }
+const DAEMON_SIM_INITIAL: DaemonSimState = { installing: false, uninstalling: false, userInstalled: false }
 
 // Simulates the real round trip `use-daemon-actions.ts` drives (brief pending state, then the
 // Installed flag flips) — this is the one story where `AppTemplate` renders the real `Settings`
@@ -141,27 +140,17 @@ const SIMULATED_DAEMON_DELAY_MS = 400
 const useSimulatedDaemonControls = (): DaemonControlsArgs => {
   const [state, setState] = useState(DAEMON_SIM_INITIAL)
 
-  const onInstall = useCallback((system: boolean) => {
+  const onInstall = useCallback(() => {
     setState((current) => ({ ...current, installing: true }))
     setTimeout(() => {
-      setState((current) => {
-        if (system) {
-          return { ...current, installing: false, systemInstalled: true }
-        }
-        return { ...current, installing: false, userInstalled: true }
-      })
+      setState((current) => ({ ...current, installing: false, userInstalled: true }))
     }, SIMULATED_DAEMON_DELAY_MS)
   }, [])
 
-  const onUninstall = useCallback((system: boolean) => {
+  const onUninstall = useCallback(() => {
     setState((current) => ({ ...current, uninstalling: true }))
     setTimeout(() => {
-      setState((current) => {
-        if (system) {
-          return { ...current, systemInstalled: false, uninstalling: false }
-        }
-        return { ...current, uninstalling: false, userInstalled: false }
-      })
+      setState((current) => ({ ...current, uninstalling: false, userInstalled: false }))
     }, SIMULATED_DAEMON_DELAY_MS)
   }, [])
 
@@ -178,7 +167,8 @@ const useSimulatedDaemonControls = (): DaemonControlsArgs => {
     serviceStatusPollFailed: false,
     stopError: undefined,
     stopping: false,
-    systemInstalled: state.systemInstalled,
+    // Status-only in `DaemonControls`; the simulated round trip below never flips it.
+    systemInstalled: false,
     uninstallError: undefined,
     uninstalling: state.uninstalling,
     userInstalled: state.userInstalled,

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import ConfirmDialog from '@/ui/molecules/ConfirmDialog.tsx'
 import type DaemonControlsArgs from '@/settings/organisms/DaemonControls.types.ts'
@@ -6,18 +6,17 @@ import ErrorState from '@/ui/molecules/ErrorState.tsx'
 import ServiceStatusCard from '@/ui/molecules/ServiceStatusCard.tsx'
 import Text from '@/ui/atoms/Text.tsx'
 
-type ServiceLevel = 'system' | 'user'
+const USER_SERVICE_DESCRIPTION = 'Runs in the user session at login. Unprivileged.'
+const USER_SERVICE_TITLE = 'User service'
 
-interface ServiceDescriptor {
-  description: string
-  level: ServiceLevel
-  title: string
-}
-
-const SERVICES: ServiceDescriptor[] = [
-  { description: 'Runs in the user session at login. Unprivileged.', level: 'user', title: 'User service' },
-  { description: 'Runs at boot, independent of login. Requires root.', level: 'system', title: 'System service' },
-]
+// The system row is status-only. Reading its state is unprivileged (`systemctl status` needs no
+// Root), but installing it writes to root-owned directories, and neither Tauri nor
+// `service-manager` exposes a way to elevate — so the action would always fail. It stays a CLI
+// Operation (`sudo imsg daemon install --system`). Showing the state still matters: a
+// CLI-installed system daemon would otherwise be invisible here while the user installs a second
+// One at user level, and the two would contend for the same RFCOMM channel and socket.
+const SYSTEM_SERVICE_DESCRIPTION = 'Runs at boot, independent of login. Install from a terminal — requires root.'
+const SYSTEM_SERVICE_TITLE = 'System service'
 
 interface ActionErrorsArgs {
   installError: string | undefined
@@ -39,102 +38,72 @@ const renderActionErrors = ({ installError, uninstallError }: ActionErrorsArgs):
   </>
 )
 
-interface ServiceRow extends ServiceDescriptor {
-  handleToggle: () => void
-  installed: boolean | undefined
-}
+const CONTENTION_NOTE =
+  'A system service is already installed. Both levels would contend for the same RFCOMM channel and IPC socket, so remove it first with `sudo imsg daemon uninstall --system`.'
 
-// Stable per-service handlers, built once per `installedByLevel`/`onToggle` identity rather than
-// As a fresh closure per render inside the JSX below (same reasoning as `SegmentedControl`'s own
-// `buildSegments` — see `jsx-no-new-function-as-prop`).
-const buildServiceRows = (
-  installedByLevel: Record<ServiceLevel, boolean | undefined>,
-  onToggle: (level: ServiceLevel, installed: boolean | undefined) => void,
-): ServiceRow[] =>
-  SERVICES.map((service) => ({
-    description: service.description,
-    handleToggle: () => {
-      onToggle(service.level, installedByLevel[service.level])
-    },
-    installed: installedByLevel[service.level],
-    level: service.level,
-    title: service.title,
-  }))
-
-interface UseServiceRowsArgs {
-  onInstall: (system: boolean) => void
-  onRequestUninstall: (level: ServiceLevel) => void
+interface ServiceRowsArgs {
+  onToggleUser: () => void
+  pending: boolean
   systemInstalled: boolean | undefined
   userInstalled: boolean | undefined
 }
 
-// Pulled out for the same max-lines-per-function reason as `useUninstallConfirm` below — also
-// Where `onInstall`/`onRequestUninstall` collapse into the single per-service `onToggle` each row
-// Needs, so `DaemonControls` itself never has to know which of the two a given row is mid-action.
-const useServiceRows = ({ onInstall, onRequestUninstall, systemInstalled, userInstalled }: UseServiceRowsArgs): ServiceRow[] => {
-  const installedByLevel = useMemo(() => ({ system: systemInstalled, user: userInstalled }), [systemInstalled, userInstalled])
-  const onToggle = useCallback(
-    (level: ServiceLevel, installed: boolean | undefined) => {
-      if (installed === true) {
-        onRequestUninstall(level)
-      } else {
-        onInstall(level === 'system')
-      }
-    },
-    [onInstall, onRequestUninstall],
-  )
-  return useMemo(() => buildServiceRows(installedByLevel, onToggle), [installedByLevel, onToggle])
-}
-
-interface ServiceRowsArgs {
-  pending: boolean
-  rows: ServiceRow[]
-}
-
-const renderServiceRows = ({ pending, rows }: ServiceRowsArgs): React.JSX.Element => (
-  <div className="flex flex-col gap-3">
-    {rows.map((row) => (
+// Extracted for the same max-lines-per-function reason as `useUninstallConfirm` below.
+const renderServiceRows = ({ onToggleUser, pending, systemInstalled, userInstalled }: ServiceRowsArgs): React.JSX.Element => {
+  // Gates installing only. Uninstall stays available so an already-installed user service can
+  // Always be removed — blocking that would trap the user in the contending state.
+  const blockedBySystem = systemInstalled === true && userInstalled !== true
+  return (
+    <div className="flex flex-col gap-3">
       <ServiceStatusCard
-        key={row.level}
-        description={row.description}
-        disabled={pending}
-        installed={row.installed}
-        onToggle={row.handleToggle}
-        title={row.title}
+        description={USER_SERVICE_DESCRIPTION}
+        disabled={pending || blockedBySystem}
+        installed={userInstalled}
+        onToggle={onToggleUser}
+        title={USER_SERVICE_TITLE}
       />
-    ))}
-  </div>
-)
+      <ServiceStatusCard
+        description={SYSTEM_SERVICE_DESCRIPTION}
+        disabled={pending}
+        installed={systemInstalled}
+        onToggle={undefined}
+        title={SYSTEM_SERVICE_TITLE}
+      />
+      {blockedBySystem && (
+        <Text size="xs" tone="muted">
+          {CONTENTION_NOTE}
+        </Text>
+      )}
+    </div>
+  )
+}
 
 interface UninstallConfirmState {
-  confirmLevel: ServiceLevel | undefined
+  confirming: boolean
   onCancelUninstall: () => void
   onConfirmUninstall: () => void
-  onRequestUninstall: (level: ServiceLevel) => void
+  onRequestUninstall: () => void
 }
 
 // Pulled out of the component so `DaemonControls` itself stays under this repo's
 // Max-lines-per-function limit — still organism-local UI state, just packaged as a local hook.
-// Level-scoped (unlike a single shared confirm flag) since either card can trigger it.
-const useUninstallConfirm = (onUninstall: (system: boolean) => void): UninstallConfirmState => {
-  const [confirmLevel, setConfirmLevel] = useState<ServiceLevel | undefined>()
+const useUninstallConfirm = (onUninstall: () => void): UninstallConfirmState => {
+  const [confirming, setConfirming] = useState(false)
 
-  const onRequestUninstall = useCallback((level: ServiceLevel) => {
-    setConfirmLevel(level)
+  const onRequestUninstall = useCallback(() => {
+    setConfirming(true)
   }, [])
 
   const onCancelUninstall = useCallback(() => {
-    setConfirmLevel(undefined)
+    setConfirming(false)
   }, [])
 
   const onConfirmUninstall = useCallback(() => {
-    if (confirmLevel !== undefined) {
-      onUninstall(confirmLevel === 'system')
-    }
-    setConfirmLevel(undefined)
-  }, [confirmLevel, onUninstall])
+    onUninstall()
+    setConfirming(false)
+  }, [onUninstall])
 
-  return { confirmLevel, onCancelUninstall, onConfirmUninstall, onRequestUninstall }
+  return { confirming, onCancelUninstall, onConfirmUninstall, onRequestUninstall }
 }
 
 // Stop/Restart are intentionally not rendered here (unlike Install/Uninstall/status, which are
@@ -156,8 +125,14 @@ const DaemonControls = ({
   uninstalling,
   userInstalled,
 }: DaemonControlsArgs): React.JSX.Element => {
-  const { confirmLevel, onCancelUninstall, onConfirmUninstall, onRequestUninstall } = useUninstallConfirm(onUninstall)
-  const rows = useServiceRows({ onInstall, onRequestUninstall, systemInstalled, userInstalled })
+  const { confirming, onCancelUninstall, onConfirmUninstall, onRequestUninstall } = useUninstallConfirm(onUninstall)
+  const onToggle = useCallback(() => {
+    if (userInstalled === true) {
+      onRequestUninstall()
+    } else {
+      onInstall()
+    }
+  }, [onInstall, onRequestUninstall, userInstalled])
 
   if (serviceStatusPollFailed) {
     return <ErrorState message="Couldn't check installed services." onRetry={onResumeServiceStatusPolling} />
@@ -165,10 +140,10 @@ const DaemonControls = ({
 
   return (
     <div className="flex flex-col gap-4">
-      {renderServiceRows({ pending: installing || uninstalling, rows })}
+      {renderServiceRows({ onToggleUser: onToggle, pending: installing || uninstalling, systemInstalled, userInstalled })}
       {renderActionErrors({ installError, uninstallError })}
       <AnimatePresence>
-        {confirmLevel !== undefined && (
+        {confirming && (
           <ConfirmDialog
             confirmLabel="Uninstall"
             error={undefined}

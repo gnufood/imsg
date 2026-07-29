@@ -35,12 +35,12 @@ const reduce = (state: State, action: Action): State => {
 interface UninstallArgs {
   dispatch: React.Dispatch<Action>
   onUninstalled: () => void
-  system: boolean
 }
 
-const uninstallDaemon = async ({ dispatch, onUninstalled, system }: UninstallArgs): Promise<void> => {
+const uninstallDaemon = async ({ dispatch, onUninstalled }: UninstallArgs): Promise<void> => {
   dispatch({ type: 'uninstallStarted' })
-  const result = await commands.daemonUninstall(system)
+  // Always the user-level service — see `use-daemon-install.ts`.
+  const result = await commands.daemonUninstall(false)
   if (result.status === 'error') {
     dispatch({ message: result.error.message, type: 'uninstallFailed' })
     return
@@ -51,16 +51,13 @@ const uninstallDaemon = async ({ dispatch, onUninstalled, system }: UninstallArg
 
 // Application boundary for the settings feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
 // Only file here allowed to import `bindings.ts`'s `daemonUninstall`. Doesn't need the device
-// Address — unlike stop/restart/install, `daemon_uninstall` only takes `system`.
+// Address, unlike stop/restart/install.
 const useDaemonUninstall = (onUninstalled: () => void): UseDaemonUninstallResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
 
-  const uninstall = useCallback(
-    (system: boolean) => {
-      void uninstallDaemon({ dispatch, onUninstalled, system })
-    },
-    [onUninstalled],
-  )
+  const uninstall = useCallback(() => {
+    void uninstallDaemon({ dispatch, onUninstalled })
+  }, [onUninstalled])
 
   return { ...state, uninstall }
 }

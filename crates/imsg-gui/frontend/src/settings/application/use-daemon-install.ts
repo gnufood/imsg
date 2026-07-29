@@ -30,15 +30,16 @@ interface InstallArgs {
   addr: string
   dispatch: React.Dispatch<Action>
   onInstalled: () => void
-  system: boolean
 }
 
-const installDaemon = async ({ addr, dispatch, onInstalled, system }: InstallArgs): Promise<void> => {
+const installDaemon = async ({ addr, dispatch, onInstalled }: InstallArgs): Promise<void> => {
   dispatch({ type: 'installStarted' })
   // `configPath` is `string | null` (specta's mirror of Rust's `Option<T>`) — `null` here means
   // "use the default config file location," the only way to express that over this wire contract.
+  // `system` is always `false`: a root-owned system install can't be performed from an
+  // Unprivileged desktop process, so it stays CLI-only (see `DaemonControls.tsx`).
   // eslint-disable-next-line unicorn/no-null
-  const result = await commands.daemonInstall(addr, null, system)
+  const result = await commands.daemonInstall(addr, null, false)
   if (result.status === 'error') {
     dispatch({ message: result.error.message, type: 'installFailed' })
     return
@@ -53,15 +54,12 @@ const installDaemon = async ({ addr, dispatch, onInstalled, system }: InstallArg
 const useDaemonInstall = (addr: string | undefined, onInstalled: () => void): UseDaemonInstallResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
 
-  const install = useCallback(
-    (system: boolean) => {
-      if (addr === undefined) {
-        return
-      }
-      void installDaemon({ addr, dispatch, onInstalled, system })
-    },
-    [addr, onInstalled],
-  )
+  const install = useCallback(() => {
+    if (addr === undefined) {
+      return
+    }
+    void installDaemon({ addr, dispatch, onInstalled })
+  }, [addr, onInstalled])
 
   return { ...state, install }
 }

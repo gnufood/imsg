@@ -30,6 +30,17 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 
+export const UserInstalled: Story = {
+  args: { systemInstalled: false, userInstalled: true },
+}
+
+// A system daemon installed from the CLI: reported here, with no action offered on its own row
+// And the user row's Install gated, since the two would contend.
+export const SystemInstalled: Story = {
+  args: { systemInstalled: true, userInstalled: false },
+}
+
+// Both installed — already contending. Uninstall stays enabled so the user can resolve it.
 export const BothInstalled: Story = {
   args: { systemInstalled: true, userInstalled: true },
 }

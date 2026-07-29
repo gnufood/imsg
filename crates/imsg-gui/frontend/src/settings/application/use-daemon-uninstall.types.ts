@@ -5,6 +5,6 @@ export default interface UseDaemonUninstallResult {
   // What the last completed uninstall did — a removal, or a no-op because nothing was
   // Registered. `undefined` until one completes.
   outcome: UninstallResult | undefined
-  uninstall: (system: boolean) => void
+  uninstall: () => void
   uninstalling: boolean
 }

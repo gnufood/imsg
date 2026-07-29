@@ -1,5 +1,5 @@
 export default interface UseDaemonInstallResult {
   error: string | undefined
-  install: (system: boolean) => void
+  install: () => void
   installing: boolean
 }

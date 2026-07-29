@@ -40,6 +40,8 @@ interface PollArgs {
 
 // Queries both levels concurrently — `daemon_service_status` reads the OS service manager
 // Directly (no broker round-trip to share), so there's no single query to make once for both.
+// The system level is read even though it can't be installed from here: reading it is
+// Unprivileged, and `DaemonControls` reports it so a CLI-installed system daemon stays visible.
 const pollServiceStatus = async ({ cancelled, dispatch }: PollArgs): Promise<void> => {
   const [user, system] = await Promise.all([commands.daemonServiceStatus(false), commands.daemonServiceStatus(true)])
   if (cancelled.current) {
