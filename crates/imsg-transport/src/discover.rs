@@ -55,6 +55,7 @@ pub async fn list_paired_devices() -> Result<Vec<PairedDevice>, DiscoverError> {
             devices.push(PairedDevice { address, name: device.name().await? });
         }
     }
+    tracing::debug!("discover: {} paired device(s)", devices.len());
     Ok(devices)
 }
 
@@ -70,9 +71,25 @@ pub async fn list_paired_devices() -> Result<Vec<PairedDevice>, DiscoverError> {
 /// (connect failure, I/O, timeout, or malformed response). A missing service record is not an
 /// error — see [`Channels`].
 pub async fn resolve_channels(address: &str) -> Result<Channels, DiscoverError> {
-    let map = bluesdp::query_rfcomm_channel(address, Uuid16::MAP).await?;
-    let pbap = bluesdp::query_rfcomm_channel(address, Uuid16::PBAP).await?;
+    let map = query_channel(address, "MAP", Uuid16::MAP).await?;
+    let pbap = query_channel(address, "PBAP", Uuid16::PBAP).await?;
     Ok(Channels { map, pbap })
+}
+
+// Each profile is resolved over its own SDP connection, and a MAP failure short-circuits the
+// PBAP query — so neither which of the two failed nor how far the sequence got is recoverable
+// from `DiscoverError` alone. Logged per query to keep that attribution.
+async fn query_channel(
+    address: &str,
+    profile: &str,
+    service_uuid: Uuid16,
+) -> Result<Option<u8>, DiscoverError> {
+    tracing::debug!("sdp: querying {address} for {profile}");
+    let channel = bluesdp::query_rfcomm_channel(address, service_uuid)
+        .await
+        .inspect_err(|e| tracing::warn!("sdp: {profile} query to {address} failed: {e}"))?;
+    tracing::debug!("sdp: {address} reports {profile} channel {channel:?}");
+    Ok(channel)
 }
 
 #[cfg(test)]
