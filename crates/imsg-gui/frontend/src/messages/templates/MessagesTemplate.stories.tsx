@@ -52,8 +52,16 @@ const meta = {
     threadsPollFailed: false,
   },
   component: MessagesTemplate,
-  // CenteredScreen (loading/error) and the split-pane layout (ready) both already fill the
-  // Viewport.
+  // This screen fills its *parent*, not the viewport — it renders inside `AppShellTemplate`'s
+  // Content slot, below the nav. The decorator stands in for that slot; without a bounded
+  // Ancestor both the split-pane layout and the `CenteredScreen` states collapse to zero height.
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <Story />
+      </div>
+    ),
+  ],
   parameters: { layout: 'fullscreen' },
   title: 'templates/MessagesTemplate',
 } satisfies Meta<typeof MessagesTemplate>

@@ -5,7 +5,7 @@ import ErrorState from '@/ui/molecules/ErrorState.tsx'
 import LoadingState from '@/ui/molecules/LoadingState.tsx'
 import ThreadListPane from '@/messages/organisms/ThreadListPane.tsx'
 
-const screen = (children: React.ReactNode): React.JSX.Element => <CenteredScreen>{children}</CenteredScreen>
+const screen = (children: React.ReactNode): React.JSX.Element => <CenteredScreen fill="parent">{children}</CenteredScreen>
 
 interface SplitPaneArgs {
   conversationMessages: MessageDto[] | undefined
@@ -46,7 +46,7 @@ const renderSplitPane = ({
   sendPending,
   threads,
 }: SplitPaneArgs): React.JSX.Element => (
-  <div className="flex h-screen w-full bg-surface text-ink">
+  <div className="flex h-full w-full bg-surface text-ink">
     <ThreadListPane
       collapsed={leftCollapsed}
       onRefreshContacts={onRefreshContacts}

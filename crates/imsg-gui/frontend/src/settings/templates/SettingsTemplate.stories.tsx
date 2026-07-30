@@ -62,6 +62,15 @@ const meta = {
     },
   },
   component: SettingsTemplate,
+  // Fills its parent (`AppShellTemplate`'s content slot), not the viewport — the decorator stands
+  // In for that slot, and `h-full` has nothing to resolve against without it.
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <Story />
+      </div>
+    ),
+  ],
   parameters: { layout: 'fullscreen' },
   title: 'templates/SettingsTemplate',
 } satisfies Meta<typeof SettingsTemplate>
@@ -70,3 +79,17 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+// The only place this screen's scroll region is observable. 555px = `tauri.conf.json`'s
+// `minHeight: 600` less the 45px nav (`size-7` button + `py-2` + `border-b`) — the smallest
+// Content slot the window can produce, where five sections genuinely overflow. Scrolling here
+// Must move the content only; the nav is outside this box and never moves.
+export const MinimumWindowHeight: Story = {
+  decorators: [
+    (Story) => (
+      <div className="h-[555px] border-b border-line">
+        <Story />
+      </div>
+    ),
+  ],
+}

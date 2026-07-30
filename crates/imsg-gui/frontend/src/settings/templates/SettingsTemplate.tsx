@@ -150,32 +150,36 @@ interface SettingsTemplateProps {
 // If Channels ran longer) — flex columns let each stack tightly on its own content instead.
 // Fixed side-by-side rather than a responsive breakpoint: `tauri.conf.json`'s `minWidth: 800` is
 // A hard floor for this desktop window, not a browser viewport, so there's no narrow case to
-// Fall back from.
+// Fall back from. Its `minHeight: 600` is not a floor in the same way — five sections genuinely
+// Overflow there, so this screen owns a scroll region. It wraps the centered column rather than
+// Being the column, to keep the scrollbar at the window edge instead of inside `max-w-3xl`.
 const SettingsTemplate = ({ appearance, channelOverrides, daemonControls, securityLevel, statusPanel }: SettingsTemplateProps): React.JSX.Element => (
-  <div className="mx-auto flex w-full max-w-3xl gap-x-10 p-6">
-    <div className="flex flex-1 flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <Text as="h2" tone="accent">Device</Text>
-        {renderStatusPanel(statusPanel)}
-      </section>
-      <section className="flex flex-col gap-3">
-        <Text as="h2" tone="accent">Daemon</Text>
-        {renderDaemonControls(daemonControls)}
-      </section>
-    </div>
-    <div className="flex flex-1 flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <Text as="h2" tone="accent">Channels</Text>
-        {renderChannelOverrides(channelOverrides)}
-      </section>
-      <section className="flex flex-col gap-3">
-        <Text as="h2" tone="accent">Security</Text>
-        {renderSecurityLevel(securityLevel)}
-      </section>
-      <section className="flex flex-col gap-3">
-        <Text as="h2" tone="accent">Appearance</Text>
-        {renderAppearance(appearance)}
-      </section>
+  <div className="h-full overflow-y-auto">
+    <div className="mx-auto flex w-full max-w-3xl gap-x-10 p-6">
+      <div className="flex flex-1 flex-col gap-8">
+        <section className="flex flex-col gap-3">
+          <Text as="h2" tone="accent">Device</Text>
+          {renderStatusPanel(statusPanel)}
+        </section>
+        <section className="flex flex-col gap-3">
+          <Text as="h2" tone="accent">Daemon</Text>
+          {renderDaemonControls(daemonControls)}
+        </section>
+      </div>
+      <div className="flex flex-1 flex-col gap-8">
+        <section className="flex flex-col gap-3">
+          <Text as="h2" tone="accent">Channels</Text>
+          {renderChannelOverrides(channelOverrides)}
+        </section>
+        <section className="flex flex-col gap-3">
+          <Text as="h2" tone="accent">Security</Text>
+          {renderSecurityLevel(securityLevel)}
+        </section>
+        <section className="flex flex-col gap-3">
+          <Text as="h2" tone="accent">Appearance</Text>
+          {renderAppearance(appearance)}
+        </section>
+      </div>
     </div>
   </div>
 )
