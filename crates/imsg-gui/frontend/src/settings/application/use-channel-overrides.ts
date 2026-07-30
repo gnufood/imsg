@@ -1,22 +1,37 @@
 import { useCallback, useEffect, useReducer } from 'react'
-import type UseChannelOverridesResult from '@/settings/application/use-channel-overrides.types.ts'
+import type ChannelOverridesArgs from '@/settings/organisms/ChannelOverridesForm.types.ts'
 import { commands } from '@/bindings.ts'
 
 interface State {
   detectError: string | undefined
   detecting: boolean
+  editorOpen: boolean
   mapDraft: string
   pbapDraft: string
   saveError: string | undefined
   saving: boolean
 }
 
-const initialState: State = { detectError: undefined, detecting: false, mapDraft: '', pbapDraft: '', saveError: undefined, saving: false }
+const initialState: State = {
+  detectError: undefined,
+  detecting: false,
+  editorOpen: false,
+  mapDraft: '',
+  pbapDraft: '',
+  saveError: undefined,
+  saving: false,
+}
 
-type Action =
+// Split in two only to keep each `reduce` arm under this repo's max-statements limit — the
+// Editor/draft transitions a user drives directly, and the outcomes of an in-flight request.
+type EditorAction =
   | { mapChannel: number; pbapChannel: number; type: 'committedReceived' }
   | { draft: string; type: 'mapDraftChanged' }
   | { draft: string; type: 'pbapDraftChanged' }
+  | { type: 'editorOpened' }
+  | { mapChannel: number; pbapChannel: number; type: 'editorCancelled' }
+
+type RequestAction =
   | { type: 'saveStarted' }
   | { type: 'saveSucceeded' }
   | { message: string; type: 'saveFailed' }
@@ -24,25 +39,30 @@ type Action =
   | { mapChannel: number; pbapChannel: number; type: 'detectSucceeded' }
   | { message: string; type: 'detectFailed' }
 
-// Pure — every transition names the state it lands on explicitly. `committedReceived` also backs
-// `cancel` (see below), not just the initial-load effect — both want the same "drop whatever's
-// In the drafts, reset to the last known-good values" behavior, errors included.
-const reduce = (state: State, action: Action): State => {
+type Action = EditorAction | RequestAction
+
+// Drops whatever's in the drafts and returns to the last known-good committed values, errors
+// Included. Shared by the initial-load effect and by `cancel` — which used to be the same
+// Transition, but now differ on one thing: cancelling closes the editor and a reload must not.
+const reseeded = (state: State, mapChannel: number, pbapChannel: number): State => ({
+  ...state,
+  detectError: undefined,
+  mapDraft: String(mapChannel),
+  pbapDraft: String(pbapChannel),
+  saveError: undefined,
+})
+
+// `editorOpen` lives here rather than as local state in `ChannelOverridesForm` because closing
+// The editor is an *outcome* of the save landing, and only this boundary sees outcomes:
+// `saveSucceeded` closes it, `saveFailed` deliberately leaves it open so the error is shown in
+// Place with the drafts intact. Same split as `use-delete-conversation.ts`'s `confirmOpen`.
+const reduceRequest = (state: State, action: RequestAction): State => {
   switch (action.type) {
-    case 'committedReceived': {
-      return { ...state, detectError: undefined, mapDraft: String(action.mapChannel), pbapDraft: String(action.pbapChannel), saveError: undefined }
-    }
-    case 'mapDraftChanged': {
-      return { ...state, mapDraft: action.draft }
-    }
-    case 'pbapDraftChanged': {
-      return { ...state, pbapDraft: action.draft }
-    }
     case 'saveStarted': {
       return { ...state, saveError: undefined, saving: true }
     }
     case 'saveSucceeded': {
-      return { ...state, saving: false }
+      return { ...state, editorOpen: false, saving: false }
     }
     case 'saveFailed': {
       return { ...state, saveError: action.message, saving: false }
@@ -55,6 +75,30 @@ const reduce = (state: State, action: Action): State => {
     }
     case 'detectFailed': {
       return { ...state, detectError: action.message, detecting: false }
+    }
+  }
+}
+
+// Pure — every transition names the state it lands on explicitly.
+const reduce = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'committedReceived': {
+      return reseeded(state, action.mapChannel, action.pbapChannel)
+    }
+    case 'editorOpened': {
+      return { ...state, editorOpen: true }
+    }
+    case 'editorCancelled': {
+      return { ...reseeded(state, action.mapChannel, action.pbapChannel), editorOpen: false }
+    }
+    case 'mapDraftChanged': {
+      return { ...state, mapDraft: action.draft }
+    }
+    case 'pbapDraftChanged': {
+      return { ...state, pbapDraft: action.draft }
+    }
+    default: {
+      return reduceRequest(state, action)
     }
   }
 }
@@ -121,15 +165,14 @@ const useCommittedSync = ({ dispatch, mapChannel, pbapChannel }: CommittedArgs):
   }, [dispatch, mapChannel, pbapChannel])
 }
 
-// Discards whatever's in the drafts and falls back to the same `committedReceived` transition
-// The initial-load effect uses — the only way out of `ChannelOverridesForm`'s editor besides
-// Persisting (see that component's `closeEditor`).
+// Discards whatever's in the drafts and closes the editor — the only way out of it besides a
+// Save that actually landed.
 const useCancelAction = ({ dispatch, mapChannel, pbapChannel }: CommittedArgs): (() => void) =>
   useCallback(() => {
     if (mapChannel === undefined || pbapChannel === undefined) {
       return
     }
-    dispatch({ mapChannel, pbapChannel, type: 'committedReceived' })
+    dispatch({ mapChannel, pbapChannel, type: 'editorCancelled' })
   }, [dispatch, mapChannel, pbapChannel])
 
 interface DetectActionArgs {
@@ -176,15 +219,21 @@ interface UseChannelOverridesArgs {
 }
 
 // Application boundary for the settings feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here allowed to import `bindings.ts`'s `configSetMapChannel`/`configSetPbapChannel`/
-// `discoverResolveChannels`.
-const useChannelOverrides = ({ address, mapChannel, onSaved, pbapChannel }: UseChannelOverridesArgs): UseChannelOverridesResult => {
+// Only file here allowed to import `bindings.ts`'s `configSetChannels`/`discoverResolveChannels`.
+// Returns `ChannelOverridesArgs` directly, echoing the committed channels back out, so the
+// Connected wrapper forwards one object instead of renaming thirteen fields — same shape as
+// `use-security-level.ts`.
+const useChannelOverrides = ({ address, mapChannel, onSaved, pbapChannel }: UseChannelOverridesArgs): ChannelOverridesArgs => {
   const [state, dispatch] = useReducer(reduce, initialState)
 
   useCommittedSync({ dispatch, mapChannel, pbapChannel })
-  const cancel = useCancelAction({ dispatch, mapChannel, pbapChannel })
-  const detect = useDetectAction({ address, dispatch })
-  const save = useSaveAction({ dispatch, mapDraft: state.mapDraft, onSaved, pbapDraft: state.pbapDraft })
+  const onCancel = useCancelAction({ dispatch, mapChannel, pbapChannel })
+  const onDetect = useDetectAction({ address, dispatch })
+  const onSave = useSaveAction({ dispatch, mapDraft: state.mapDraft, onSaved, pbapDraft: state.pbapDraft })
+
+  const onRequestEdit = useCallback(() => {
+    dispatch({ type: 'editorOpened' })
+  }, [])
 
   const onMapDraftChange = useCallback((draft: string) => {
     dispatch({ draft, type: 'mapDraftChanged' })
@@ -194,7 +243,7 @@ const useChannelOverrides = ({ address, mapChannel, onSaved, pbapChannel }: UseC
     dispatch({ draft, type: 'pbapDraftChanged' })
   }, [])
 
-  return { ...state, cancel, detect, onMapDraftChange, onPbapDraftChange, save }
+  return { ...state, mapChannel, onCancel, onDetect, onMapDraftChange, onPbapDraftChange, onRequestEdit, onSave, pbapChannel }
 }
 
 export default useChannelOverrides

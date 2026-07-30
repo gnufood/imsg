@@ -103,12 +103,14 @@ const renderSecurityLevel = ({
 const renderChannelOverrides = ({
   detectError,
   detecting,
+  editorOpen,
   mapChannel,
   mapDraft,
   onCancel,
   onDetect,
   onMapDraftChange,
   onPbapDraftChange,
+  onRequestEdit,
   onSave,
   pbapChannel,
   pbapDraft,
@@ -118,12 +120,14 @@ const renderChannelOverrides = ({
   <ChannelOverridesForm
     detectError={detectError}
     detecting={detecting}
+    editorOpen={editorOpen}
     mapChannel={mapChannel}
     mapDraft={mapDraft}
     onCancel={onCancel}
     onDetect={onDetect}
     onMapDraftChange={onMapDraftChange}
     onPbapDraftChange={onPbapDraftChange}
+    onRequestEdit={onRequestEdit}
     onSave={onSave}
     pbapChannel={pbapChannel}
     pbapDraft={pbapDraft}
