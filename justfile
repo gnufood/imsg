@@ -11,6 +11,14 @@ check:
 test:
     cargo test --workspace --exclude imsg-gui --all-features
 
+# Only runs tests for crates touched by uncommitted changes (plus their dependents), via
+# nextest. Requires `cargo-test-changed` and `cargo-nextest` on PATH (`cargo install
+# --locked cargo-test-changed cargo-nextest`). Unlike the recipes above, this has no
+# `--exclude imsg-gui` equivalent (the tool doesn't support one) — if imsg-gui files are
+# among the changes, expect it to attempt building imsg-gui too.
+test-changed:
+    cargo test-changed -r nextest -d -- --all-features
+
 lint:
     cargo clippy --workspace --exclude imsg-gui --all-targets --all-features -- -D warnings
 
