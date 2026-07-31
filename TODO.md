@@ -1,0 +1,8 @@
+- frontend confirm imports / atomic design (imports all aliased) 
+- the CI TODO for GUI and for completions 
+- release pipeline for GUI 
+- stray frontend files, only prod should ship
+- how is frontend / imsg-gui work handled in terms of crates.io publishing ? 
+- completions for powershell N/A
+- rust audit for local HEAD vs. remote origin
+- add to ROADMAP / new ISSUES for deferred work under E2EMAIN doc . 

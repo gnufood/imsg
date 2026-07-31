@@ -28,6 +28,5 @@ artifacts = [
   "completions/_imsg",
   "completions/imsg.fish",
   "completions/imsg.elv",
-  "completions/_imsg.ps1",
 ]
 build = ["true"]
