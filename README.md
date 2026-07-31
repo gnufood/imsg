@@ -21,6 +21,34 @@ Or via cargo:
 cargo install imsg
 ```
 
+### Shell completions
+
+Interactively, no download needed (bash/zsh/fish only — installs to the shell's conventional
+completion directory after a confirmation prompt):
+
+```sh
+imsg completions zsh --install
+```
+
+Or print the script and redirect it yourself (works for every shell, including elvish/powershell):
+
+```sh
+imsg completions zsh > ~/.zfunc/_imsg
+```
+
+Or fetch the prebuilt static file straight from the latest release:
+
+```sh
+# bash — requires the `bash-completion` package
+curl -sSfL https://releases.gnu.foo/imsg/latest/imsg.bash -o ~/.local/share/bash-completion/completions/imsg
+
+# zsh — add `fpath+=(~/.zfunc)` before `compinit` in ~/.zshrc if not already
+curl -sSfL https://releases.gnu.foo/imsg/latest/_imsg -o ~/.zfunc/_imsg
+
+# fish — auto-loaded, no rc edit needed
+curl -sSfL https://releases.gnu.foo/imsg/latest/imsg.fish -o ~/.config/fish/completions/imsg.fish
+```
+
 ---
 
 ## Quick start

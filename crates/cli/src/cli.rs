@@ -170,12 +170,16 @@ pub(crate) enum Command {
         #[command(subcommand)]
         cmd: DaemonCmd,
     },
-    /// Print a shell completion script to stdout.
+    /// Print a shell completion script to stdout, or install it directly.
     ///
-    /// Redirect it into your shell's completion directory, e.g.
+    /// Without `--install`, redirect it into your shell's completion directory yourself, e.g.
     /// `imsg completions zsh > ~/.zfunc/_imsg`.
     Completions {
         /// Target shell.
         shell: Shell,
+        /// Write the script to the shell's conventional completion directory instead of
+        /// printing it, after an interactive confirmation. Not supported for every shell.
+        #[arg(long)]
+        install: bool,
     },
 }

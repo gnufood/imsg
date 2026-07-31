@@ -44,6 +44,7 @@ pbap-core            = { package = "imsg-pbap", version = "0.3.1", path = "../im
 bytes                = "1"
 fs2                  = "0.4"
 dialoguer            = "0.12"
+dirs                 = "6.0.0"
 
 [dev-dependencies]
 serial_test          = "3"

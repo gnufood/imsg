@@ -1,6 +1,7 @@
 //! Subcommand handlers and the top-level dispatch.
 
 pub mod broker;
+pub mod completions;
 pub mod config;
 pub mod conn;
 pub mod contacts;
@@ -22,7 +23,6 @@ use dispatch::{run_contacts, run_get, run_list, run_send, run_threads};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use clap::CommandFactory as _;
 
 use crate::cli::{BrokerCmd, Cli, Command, ConfigCmd, SpokeCmd};
 use crate::output;
@@ -134,11 +134,7 @@ async fn run_command(
         }
         Command::Unsync { purge } => Some(run_unsync(purge, config_path).await?),
         Command::Daemon { cmd } => daemon::dispatch(cmd, device, config_path).await?,
-        Command::Completions { shell } => {
-            let mut buf = Vec::new();
-            clap_complete::generate(shell, &mut Cli::command(), "imsg", &mut buf);
-            Some(String::from_utf8(buf).context("completion script was not valid UTF-8")?)
-        }
+        Command::Completions { shell, install } => Some(completions::run(shell, install)?),
     };
     Ok(out)
 }

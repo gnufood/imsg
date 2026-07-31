@@ -44,7 +44,7 @@ set edit:completion:arg-completer[imsg] = {|@words|
             cand broker 'Query the session broker'
             cand __broker_serve 'Internal: session broker process, auto-started by the CLI — not for direct invocation'
             cand daemon 'Manage the persistent background broker (opt-in; required for GUI use)'
-            cand completions 'Print a shell completion script to stdout'
+            cand completions 'Print a shell completion script to stdout, or install it directly'
             cand help 'Print this message or the help of the given subcommand(s)'
         }
         &'imsg;send'= {
@@ -413,6 +413,7 @@ set edit:completion:arg-completer[imsg] = {|@words|
         &'imsg;completions'= {
             cand --device 'Override the configured device MAC address (RFCOMM only)'
             cand --config 'Explicit config file path, overriding the layered default search'
+            cand --install 'Write the script to the shell''s conventional completion directory instead of printing it, after an interactive confirmation. Not supported for every shell'
             cand --hub 'Route MAP and PBAP connections through the iroh hub configured via `imsg spoke add`'
             cand -v 'Increase logging verbosity'
             cand --verbose 'Increase logging verbosity'
@@ -437,7 +438,7 @@ set edit:completion:arg-completer[imsg] = {|@words|
             cand broker 'Query the session broker'
             cand __broker_serve 'Internal: session broker process, auto-started by the CLI — not for direct invocation'
             cand daemon 'Manage the persistent background broker (opt-in; required for GUI use)'
-            cand completions 'Print a shell completion script to stdout'
+            cand completions 'Print a shell completion script to stdout, or install it directly'
             cand help 'Print this message or the help of the given subcommand(s)'
         }
         &'imsg;help;send'= {

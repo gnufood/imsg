@@ -46,7 +46,7 @@ complete -c imsg -n "__fish_imsg_needs_command" -f -a "config" -d 'Inspect or mo
 complete -c imsg -n "__fish_imsg_needs_command" -f -a "broker" -d 'Query the session broker'
 complete -c imsg -n "__fish_imsg_needs_command" -f -a "__broker_serve" -d 'Internal: session broker process, auto-started by the CLI — not for direct invocation'
 complete -c imsg -n "__fish_imsg_needs_command" -f -a "daemon" -d 'Manage the persistent background broker (opt-in; required for GUI use)'
-complete -c imsg -n "__fish_imsg_needs_command" -f -a "completions" -d 'Print a shell completion script to stdout'
+complete -c imsg -n "__fish_imsg_needs_command" -f -a "completions" -d 'Print a shell completion script to stdout, or install it directly'
 complete -c imsg -n "__fish_imsg_needs_command" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c imsg -n "__fish_imsg_using_subcommand send" -l device -d 'Override the configured device MAC address (RFCOMM only)' -r
 complete -c imsg -n "__fish_imsg_using_subcommand send" -l config -d 'Explicit config file path, overriding the layered default search' -r -F
@@ -266,6 +266,7 @@ complete -c imsg -n "__fish_imsg_using_subcommand daemon; and __fish_seen_subcom
 complete -c imsg -n "__fish_imsg_using_subcommand daemon; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c imsg -n "__fish_imsg_using_subcommand completions" -l device -d 'Override the configured device MAC address (RFCOMM only)' -r
 complete -c imsg -n "__fish_imsg_using_subcommand completions" -l config -d 'Explicit config file path, overriding the layered default search' -r -F
+complete -c imsg -n "__fish_imsg_using_subcommand completions" -l install -d 'Write the script to the shell\'s conventional completion directory instead of printing it, after an interactive confirmation. Not supported for every shell'
 complete -c imsg -n "__fish_imsg_using_subcommand completions" -l hub -d 'Route MAP and PBAP connections through the iroh hub configured via `imsg spoke add`'
 complete -c imsg -n "__fish_imsg_using_subcommand completions" -s v -l verbose -d 'Increase logging verbosity'
 complete -c imsg -n "__fish_imsg_using_subcommand completions" -s q -l quiet -d 'Decrease logging verbosity'
@@ -285,7 +286,7 @@ complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subc
 complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subcommand_from send list get delete contacts threads sync unsync folders hub spoke config broker __broker_serve daemon completions help" -f -a "broker" -d 'Query the session broker'
 complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subcommand_from send list get delete contacts threads sync unsync folders hub spoke config broker __broker_serve daemon completions help" -f -a "__broker_serve" -d 'Internal: session broker process, auto-started by the CLI — not for direct invocation'
 complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subcommand_from send list get delete contacts threads sync unsync folders hub spoke config broker __broker_serve daemon completions help" -f -a "daemon" -d 'Manage the persistent background broker (opt-in; required for GUI use)'
-complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subcommand_from send list get delete contacts threads sync unsync folders hub spoke config broker __broker_serve daemon completions help" -f -a "completions" -d 'Print a shell completion script to stdout'
+complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subcommand_from send list get delete contacts threads sync unsync folders hub spoke config broker __broker_serve daemon completions help" -f -a "completions" -d 'Print a shell completion script to stdout, or install it directly'
 complete -c imsg -n "__fish_imsg_using_subcommand help; and not __fish_seen_subcommand_from send list get delete contacts threads sync unsync folders hub spoke config broker __broker_serve daemon completions help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c imsg -n "__fish_imsg_using_subcommand help; and __fish_seen_subcommand_from spoke" -f -a "add" -d 'Persist the hub\'s iroh node key to the local config'
 complete -c imsg -n "__fish_imsg_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "show" -d 'Print the resolved configuration'

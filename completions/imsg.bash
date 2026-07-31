@@ -369,7 +369,7 @@ _imsg() {
             return 0
             ;;
         imsg__subcmd__completions)
-            opts="-v -q -h --hub --device --config --verbose --quiet --help bash elvish fish powershell zsh"
+            opts="-v -q -h --install --hub --device --config --verbose --quiet --help bash elvish fish powershell zsh"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

@@ -581,6 +581,7 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
 '--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--install[Write the script to the shell'\''s conventional completion directory instead of printing it, after an interactive confirmation. Not supported for every shell]' \
 '--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
 '*-v[Increase logging verbosity]' \
 '*--verbose[Increase logging verbosity]' \
@@ -786,7 +787,7 @@ _imsg_commands() {
 'broker:Query the session broker' \
 '__broker_serve:Internal\: session broker process, auto-started by the CLI — not for direct invocation' \
 'daemon:Manage the persistent background broker (opt-in; required for GUI use)' \
-'completions:Print a shell completion script to stdout' \
+'completions:Print a shell completion script to stdout, or install it directly' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'imsg commands' commands "$@"
@@ -1004,7 +1005,7 @@ _imsg__subcmd__help_commands() {
 'broker:Query the session broker' \
 '__broker_serve:Internal\: session broker process, auto-started by the CLI — not for direct invocation' \
 'daemon:Manage the persistent background broker (opt-in; required for GUI use)' \
-'completions:Print a shell completion script to stdout' \
+'completions:Print a shell completion script to stdout, or install it directly' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'imsg help commands' commands "$@"
