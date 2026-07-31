@@ -7,7 +7,7 @@ tag-prefix = ""
 sign-commit = true
 sign-tag = true
 
-pre-release-hook = ["bash", "-c", "cd $(dirname $(cargo locate-project --workspace --message-format plain)) && git cliff -o CHANGELOG.md --tag 'v{{version}}' && git add CHANGELOG.md"]
+pre-release-hook = ["bash", "-c", "cd $(dirname $(cargo locate-project --workspace --message-format plain)) && git cliff -o CHANGELOG.md --tag 'v{{version}}' && git add CHANGELOG.md && just docs && git add docs/cli.md && just gen-completions && git add completions/"]
 pre-release-commit-message = "chore(release): v{{version}}"
 
 publish = true
