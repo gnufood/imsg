@@ -21,7 +21,7 @@ fmt-check:
     cargo fmt --all -- --check
 
 docs:
-    cargo run --example gen-readme -p imsg
+    cargo run --example gen-cli-docs -p imsg
 
 gen-completions:
     cargo run --example gen-completions -p imsg
