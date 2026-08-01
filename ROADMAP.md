@@ -6,8 +6,7 @@
 
 ## Tags
 
-Domain-scoped — a small set of broad prefixes, each spanning multiple sections below, numbered
-sequentially within the prefix (not per-section) as sub-items ship:
+Domain-scoped prefixes, numbered sequentially within the prefix (not per-section) as sub-items ship:
 
 | Prefix | Domain |
 |---|---|
@@ -18,15 +17,15 @@ sequentially within the prefix (not per-section) as sub-items ship:
 | `SVC` | Service management |
 | `CLIENTS` | Alternative frontends |
 | `API` | Public API and SDKs |
-| `DISC` | Built-in device discovery — fully shipped, kept only so the tag in Completed can be looked up |
+| `DISC` | Built-in device discovery — shipped; tag kept for Completed lookup |
 
 Cross-cutting — fixes that don't map to a roadmap line item:
 
 | Prefix | Meaning |
 |---|---|
 | `OBS` | Observability — logging/tracing/diagnostics fixes |
-| `GAP` | Protocol/device compliance gap — workaround for something the spec implies but the device doesn't honor |
-| `ISS` | Tracked issue — scoped bug or gap, not large enough to warrant its own roadmap section |
+| `GAP` | Protocol/device compliance gap — spec-implied behavior the device doesn't honor |
+| `ISS` | Tracked issue — scoped bug/gap, no dedicated section |
 
 ---
 
@@ -34,27 +33,25 @@ Cross-cutting — fixes that don't map to a roadmap line item:
 
 ### Standardized error + logging (CLI + GUI)
 
-The CLI and GUI each handle errors their own way, and the GUI's approach requires a manual update
-for every new kind of error, which already lags behind new features. Logging setup is also
-duplicated between the two entrypoints instead of shared.
+CLI and GUI handle errors independently; GUI requires a manual update per error kind and already
+lags behind new features. Logging setup is duplicated across entrypoints instead of shared.
 
 - [ ] **PLATFORM-01** — Unify or share the error-conversion boundary between CLI and GUI
 - [ ] **PLATFORM-02** — Extract one shared logging setup used by both entrypoints
 
 ### Hub and spoke topology
 
-The hub relay connects to the phone per-connection today, rather than through the daemon's
-persistent session handling, so the hub-and-spoke path gets none of the benefit of the
-persistent-session work already shipped for direct connections.
+Hub relay connects to the phone per-connection, not through the daemon's persistent session
+handling — hub-and-spoke gets none of the persistent-session benefit already shipped for direct
+connections.
 
 - [ ] **TRANSPORT-01** — Extend persistent session handling to the hub side of the hub-and-spoke setup
 - [ ] **TRANSPORT-02** — Extend persistent session handling to the spoke side of the hub-and-spoke setup
 
 ### Message attachments
 
-MAP supports advertising MMS, but Apple's SDP record doesn't advertise it, and the Attachment
-flag isn't respected by the device — attachment support can't be driven off protocol metadata
-alone. Messages are also UTF-8 constrained.
+MAP supports MMS advertising, but Apple's SDP record omits it and the device ignores the
+Attachment flag — protocol metadata alone can't drive attachment support. Messages are UTF-8 only.
 
 - [ ] **MSG-01** — Investigate a non-metadata-driven detection/transfer path for MMS content
 
@@ -64,17 +61,15 @@ alone. Messages are also UTF-8 constrained.
 
 ### Persistence layer
 
-Local encrypted message database so the app works without the phone connected. Fully shipped —
-see STORE-01/02/03 in Completed.
+Local encrypted message DB for offline operation. Shipped — see STORE-01/02/03 in Completed.
 
 ### Built-in device discovery
 
-Eliminates having to manually configure the device by its Bluetooth address. Fully shipped —
-see DISC-01 in Completed.
+Removes manual Bluetooth-address config. Shipped — see DISC-01 in Completed.
 
 ### Full TUI client
 
-Interactive TUI for the CLI (the desktop GUI covers the graphical case separately).
+Interactive TUI for the CLI; the desktop GUI covers the graphical case separately.
 
 - [ ] **CLIENTS-01** — Scrollable thread list (arrow-key navigation)
 - [ ] **CLIENTS-02** — Message reader pane (selected thread contents)
@@ -83,7 +78,7 @@ Interactive TUI for the CLI (the desktop GUI covers the graphical case separatel
 
 ### Fuzzy + semantic search of conversations
 
-No search of any kind exists today — the existing commands only filter by folder, sender, or date.
+No search exists — current commands filter only by folder, sender, or date.
 
 - [ ] **MSG-03** — Fuzzy text match over local message bodies (typo-tolerant)
 - [ ] **MSG-04** — Semantic search — embedding-based similarity search over the local store,
@@ -119,13 +114,11 @@ Browser-based interface as an alternative to the CLI/TUI.
 
 ### Service management
 
-Covers getting the daemon service installed, controlled, and kept in sync with what's configured.
-Installing it as a system-wide (rather than per-user) service requires elevated privileges that
-neither the GUI nor the underlying service-management layer currently has a way to request — the
-GUI's system-install option was pulled for this reason, and system-level install/uninstall remains
-CLI-only, run manually with elevated privileges. Separately, some settings changes made in the GUI are saved
-but not picked up by an already-running daemon, leaving the user with no indication that a manual
-restart is required.
+Daemon service install, control, and config sync. System-wide install requires elevated privileges
+neither the GUI nor the service-management layer can currently request — GUI system-install option
+pulled; system-level install/uninstall is CLI-only, manual elevation. Separately, some GUI settings
+changes save but aren't picked up by an already-running daemon, with no restart-required
+indication.
 
 - [ ] **SVC-01** — Ship a packaged installer for the major Linux distributions that can install
       the daemon as a system service with proper elevation, rather than the current unprivileged
@@ -144,14 +137,14 @@ restart is required.
 
 ### Message previews
 
-No preview rendering exists for message content beyond plain text today.
+No preview rendering exists beyond plain text.
 
 - [ ] **MSG-05** — Detect links in message text and render them as clickable
 - [ ] **MSG-06** — Show a preview (title/image/description) for a detected link
 
 ### Contacts
 
-The GUI shows a generic avatar for every contact today.
+GUI shows a generic avatar for every contact.
 
 - [ ] **MSG-07** — Investigate syncing contact photos from the phone alongside the existing
       contact data
@@ -159,9 +152,8 @@ The GUI shows a generic avatar for every contact today.
 
 ### Phone number handling
 
-Phone numbers written without a country code aren't normalized to a canonical form today, so
-they can silently fail to match against numbers that do carry one. A design for deriving and
-applying a default region has already been scoped.
+Numbers without a country code aren't normalized to canonical form and can silently fail to match
+numbers that carry one. Default-region derivation/application design already scoped.
 
 - [ ] **MSG-09** — Derive a default region for normalization from the device's own phone
       number, with a safe fallback and a user-configurable override
@@ -211,8 +203,8 @@ Expand beyond MAP (messaging) and PBAP (contacts).
 
 ## Issues
 
-Scoped bugs and gaps found during testing that don't warrant their own roadmap section. Tagged
-`ISS-NN` here; moves to Completed with a commit hash once fixed.
+Scoped bugs/gaps found during testing, no dedicated section. Tagged `ISS-NN`; moves to Completed
+with a commit hash once fixed.
 
 - [ ] **ISS-01** — GUI channel overrides let the same channel be set for both messaging and
       contacts, which is always invalid, and a partial save can leave one written and the other
