@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+rust-version.workspace = true
 repository.workspace = true
 description  = "Read and send iMessages from the command line over Bluetooth MAP/PBAP — no Apple hardware required"
 keywords     = ["bluetooth", "imessage", "sms", "map", "pbap"]
