@@ -18,8 +18,8 @@ thiserror    = "2"
 tokio        = { version = "1.52.3", features = ["net", "process", "time"] }
 tokio-util   = { version = "0.7.18", features = ["codec"] }
 tracing      = "0.1.44"
-config       = { package = "imsg-config", version = "0.3.1", path = "../imsg-config" }
-ipc          = { package = "imsg-ipc",    version = "0.3.1", path = "../imsg-ipc" }
+config       = { package = "imsg-config", version = "0.4.0", path = "../imsg-config" }
+ipc          = { package = "imsg-ipc",    version = "0.4.0", path = "../imsg-ipc" }
 
 [lints]
 workspace = true

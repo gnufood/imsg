@@ -4623,7 +4623,7 @@ checksum = "89194689a993ab15268672e99e7b0e19da2da3268ac682e8f02d29d4d1434cd7"
 
 [[package]]
 name = "imsg"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bluer",
@@ -4659,7 +4659,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-broker"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bluer",
@@ -4684,7 +4684,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-broker-client"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4701,7 +4701,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-config"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bluer",
  "dirs 6.0.0",
@@ -4715,7 +4715,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-formats"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "calcard",
  "phonenumber",
@@ -4728,7 +4728,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-gui"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4767,7 +4767,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-ipc"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4777,7 +4777,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-keyring"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "getrandom 0.4.2",
  "keyring-core",
@@ -4788,7 +4788,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-map"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bitflags 2.13.0",
  "bytes",
@@ -4802,7 +4802,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-obex"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "pretty_assertions",
@@ -4817,7 +4817,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-pbap"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "futures",
@@ -4830,7 +4830,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-proc"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "tempfile",
@@ -4839,7 +4839,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-service"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "nix 0.29.0",
  "service-manager",
@@ -4848,7 +4848,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-session"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bluer",
@@ -4872,7 +4872,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-store"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "imsg-formats",
@@ -4889,7 +4889,7 @@ dependencies = [
 
 [[package]]
 name = "imsg-transport"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bluer",
  "bluesdp",

@@ -25,19 +25,19 @@ clap_complete        = "4"
 clap-verbosity-flag  = { version = "3.0.4", default-features = false, features = ["tracing"] }
 tokio                = { version = "1.52.3", features = ["rt-multi-thread", "macros", "net", "process", "sync", "signal", "time"] }
 bluer                = { version = "0.17.4", default-features = false }
-config               = { package = "imsg-config",    version = "0.3.1", path = "../imsg-config" }
-formats              = { package = "imsg-formats",   version = "0.3.1", path = "../imsg-formats" }
-ipc                  = { package = "imsg-ipc",        version = "0.3.1", path = "../imsg-ipc" }
-imsg-broker          = { version = "0.3.1", path = "../imsg-broker" }
-broker-client        = { package = "imsg-broker-client", version = "0.3.1", path = "../imsg-broker-client" }
-imsg-proc            = { version = "0.3.1", path = "../imsg-proc" }
-service              = { package = "imsg-service",   version = "0.3.1", path = "../imsg-service" }
-keyring              = { package = "imsg-keyring",   version = "0.3.1", path = "../imsg-keyring" }
-store                = { package = "imsg-store",     version = "0.3.1", path = "../imsg-store" }
-session              = { package = "imsg-session",   version = "0.3.1", path = "../imsg-session" }
-transport            = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
-map-core             = { package = "imsg-map", version = "0.3.1", path = "../imsg-map" }
-pbap-core            = { package = "imsg-pbap", version = "0.3.1", path = "../imsg-pbap" }
+config               = { package = "imsg-config",    version = "0.4.0", path = "../imsg-config" }
+formats              = { package = "imsg-formats",   version = "0.4.0", path = "../imsg-formats" }
+ipc                  = { package = "imsg-ipc",        version = "0.4.0", path = "../imsg-ipc" }
+imsg-broker          = { version = "0.4.0", path = "../imsg-broker" }
+broker-client        = { package = "imsg-broker-client", version = "0.4.0", path = "../imsg-broker-client" }
+imsg-proc            = { version = "0.4.0", path = "../imsg-proc" }
+service              = { package = "imsg-service",   version = "0.4.0", path = "../imsg-service" }
+keyring              = { package = "imsg-keyring",   version = "0.4.0", path = "../imsg-keyring" }
+store                = { package = "imsg-store",     version = "0.4.0", path = "../imsg-store" }
+session              = { package = "imsg-session",   version = "0.4.0", path = "../imsg-session" }
+transport            = { package = "imsg-transport", version = "0.4.0", path = "../imsg-transport" }
+map-core             = { package = "imsg-map", version = "0.4.0", path = "../imsg-map" }
+pbap-core            = { package = "imsg-pbap", version = "0.4.0", path = "../imsg-pbap" }
 bytes                = "1"
 fs2                  = "0.4"
 dialoguer            = "0.12"
