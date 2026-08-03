@@ -11,9 +11,9 @@ import useThreads from '@/messages/application/use-threads.ts'
 // `useThreads`/`useConversation`/`useSend`/`useMarkRead`/`useDeleteConversation`/`useContactsSync`'s
 // Real backend calls and `Messages`'s presentational page. Owns `selectedAddress` itself — it's
 // The one piece of state shared across the hooks (which thread's messages to poll/send/mark-read/
-// Delete into), not local to any of them. `useContactsSync` here is its own independent instance
-// From `ContactsConnected`'s (see that hook's own doc comment) — this one only backs the
-// `ThreadListPane` header's refresh button.
+// Delete into), not local to any of them. `useContactsSync` here backs the `ThreadListPane`
+// Header's refresh button — the underlying PBAP contact sync keeps running for `contact_name`
+// Resolution even though there's no browse-contacts page consuming it directly.
 const MessagesConnected = (): React.JSX.Element => {
   const { pollFailed: threadsPollFailed, resumePolling: resumeThreadsPolling, threads } = useThreads()
   const [selectedAddress, setSelectedAddress] = useState<string | undefined>()

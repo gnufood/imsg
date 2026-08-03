@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useCallback, useState } from 'react'
 import AppTemplate from '@/ui/templates/AppTemplate.tsx'
-import Contacts from '@/contacts/pages/Contacts.tsx'
 import type DaemonControlsArgs from '@/settings/organisms/DaemonControls.types.ts'
 import Messages from '@/messages/pages/Messages.tsx'
 import Settings from '@/settings/pages/Settings.tsx'
@@ -56,35 +55,6 @@ const messagesSlot = (
       { address: 'AA:BB:CC:DD:EE:FF', contact_name: 'Jane Doe', latest_ms: 1_752_614_400_000n, latest_outgoing_status: 'SentConfirmed', total: 4n, unread: 0n },
     ]}
     threadsPollFailed={false}
-  />
-)
-
-const contactsSlot = (
-  <Contacts
-    contacts={[
-      { display_name: 'Jane Doe', uid: 'U1' },
-      { display_name: null, uid: 'U2' },
-    ]}
-    detailContact={{ display_name: 'Jane Doe', phones: ['+15550001'], uid: 'U1' }}
-    detailEmptyMessage="Select a contact from the list."
-    detailFailed={false}
-    detailLoading={false}
-    hasNextPage={false}
-    hasPrevPage={false}
-    listFailed={false}
-    onClearSearch={fn()}
-    onNextPage={fn()}
-    onPrevPage={fn()}
-    onRefresh={fn()}
-    onRetryDetail={fn()}
-    onRetryList={fn()}
-    onSearch={fn()}
-    onSelectContact={fn()}
-    refreshing={false}
-    searchActive={false}
-    searchError={undefined}
-    searching={false}
-    syncError={undefined}
   />
 )
 
@@ -208,7 +178,6 @@ const settingsSlot = <InteractiveSettingsSlot />
 
 const meta = {
   args: {
-    contactsSlot,
     messagesSlot,
     onSelectScreen: fn(),
     screen: 'messages',
@@ -240,7 +209,6 @@ const InteractiveAppTemplate = (): React.JSX.Element => {
 
   return (
     <AppTemplate
-      contactsSlot={args.contactsSlot}
       messagesSlot={args.messagesSlot}
       onSelectScreen={handleSelectScreen}
       screen={args.screen}

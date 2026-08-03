@@ -31,8 +31,8 @@ interface SyncArgs {
 }
 
 // Looks up the device's own address fresh on every sync rather than caching it — same reasoning
-// As `use-send.ts`'s `sendMessage`, and avoids requiring every caller (`ContactsConnected`,
-// `MessagesConnected`) to plumb the device address down just for this one action.
+// As `use-send.ts`'s `sendMessage`, and avoids requiring the caller (`MessagesConnected`) to plumb
+// The device address down just for this one action.
 const syncContacts = async ({ dispatch }: SyncArgs): Promise<void> => {
   dispatch({ type: 'syncStarted' })
   // `configPath` is `string | null` (specta's mirror of Rust's `Option<T>`) — `null` here means
@@ -51,11 +51,10 @@ const syncContacts = async ({ dispatch }: SyncArgs): Promise<void> => {
   dispatch({ count: Number(result.data), type: 'syncSucceeded' })
 }
 
-// Application boundary for the contacts feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here allowed to import `bindings.ts`'s `syncContactsNow`. Two independent instances of
-// This hook exist in production (`ContactsConnected`'s own refresh action and
-// `MessagesConnected`'s `ThreadListPane` header button) — no shared state needed since each is a
-// Transient "am I syncing right now" flag, not data either screen polls.
+// Application boundary for the contacts sync action (see internal/GUI_ATOMIC_DESIGN.md) — the
+// Only file here allowed to import `bindings.ts`'s `syncContactsNow`. Backs `MessagesConnected`'s
+// `ThreadListPane` header refresh button; the PBAP sync it triggers is what keeps `contact_name`
+// Resolution current even without a dedicated browse-contacts page.
 const useContactsSync = (): UseContactsSyncResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
 
