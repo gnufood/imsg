@@ -22,6 +22,7 @@ use dispatch::{run_contacts, run_get, run_list, run_send, run_threads};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use clap::CommandFactory as _;
 
 use crate::cli::{BrokerCmd, Cli, Command, ConfigCmd, SpokeCmd};
 use crate::output;
@@ -29,18 +30,21 @@ use crate::progress::with_spinner;
 
 /// Implements all commands: `config`, `list`, `folders`, `get`, `delete`, `send`,
 /// `contacts`, `threads`, `sync`, `unsync`, `hub`, `spoke`, `broker`, and `daemon`.
-/// All network-bound one-shot commands run under a [`with_spinner`] progress indicator; the result is printed via [`output::line`]
-/// after the spinner clears. `hub` is streaming/blocking — it manages its own
-/// output and returns `None` from [`run_command`].
+///
+/// All network-bound one-shot commands run under a `with_spinner` progress indicator; the
+/// result is printed via `output::line` after the spinner clears. `hub` is streaming/blocking
+/// — it manages its own output and returns `None` from `run_command`.
 ///
 /// Ensures the spoke [`transport::iroh::Endpoint`] is closed via
 /// [`transport::iroh::Endpoint::close`] on all exit paths — success, error, and early return —
-/// by delegating command execution to [`run_command`] before touching the endpoint.
+/// by delegating command execution to `run_command` before touching the endpoint.
 ///
 /// # Errors
 ///
 /// Returns an error if the selected handler fails or the output cannot be written.
-pub(crate) async fn dispatch(cli: Cli) -> Result<()> {
+///
+/// `pub` (not `pub(crate)`) so `main.rs` — a separate crate from this lib target — can call it.
+pub async fn dispatch(cli: Cli) -> Result<()> {
     let Cli { hub, device, config: config_path, command, .. } = cli;
     let spoke = if hub {
         Some(transport::iroh::bind_spoke().await.context("binding iroh spoke endpoint")?)
@@ -125,6 +129,11 @@ async fn run_command(
         }
         Command::Unsync { purge } => Some(run_unsync(purge, config_path).await?),
         Command::Daemon { cmd } => daemon::dispatch(cmd, device, config_path).await?,
+        Command::Completions { shell } => {
+            let mut buf = Vec::new();
+            clap_complete::generate(shell, &mut Cli::command(), "imsg", &mut buf);
+            Some(String::from_utf8(buf).context("completion script was not valid UTF-8")?)
+        }
     };
     Ok(out)
 }

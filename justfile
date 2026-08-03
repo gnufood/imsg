@@ -20,6 +20,12 @@ fmt:
 fmt-check:
     cargo fmt --all -- --check
 
+docs:
+    cargo run --example gen-readme -p imsg
+
+gen-completions:
+    cargo run --example gen-completions -p imsg
+
 # crates/imsg-gui/frontend — kept separate from the Rust recipes above; no GTK/WebKit
 # headers needed for these, just Node.
 gui-typecheck:

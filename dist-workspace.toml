@@ -22,3 +22,13 @@ pkg-config = '*'
 [[dist.extra-artifacts]]
 artifacts = ["tools/setup-x86_64", "tools/setup-aarch64"]
 build = ["true"]
+
+[[dist.extra-artifacts]]
+artifacts = [
+  "completions/imsg.bash",
+  "completions/_imsg",
+  "completions/imsg.fish",
+  "completions/imsg.elv",
+  "completions/_imsg.ps1",
+]
+build = ["true"]

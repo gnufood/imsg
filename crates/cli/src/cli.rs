@@ -5,6 +5,7 @@ pub mod args;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 use clap_verbosity_flag::Verbosity;
 
 pub(crate) use self::args::{
@@ -12,9 +13,13 @@ pub(crate) use self::args::{
 };
 
 /// Top-level invocation: global transport/config options plus the chosen subcommand.
+// `pub` (not `pub(crate)`) so `main.rs` — a separate crate from this lib target — can call
+// `Cli::parse()` and read `verbosity`; same reason `Cli::command()` (via the derived
+// `CommandFactory`) is reachable from the `examples/` doc/completion generators. A `//` comment,
+// not `///` — clap's derive turns doc comments into `--help` text, and this is an internal note.
 #[derive(Parser, Debug)]
 #[command(name = "imsg", version, about = "iMessage client over Bluetooth MAP/PBAP")]
-pub(crate) struct Cli {
+pub struct Cli {
     /// Route MAP and PBAP connections through the iroh hub configured via `imsg spoke add`.
     #[arg(long, global = true)]
     pub(crate) hub: bool,
@@ -29,7 +34,7 @@ pub(crate) struct Cli {
 
     /// Verbosity: `-v`/`-vv` raise the log level, `-q` lowers it.
     #[command(flatten)]
-    pub(crate) verbosity: Verbosity,
+    pub verbosity: Verbosity,
 
     /// Operation to perform.
     #[command(subcommand)]
@@ -164,5 +169,13 @@ pub(crate) enum Command {
         /// Daemon action.
         #[command(subcommand)]
         cmd: DaemonCmd,
+    },
+    /// Print a shell completion script to stdout.
+    ///
+    /// Redirect it into your shell's completion directory, e.g.
+    /// `imsg completions zsh > ~/.zfunc/_imsg`.
+    Completions {
+        /// Target shell.
+        shell: Shell,
     },
 }

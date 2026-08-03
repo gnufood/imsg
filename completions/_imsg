@@ -1,0 +1,1227 @@
+#compdef imsg
+
+autoload -U is-at-least
+
+_imsg() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_imsg_commands" \
+"*::: :->imsg" \
+&& ret=0
+    case $state in
+    (imsg)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-command-$line[1]:"
+        case $line[1] in
+            (send)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':number -- Recipient phone number:_default' \
+':message -- Message body:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--from=[Filter by originating address]:NUMBER:_default' \
+'--since=[Filter to messages at or after this MAP timestamp (\`YYYYMMDDTHHMMSS\`)]:DATE:_default' \
+'--limit=[Maximum number of entries to return]:N:_default' \
+'--offset=[Skip the first N entries (pagination)]:N:_default' \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--unread[Only unread messages]' \
+'-l[Show the raw MAP handle for each message (for use with \`get\`/\`delete\`)]' \
+'--long[Show the raw MAP handle for each message (for use with \`get\`/\`delete\`)]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'::folder -- Folder to list; defaults to inbox:((inbox\:"Received messages"
+sent\:"Sent messages"
+outbox\:"Pending outbound messages"
+deleted\:"Deleted messages"))' \
+&& ret=0
+;;
+(get)
+_arguments "${_arguments_options[@]}" : \
+'--folder=[Folder the handle lives in; defaults to inbox]:FOLDER:((inbox\:"Received messages"
+sent\:"Sent messages"
+outbox\:"Pending outbound messages"
+deleted\:"Deleted messages"))' \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--mark-read[Mark the message read after fetching]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':handle -- Message handle:_default' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'--folder=[Folder the handle lives in; defaults to inbox]:FOLDER:((inbox\:"Received messages"
+sent\:"Sent messages"
+outbox\:"Pending outbound messages"
+deleted\:"Deleted messages"))' \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--undelete[Restore a previously deleted message instead of deleting it]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':handle -- Message handle:_default' \
+&& ret=0
+;;
+(contacts)
+_arguments "${_arguments_options[@]}" : \
+'(--lookup --sync)--get=[Fetch a single contact\: a PBAP handle live/via broker, or a cached UID once opted in (matches whatever \`--list\` just printed in that mode)]:KEY:_default' \
+'(--sync)--lookup=[Reverse-lookup a contact by phone number]:NUMBER:_default' \
+'--path=[Phonebook to read. No effect on \`--sync\` (always the main phonebook)]:PATH:((pb\:"Main phonebook"
+ich\:"Incoming call history"
+och\:"Outgoing call history"
+mch\:"Missed call history"
+cch\:"Combined call history"
+spd\:"Speed-dial entries"
+fav\:"Favourites"))' \
+'--limit=[Maximum contacts per page; omit to show all. No effect on \`--sync\`]:N:_default' \
+'--page=[Page number (1-indexed). Ignored when \`--limit\` is not set. No effect on \`--sync\`]:N:_default' \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'(--get --lookup --sync)--list[List handles/UIDs and names only, without full vCards]' \
+'--sync[Refresh the local contacts cache from the device. No effect from \`--raw\`/\`--limit\`/ \`--page\`; always syncs the main phonebook regardless of \`--path\`]' \
+'--raw[Show phone numbers as stored; skip E.164 normalisation. No effect on \`--list\`/\`--sync\`]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(threads)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+'--folder=[Restrict the backfill to a single folder; omit to sync all folders]:FOLDER:((inbox\:"Received messages"
+sent\:"Sent messages"
+outbox\:"Pending outbound messages"
+deleted\:"Deleted messages"))' \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(unsync)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--purge[Delete the database file and all synced data in addition to disabling sync]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(folders)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(hub)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(spoke)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_imsg__subcmd__spoke_commands" \
+"*::: :->spoke" \
+&& ret=0
+
+    case $state in
+    (spoke)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-spoke-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- iroh hub node key (printed by `imsg hub`):_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__spoke__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-spoke-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_imsg__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set-device)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':address -- Bluetooth MAC address (`XX\:XX\:XX\:XX\:XX\:XX`):_default' \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__config__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-config-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set-device)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(broker)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_imsg__subcmd__broker_commands" \
+"*::: :->broker" \
+&& ret=0
+
+    case $state in
+    (broker)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-broker-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__broker__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-broker-help-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(__broker_serve)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(daemon)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_imsg__subcmd__daemon_commands" \
+"*::: :->daemon" \
+&& ret=0
+
+    case $state in
+    (daemon)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-daemon-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--foreground[Stay attached instead of detaching — required under a process supervisor (e.g. a systemd unit). Stops on Ctrl-C, SIGTERM, or an IPC \`Shutdown\` request]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--system[Register system-wide instead of for the current user only. Typically requires elevated privileges to install]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(uninstall)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--system[Match the \`--system\`/user scope the service was installed with]' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__daemon__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-daemon-help-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(uninstall)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'--device=[Override the configured device MAC address (RFCOMM only)]:ADDR:_default' \
+'--config=[Explicit config file path, overriding the layered default search]:PATH:_files' \
+'--hub[Route MAP and PBAP connections through the iroh hub configured via \`imsg spoke add\`]' \
+'*-v[Increase logging verbosity]' \
+'*--verbose[Increase logging verbosity]' \
+'(-v --verbose)*-q[Decrease logging verbosity]' \
+'(-v --verbose)*--quiet[Decrease logging verbosity]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':shell -- Target shell:(bash elvish fish powershell zsh)' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-help-command-$line[1]:"
+        case $line[1] in
+            (send)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(contacts)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(threads)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(unsync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(folders)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(hub)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(spoke)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__help__subcmd__spoke_commands" \
+"*::: :->spoke" \
+&& ret=0
+
+    case $state in
+    (spoke)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-help-spoke-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__help__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-help-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set-device)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(broker)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__help__subcmd__broker_commands" \
+"*::: :->broker" \
+&& ret=0
+
+    case $state in
+    (broker)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-help-broker-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(__broker_serve)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(daemon)
+_arguments "${_arguments_options[@]}" : \
+":: :_imsg__subcmd__help__subcmd__daemon_commands" \
+"*::: :->daemon" \
+&& ret=0
+
+    case $state in
+    (daemon)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:imsg-help-daemon-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(uninstall)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_imsg_commands] )) ||
+_imsg_commands() {
+    local commands; commands=(
+'send:Send an SMS to a phone number' \
+'list:List messages in a folder' \
+'get:Fetch one message body by handle' \
+'delete:Delete (or undelete) a message by handle' \
+'contacts:Pull contacts from a phonebook' \
+'threads:Group inbox and sent messages into conversation threads' \
+'sync:Backfill the local store with all messages from the device since the last sync' \
+'unsync:Stop using the local store for reads; synced data is preserved by default' \
+'folders:List the MAP message folders on the device' \
+'hub:Start the iroh hub on this machine and print the node key for spokes' \
+'spoke:Manage spoke configuration for connecting to a remote hub' \
+'config:Inspect or modify local configuration' \
+'broker:Query the session broker' \
+'__broker_serve:Internal\: session broker process, auto-started by the CLI — not for direct invocation' \
+'daemon:Manage the persistent background broker (opt-in; required for GUI use)' \
+'completions:Print a shell completion script to stdout' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd____broker_serve_commands] )) ||
+_imsg__subcmd____broker_serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg __broker_serve commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__broker_commands] )) ||
+_imsg__subcmd__broker_commands() {
+    local commands; commands=(
+'status:Report whether the broker is running and whether its MAP session is connected' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg broker commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__broker__subcmd__help_commands] )) ||
+_imsg__subcmd__broker__subcmd__help_commands() {
+    local commands; commands=(
+'status:Report whether the broker is running and whether its MAP session is connected' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg broker help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__broker__subcmd__help__subcmd__help_commands] )) ||
+_imsg__subcmd__broker__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg broker help help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__broker__subcmd__help__subcmd__status_commands] )) ||
+_imsg__subcmd__broker__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg broker help status commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__broker__subcmd__status_commands] )) ||
+_imsg__subcmd__broker__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg broker status commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__completions_commands] )) ||
+_imsg__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg completions commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config_commands] )) ||
+_imsg__subcmd__config_commands() {
+    local commands; commands=(
+'show:Print the resolved configuration' \
+'set-device:Persist the device MAC address to the user config file' \
+'setup:Interactively pick a paired device, resolve its MAP/PBAP channels over SDP, and persist address + both channels together' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg config commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__help_commands] )) ||
+_imsg__subcmd__config__subcmd__help_commands() {
+    local commands; commands=(
+'show:Print the resolved configuration' \
+'set-device:Persist the device MAC address to the user config file' \
+'setup:Interactively pick a paired device, resolve its MAP/PBAP channels over SDP, and persist address + both channels together' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg config help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__help__subcmd__help_commands] )) ||
+_imsg__subcmd__config__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config help help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__help__subcmd__set-device_commands] )) ||
+_imsg__subcmd__config__subcmd__help__subcmd__set-device_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config help set-device commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__help__subcmd__setup_commands] )) ||
+_imsg__subcmd__config__subcmd__help__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config help setup commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__help__subcmd__show_commands] )) ||
+_imsg__subcmd__config__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config help show commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__set-device_commands] )) ||
+_imsg__subcmd__config__subcmd__set-device_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config set-device commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__setup_commands] )) ||
+_imsg__subcmd__config__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config setup commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__config__subcmd__show_commands] )) ||
+_imsg__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg config show commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__contacts_commands] )) ||
+_imsg__subcmd__contacts_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg contacts commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon_commands] )) ||
+_imsg__subcmd__daemon_commands() {
+    local commands; commands=(
+'start:Start the persistent broker. Detaches into the background by default; idempotent if already running' \
+'stop:Request a graceful stop. A no-op (not an error) if nothing is running' \
+'status:Report whether the daemon is running and whether its MAP session is connected' \
+'install:Register the daemon with the native OS service manager (systemd/launchd/OpenRC/ rc.d/sc.exe), so it starts on boot/login and restarts on failure. Optional — \`imsg daemon start\`/\`stop\` alone fully serve users who don'\''t want OS-level supervision' \
+'uninstall:Unregister the daemon service. A no-op if it was never installed' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg daemon commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help_commands() {
+    local commands; commands=(
+'start:Start the persistent broker. Detaches into the background by default; idempotent if already running' \
+'stop:Request a graceful stop. A no-op (not an error) if nothing is running' \
+'status:Report whether the daemon is running and whether its MAP session is connected' \
+'install:Register the daemon with the native OS service manager (systemd/launchd/OpenRC/ rc.d/sc.exe), so it starts on boot/login and restarts on failure. Optional — \`imsg daemon start\`/\`stop\` alone fully serve users who don'\''t want OS-level supervision' \
+'uninstall:Unregister the daemon service. A no-op if it was never installed' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg daemon help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help__subcmd__help_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon help help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help__subcmd__install_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help__subcmd__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon help install commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help__subcmd__start_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon help start commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help__subcmd__status_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon help status commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help__subcmd__stop_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help__subcmd__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon help stop commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__help__subcmd__uninstall_commands] )) ||
+_imsg__subcmd__daemon__subcmd__help__subcmd__uninstall_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon help uninstall commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__install_commands] )) ||
+_imsg__subcmd__daemon__subcmd__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon install commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__start_commands] )) ||
+_imsg__subcmd__daemon__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon start commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__status_commands] )) ||
+_imsg__subcmd__daemon__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon status commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__stop_commands] )) ||
+_imsg__subcmd__daemon__subcmd__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon stop commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__daemon__subcmd__uninstall_commands] )) ||
+_imsg__subcmd__daemon__subcmd__uninstall_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg daemon uninstall commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__delete_commands] )) ||
+_imsg__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg delete commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__folders_commands] )) ||
+_imsg__subcmd__folders_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg folders commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__get_commands] )) ||
+_imsg__subcmd__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg get commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help_commands] )) ||
+_imsg__subcmd__help_commands() {
+    local commands; commands=(
+'send:Send an SMS to a phone number' \
+'list:List messages in a folder' \
+'get:Fetch one message body by handle' \
+'delete:Delete (or undelete) a message by handle' \
+'contacts:Pull contacts from a phonebook' \
+'threads:Group inbox and sent messages into conversation threads' \
+'sync:Backfill the local store with all messages from the device since the last sync' \
+'unsync:Stop using the local store for reads; synced data is preserved by default' \
+'folders:List the MAP message folders on the device' \
+'hub:Start the iroh hub on this machine and print the node key for spokes' \
+'spoke:Manage spoke configuration for connecting to a remote hub' \
+'config:Inspect or modify local configuration' \
+'broker:Query the session broker' \
+'__broker_serve:Internal\: session broker process, auto-started by the CLI — not for direct invocation' \
+'daemon:Manage the persistent background broker (opt-in; required for GUI use)' \
+'completions:Print a shell completion script to stdout' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd____broker_serve_commands] )) ||
+_imsg__subcmd__help__subcmd____broker_serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help __broker_serve commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__broker_commands] )) ||
+_imsg__subcmd__help__subcmd__broker_commands() {
+    local commands; commands=(
+'status:Report whether the broker is running and whether its MAP session is connected' \
+    )
+    _describe -t commands 'imsg help broker commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__broker__subcmd__status_commands] )) ||
+_imsg__subcmd__help__subcmd__broker__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help broker status commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__completions_commands] )) ||
+_imsg__subcmd__help__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help completions commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__config_commands] )) ||
+_imsg__subcmd__help__subcmd__config_commands() {
+    local commands; commands=(
+'show:Print the resolved configuration' \
+'set-device:Persist the device MAC address to the user config file' \
+'setup:Interactively pick a paired device, resolve its MAP/PBAP channels over SDP, and persist address + both channels together' \
+    )
+    _describe -t commands 'imsg help config commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__config__subcmd__set-device_commands] )) ||
+_imsg__subcmd__help__subcmd__config__subcmd__set-device_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help config set-device commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__config__subcmd__setup_commands] )) ||
+_imsg__subcmd__help__subcmd__config__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help config setup commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__config__subcmd__show_commands] )) ||
+_imsg__subcmd__help__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help config show commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__contacts_commands] )) ||
+_imsg__subcmd__help__subcmd__contacts_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help contacts commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__daemon_commands] )) ||
+_imsg__subcmd__help__subcmd__daemon_commands() {
+    local commands; commands=(
+'start:Start the persistent broker. Detaches into the background by default; idempotent if already running' \
+'stop:Request a graceful stop. A no-op (not an error) if nothing is running' \
+'status:Report whether the daemon is running and whether its MAP session is connected' \
+'install:Register the daemon with the native OS service manager (systemd/launchd/OpenRC/ rc.d/sc.exe), so it starts on boot/login and restarts on failure. Optional — \`imsg daemon start\`/\`stop\` alone fully serve users who don'\''t want OS-level supervision' \
+'uninstall:Unregister the daemon service. A no-op if it was never installed' \
+    )
+    _describe -t commands 'imsg help daemon commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__daemon__subcmd__install_commands] )) ||
+_imsg__subcmd__help__subcmd__daemon__subcmd__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help daemon install commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__daemon__subcmd__start_commands] )) ||
+_imsg__subcmd__help__subcmd__daemon__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help daemon start commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__daemon__subcmd__status_commands] )) ||
+_imsg__subcmd__help__subcmd__daemon__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help daemon status commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__daemon__subcmd__stop_commands] )) ||
+_imsg__subcmd__help__subcmd__daemon__subcmd__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help daemon stop commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__daemon__subcmd__uninstall_commands] )) ||
+_imsg__subcmd__help__subcmd__daemon__subcmd__uninstall_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help daemon uninstall commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__delete_commands] )) ||
+_imsg__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help delete commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__folders_commands] )) ||
+_imsg__subcmd__help__subcmd__folders_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help folders commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__get_commands] )) ||
+_imsg__subcmd__help__subcmd__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help get commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__help_commands] )) ||
+_imsg__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__hub_commands] )) ||
+_imsg__subcmd__help__subcmd__hub_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help hub commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__list_commands] )) ||
+_imsg__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help list commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__send_commands] )) ||
+_imsg__subcmd__help__subcmd__send_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help send commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__spoke_commands] )) ||
+_imsg__subcmd__help__subcmd__spoke_commands() {
+    local commands; commands=(
+'add:Persist the hub'\''s iroh node key to the local config' \
+    )
+    _describe -t commands 'imsg help spoke commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__spoke__subcmd__add_commands] )) ||
+_imsg__subcmd__help__subcmd__spoke__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help spoke add commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__sync_commands] )) ||
+_imsg__subcmd__help__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help sync commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__threads_commands] )) ||
+_imsg__subcmd__help__subcmd__threads_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help threads commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__help__subcmd__unsync_commands] )) ||
+_imsg__subcmd__help__subcmd__unsync_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg help unsync commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__hub_commands] )) ||
+_imsg__subcmd__hub_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg hub commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__list_commands] )) ||
+_imsg__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg list commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__send_commands] )) ||
+_imsg__subcmd__send_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg send commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__spoke_commands] )) ||
+_imsg__subcmd__spoke_commands() {
+    local commands; commands=(
+'add:Persist the hub'\''s iroh node key to the local config' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg spoke commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__spoke__subcmd__add_commands] )) ||
+_imsg__subcmd__spoke__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg spoke add commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__spoke__subcmd__help_commands] )) ||
+_imsg__subcmd__spoke__subcmd__help_commands() {
+    local commands; commands=(
+'add:Persist the hub'\''s iroh node key to the local config' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'imsg spoke help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__spoke__subcmd__help__subcmd__add_commands] )) ||
+_imsg__subcmd__spoke__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg spoke help add commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__spoke__subcmd__help__subcmd__help_commands] )) ||
+_imsg__subcmd__spoke__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg spoke help help commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__sync_commands] )) ||
+_imsg__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg sync commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__threads_commands] )) ||
+_imsg__subcmd__threads_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg threads commands' commands "$@"
+}
+(( $+functions[_imsg__subcmd__unsync_commands] )) ||
+_imsg__subcmd__unsync_commands() {
+    local commands; commands=()
+    _describe -t commands 'imsg unsync commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_imsg" ]; then
+    _imsg "$@"
+else
+    compdef _imsg imsg
+fi
