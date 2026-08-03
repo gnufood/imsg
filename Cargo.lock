@@ -4720,7 +4720,7 @@ dependencies = [
  "calcard",
  "phonenumber",
  "pretty_assertions",
- "quick-xml 0.41.0",
+ "quick-xml",
  "rstest",
  "thiserror 2.0.18",
  "winnow 1.0.3",
@@ -4795,7 +4795,7 @@ dependencies = [
  "futures",
  "imsg-formats",
  "imsg-obex",
- "quick-xml 0.41.0",
+ "quick-xml",
  "thiserror 2.0.18",
  "tokio",
 ]
@@ -4823,7 +4823,7 @@ dependencies = [
  "futures",
  "imsg-formats",
  "imsg-obex",
- "quick-xml 0.41.0",
+ "quick-xml",
  "thiserror 2.0.18",
  "tokio",
 ]
@@ -7789,7 +7789,7 @@ dependencies = [
  "nom 7.1.3",
  "once_cell",
  "postcard",
- "quick-xml 0.40.1",
+ "quick-xml",
  "regex",
  "regex-cache",
  "serde",
@@ -7892,7 +7892,7 @@ checksum = "7da1d65da6dd5d1e44199ac0f58712d241c0f439f80adea8924d832384087f85"
 dependencies = [
  "base64 0.22.1",
  "indexmap 2.11.4",
- "quick-xml 0.41.0",
+ "quick-xml",
  "serde",
  "time",
 ]
@@ -8252,15 +8252,6 @@ name = "quick-error"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
-
-[[package]]
-name = "quick-xml"
-version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2474bd2e5029e7ccb6abb2ba48cf2383a333851dedf495901544281590c7da7f"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "quick-xml"

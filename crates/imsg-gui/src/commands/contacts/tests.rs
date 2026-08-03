@@ -2,25 +2,13 @@
 //! `Store` (temp-dir `SQLite`, no mocks) via `tauri::test::mock_app()`'s managed `State`, and
 //! the sync trigger against a fake broker socket (same approach as `commands::send`'s tests).
 
-use bytes::Bytes;
-use futures::{SinkExt as _, StreamExt as _};
-use interprocess::local_socket::tokio::prelude::*;
-use interprocess::local_socket::tokio::Listener;
-use interprocess::local_socket::ListenerOptions;
-use ipc::{BrokerResponse, RefreshDto, SyncReportDto, MAX_FRAME_LEN};
-use secrecy::SecretBox;
+use ipc::{BrokerResponse, RefreshDto, SyncReportDto};
 use store::{NewContact, PhoneField, Store};
 use tauri::Manager;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
+
+use crate::test_support::{bind_for, fake_store, serve_one};
 
 use super::*;
-
-async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
-    let dir = tempfile::tempdir()?;
-    let key: SecretBox<[u8; 32]> = SecretBox::new(Box::new([0u8; 32]));
-    let s = Store::open(dir.path().join("test.db"), key).await?;
-    Ok((s, dir))
-}
 
 fn sample_contact(uid: &str, name: &str, phones: &[&str]) -> NewContact {
     NewContact {
@@ -64,22 +52,6 @@ async fn lookup_contact_returns_dto_for_known_address() -> anyhow::Result<()> {
         .await?
         .ok_or_else(|| anyhow::anyhow!("contact missing"))?;
     assert_eq!(dto.uid, "U1");
-    Ok(())
-}
-
-fn bind_for(addr: &str) -> anyhow::Result<Listener> {
-    let ns = config::broker_abstract_name(addr)?;
-    Ok(ListenerOptions::new().name(ns).create_tokio()?)
-}
-
-async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<()> {
-    let stream = listener.accept().await?;
-    let codec = LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec();
-    let mut framed = Framed::new(stream, codec);
-    let frame = framed.next().await.ok_or_else(|| anyhow::anyhow!("no request frame"))??;
-    let _req: ipc::BrokerRequest = serde_json::from_slice(&frame)?;
-    let bytes = Bytes::from(serde_json::to_vec(&resp)?);
-    framed.send(bytes).await?;
     Ok(())
 }
 

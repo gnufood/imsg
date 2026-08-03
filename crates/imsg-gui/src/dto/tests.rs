@@ -1,11 +1,11 @@
 //! Unit tests for the `store` row -> GUI DTO conversions, plus one end-to-end check against a
 //! real `Store` (temp-dir `SQLite`, no mocks).
 
-use secrecy::SecretBox;
 use store::{
     Direction as StoreDirection, NewMessage, OutgoingStatus as StoreOutgoingStatus, PhoneField,
-    Store,
 };
+
+use crate::test_support::fake_store;
 
 use super::*;
 
@@ -110,13 +110,6 @@ fn thread_dto_carries_cached_contact_name() {
     };
     let dto = ThreadDto::from(&row);
     assert_eq!(dto.contact_name.as_deref(), Some("Jane Doe"));
-}
-
-async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
-    let dir = tempfile::tempdir()?;
-    let key: SecretBox<[u8; 32]> = SecretBox::new(Box::new([0u8; 32]));
-    let s = Store::open(dir.path().join("test.db"), key).await?;
-    Ok((s, dir))
 }
 
 /// End-to-end against a real store: upsert a sent message, read it back via `list_messages`,

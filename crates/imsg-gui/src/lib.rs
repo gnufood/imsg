@@ -15,3 +15,6 @@ pub mod gate;
 pub mod reads;
 pub mod send;
 pub mod sync;
+
+#[cfg(test)]
+pub mod test_support;

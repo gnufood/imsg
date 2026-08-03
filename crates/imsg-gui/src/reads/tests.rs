@@ -2,19 +2,12 @@
 //! is not covered here — it requires a live Secret Service D-Bus daemon, same as the CLI's
 //! equivalent (`crates/cli/src/commands/mod.rs`), which is untested for the same reason.
 
-use secrecy::SecretBox;
-use store::{Direction as StoreDirection, NewContact, NewMessage, PhoneField, Store};
+use store::{Direction as StoreDirection, NewContact, NewMessage, PhoneField};
 
 use crate::dto::PhoneDto;
+use crate::test_support::fake_store;
 
 use super::*;
-
-async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
-    let dir = tempfile::tempdir()?;
-    let key: SecretBox<[u8; 32]> = SecretBox::new(Box::new([0u8; 32]));
-    let s = Store::open(dir.path().join("test.db"), key).await?;
-    Ok((s, dir))
-}
 
 fn sample_message(handle: &str, address: &str) -> NewMessage {
     NewMessage {

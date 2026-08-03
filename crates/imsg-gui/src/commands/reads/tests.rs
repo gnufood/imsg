@@ -1,18 +1,12 @@
 //! Exercises the read `#[tauri::command]` shims directly against a real `Store` (temp-dir
 //! `SQLite`, no mocks) and a real `tauri::test::mock_app()` supplying the managed `State`.
 
-use secrecy::SecretBox;
 use store::{Direction as StoreDirection, NewMessage, PhoneField, Store};
 use tauri::Manager;
 
-use super::*;
+use crate::test_support::fake_store;
 
-async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
-    let dir = tempfile::tempdir()?;
-    let key: SecretBox<[u8; 32]> = SecretBox::new(Box::new([0u8; 32]));
-    let s = Store::open(dir.path().join("test.db"), key).await?;
-    Ok((s, dir))
-}
+use super::*;
 
 fn sample_message(handle: &str, address: &str) -> NewMessage {
     NewMessage {

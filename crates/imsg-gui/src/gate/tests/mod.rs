@@ -27,20 +27,16 @@ use bytes::Bytes;
 use futures::{SinkExt as _, StreamExt as _};
 use interprocess::local_socket::tokio::prelude::*;
 use interprocess::local_socket::tokio::Listener;
-use interprocess::local_socket::ListenerOptions;
 use ipc::{BrokerResponse, SessionState, MAX_FRAME_LEN};
 use secrecy::SecretBox;
 use store::Store;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
+use crate::test_support::bind_for;
+
 use super::*;
 
 const WAIT: Duration = Duration::from_secs(15);
-
-fn bind_for(addr: &str) -> anyhow::Result<Listener> {
-    let ns = config::broker_abstract_name(addr)?;
-    Ok(ListenerOptions::new().name(ns).create_tokio()?)
-}
 
 /// Accepts and answers `responses.len()` connections in order — each broker call (daemon probe,
 /// sync request) opens its own connection to the same abstract socket.
