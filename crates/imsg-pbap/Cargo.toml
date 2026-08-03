@@ -12,7 +12,7 @@ readme.workspace = true
 bytes = "1.11.1"
 formats = { package = "imsg-formats", version = "0.3.1", path = "../imsg-formats" }
 futures = "0.3"
-quick-xml = "0.40"
+quick-xml = "0.41.0"
 obex-core = { package = "imsg-obex", version = "0.3.1", path = "../imsg-obex" }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["full"] }

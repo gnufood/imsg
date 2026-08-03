@@ -11,7 +11,7 @@ readme.workspace = true
 [dependencies]
 calcard = "0.3.4"
 phonenumber = "0.3.10"
-quick-xml = "0.40.1"
+quick-xml = "0.41.0"
 thiserror = "2.0.18"
 winnow = "1.0.3"
 
