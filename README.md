@@ -1,5 +1,10 @@
 ![imsg](assets/imsg.png)
 
+[![CI](https://github.com/gnufood/imsg/actions/workflows/ci.yml/badge.svg)](https://github.com/gnufood/imsg/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/imsg.svg)](https://crates.io/crates/imsg)
+[![MSRV](https://img.shields.io/crates/msrv/imsg)](rust-toolchain.toml)
+[![License](https://img.shields.io/crates/l/imsg.svg)](LICENSE)
+
 `imsg` talks directly to a paired iPhone over the standard Bluetooth MAP (Message Access
 Profile) and PBAP (Phone Book Access Profile) protocols. No iCloud credentials, no Apple
 Silicon, no macOS bridge.
