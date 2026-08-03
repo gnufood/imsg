@@ -6,15 +6,19 @@
 //! CLI respawns lazily). A permanent error or an exhausted budget transitions to terminal
 //! [`ConnState::Failed`]. The serving half of the impl lives in [`super::serve`].
 
+use std::future::Future;
+use std::time::Duration;
+
+use futures::future::BoxFuture;
 use ipc::{BrokerResponse, Reason};
 use map_core::client::MapClient;
 use pbap_core::client::PbapClient;
-use session::Disposition;
+use session::{Disposition, SessionError};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::serve::wants_mns;
 use super::{dispatch, Actor, ServeOutcome};
-use crate::runtime::types::{ConnState, DeviceOp, TerminalReason};
+use crate::runtime::types::{ConnState, ConnectPolicy, DeviceOp, TerminalReason};
 
 impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Runs the connect → serve → reconnect lifecycle until the broker exits.
@@ -106,40 +110,13 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Returns the live client, or a terminal [`Reason`] when the budget elapses, the attempt
     /// budget is exhausted, or a permanent error occurs.
     async fn try_connect(&mut self) -> Result<MapClient<T>, Reason> {
-        match self.policy.startup_budget {
-            Some(budget) => match tokio::time::timeout(budget, self.connect_with_retry()).await {
-                Ok(result) => result,
-                Err(_elapsed) => Err(Reason::DeviceUnreachable),
-            },
-            None => self.connect_with_retry().await,
-        }
+        Self::within_budget(self.policy.startup_budget, self.connect_with_retry()).await
     }
 
     /// Calls the connector with doubling backoff, retrying transient failures up to the attempt
     /// budget and failing fast on permanent ones. Backoff resets each phase (fresh schedule).
     async fn connect_with_retry(&mut self) -> Result<MapClient<T>, Reason> {
-        let mut delays = session::retry::backoff(
-            self.policy.initial_backoff,
-            self.policy.max_backoff,
-            self.policy.max_attempts,
-        );
-        loop {
-            let err = match (self.connect)().await {
-                Ok(client) => return Ok(client),
-                Err(e) => e,
-            };
-            let reason = dispatch::connect_reason(&err);
-            if session::classify(&err) == Disposition::Permanent {
-                tracing::error!("MAP connect failed (permanent): {err}");
-                return Err(reason);
-            }
-            let Some(d) = delays.next() else {
-                tracing::error!("MAP connect failed; attempts exhausted: {err}");
-                return Err(reason);
-            };
-            tracing::warn!("MAP connect failed (transient): {err}; retrying in {d:?}");
-            tokio::time::sleep(d).await;
-        }
+        Self::retry_connect(self.policy, &mut *self.connect, "MAP").await
     }
 
     /// Populates `pbap` by connecting (with the same retry policy as MAP) if it isn't already
@@ -163,40 +140,62 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     /// Establishes the PBAP session, within the wall-clock startup budget if the policy has one
     /// — same shape as [`try_connect`][Self::try_connect], applied to `pbap_connect`.
     async fn pbap_try_connect(&mut self) -> Result<PbapClient<T>, Reason> {
-        match self.policy.startup_budget {
-            Some(budget) => {
-                match tokio::time::timeout(budget, self.pbap_connect_with_retry()).await {
-                    Ok(result) => result,
-                    Err(_elapsed) => Err(Reason::DeviceUnreachable),
-                }
-            }
-            None => self.pbap_connect_with_retry().await,
-        }
+        Self::within_budget(self.policy.startup_budget, self.pbap_connect_with_retry()).await
     }
 
     /// Calls `pbap_connect` with doubling backoff — same schedule and classification as
     /// [`connect_with_retry`][Self::connect_with_retry], applied to the PBAP connector.
     async fn pbap_connect_with_retry(&mut self) -> Result<PbapClient<T>, Reason> {
+        Self::retry_connect(self.policy, &mut *self.pbap_connect, "PBAP").await
+    }
+
+    /// Establishes a session within the wall-clock startup budget, if the policy has one.
+    /// `startup_budget: None` (persistent/daemon mode) applies no deadline — only the attempt
+    /// budget inside `fut` bounds it. Shared by [`try_connect`][Self::try_connect] (MAP) and
+    /// [`pbap_try_connect`][Self::pbap_try_connect] (PBAP).
+    async fn within_budget<C>(
+        budget: Option<Duration>,
+        fut: impl Future<Output = Result<C, Reason>>,
+    ) -> Result<C, Reason> {
+        match budget {
+            Some(b) => match tokio::time::timeout(b, fut).await {
+                Ok(result) => result,
+                Err(_elapsed) => Err(Reason::DeviceUnreachable),
+            },
+            None => fut.await,
+        }
+    }
+
+    /// Calls `connect` with doubling backoff, retrying transient failures up to the attempt
+    /// budget and failing fast on permanent ones. Backoff resets each phase (fresh schedule).
+    /// Shared by [`connect_with_retry`][Self::connect_with_retry] (MAP) and
+    /// [`pbap_connect_with_retry`][Self::pbap_connect_with_retry] (PBAP) — generic only over the
+    /// client type; `label` only affects log lines.
+    async fn retry_connect<C>(
+        policy: ConnectPolicy,
+        connect: &mut (dyn FnMut() -> BoxFuture<'static, Result<C, SessionError>> + Send),
+        label: &str,
+    ) -> Result<C, Reason> {
         let mut delays = session::retry::backoff(
-            self.policy.initial_backoff,
-            self.policy.max_backoff,
-            self.policy.max_attempts,
+            policy.initial_backoff,
+            policy.max_backoff,
+            policy.max_attempts,
         );
         loop {
-            let err = match (self.pbap_connect)().await {
+            let err = match connect().await {
                 Ok(client) => return Ok(client),
                 Err(e) => e,
             };
             let reason = dispatch::connect_reason(&err);
             if session::classify(&err) == Disposition::Permanent {
-                tracing::error!("PBAP connect failed (permanent): {err}");
+                tracing::error!("{label} connect failed (permanent): {err}");
                 return Err(reason);
             }
             let Some(d) = delays.next() else {
-                tracing::error!("PBAP connect failed; attempts exhausted: {err}");
+                tracing::error!("{label} connect failed; attempts exhausted: {err}");
                 return Err(reason);
             };
-            tracing::warn!("PBAP connect failed (transient): {err}; retrying in {d:?}");
+            tracing::warn!("{label} connect failed (transient): {err}; retrying in {d:?}");
             tokio::time::sleep(d).await;
         }
     }

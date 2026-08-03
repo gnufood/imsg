@@ -10,19 +10,20 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use bluer::rfcomm::Stream;
 use config::Config;
-use futures::StreamExt as _;
 use interprocess::local_socket::{
     tokio::prelude::*, tokio::Listener as IpcListener, ListenerOptions,
 };
 use store::Store;
 
 use super::handler::handle_connection;
-use crate::runtime::types::{
-    ActorHandles, ConnectPolicy, Connector, Connectors, LinkEvents, LinkState, LinkWatcher,
-    PbapConnector,
+use crate::runtime::types::{ActorHandles, ConnectPolicy, Connectors};
+use connectors::{
+    build_daemon_policy, build_policy, make_connector, make_link_watcher, make_pbap_connector,
+    security_from_config,
 };
+
+mod connectors;
 
 /// Binds the abstract socket for `addr`.
 ///
@@ -123,30 +124,6 @@ async fn serve_with_idle(
     serve_actor(connectors, store, idle, policy, &listener, device, readiness_wait).await
 }
 
-/// Builds the connect-retry policy for one-shot (`serve`) mode: bounded attempts within a
-/// wall-clock budget, so a CLI command fails fast and reports a clear error when the device
-/// isn't reachable, rather than hanging.
-pub(in crate::runtime) const fn build_policy(cfg: &Config) -> ConnectPolicy {
-    ConnectPolicy {
-        initial_backoff: cfg.broker.initial_backoff(),
-        max_backoff: cfg.broker.max_backoff(),
-        max_attempts: cfg.broker.connect_max_attempts,
-        startup_budget: Some(cfg.broker.startup_budget()),
-    }
-}
-
-/// Builds the connect-retry policy for persistent (`serve_daemon`) mode: unbounded attempts,
-/// no wall-clock deadline. A daemon started before the phone is in Bluetooth range should keep
-/// retrying (capped backoff, same schedule as one-shot mode) until it connects, not give up.
-pub(in crate::runtime) const fn build_daemon_policy(cfg: &Config) -> ConnectPolicy {
-    ConnectPolicy {
-        initial_backoff: cfg.broker.initial_backoff(),
-        max_backoff: cfg.broker.max_backoff(),
-        max_attempts: u32::MAX,
-        startup_budget: None,
-    }
-}
-
 /// Connector-generic core of [`serve`]/[`serve_daemon`], split out so the idle-wiring behavior
 /// is testable against a fake in-memory connector instead of a real MAP session.
 async fn serve_actor<T>(
@@ -164,67 +141,6 @@ where
     let handles =
         super::actor::spawn(connectors.map, connectors.pbap, connectors.link, store, idle, policy);
     serve_loop(handles, listener, device, readiness_wait).await
-}
-
-/// Builds the production connector: every call establishes a fresh RFCOMM/OBEX MAP session to
-/// `addr`:`channel`, gating on `BT_CONNECTED` up to `bt_gate` and requesting `security` (if
-/// any) from the kernel. Defined here so the transport-specific stream type stays out of the
-/// actor.
-fn make_connector(
-    addr: bluer::Address,
-    channel: u8,
-    bt_gate: Duration,
-    security: Option<bluer::rfcomm::Security>,
-) -> Connector<Stream> {
-    Box::new(move || Box::pin(session::lifecycle::connect_map(addr, channel, bt_gate, security)))
-}
-
-/// Builds the production link watcher: each subscription asks `BlueZ` for `addr`'s connection
-/// reports.
-///
-/// A subscription that cannot be established yields a stream that never reports, so a D-Bus
-/// failure degrades to the pre-existing mid-op detection instead of being mistaken for a drop.
-fn make_link_watcher(addr: bluer::Address) -> LinkWatcher {
-    Box::new(move || {
-        Box::pin(async move {
-            let events: LinkEvents = match transport::rfcomm::link_events(addr).await {
-                Ok(events) => {
-                    Box::pin(events.map(|up| if up { LinkState::Up } else { LinkState::Down }))
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "link watch for {addr} unavailable, falling back to mid-op detection: {e}"
-                    );
-                    Box::pin(futures::stream::pending())
-                }
-            };
-            events
-        })
-    })
-}
-
-/// Maps the configured [`config::SecurityLevel`] to the `bluer::rfcomm::Security` value
-/// [`make_connector`] requests from the kernel. `None` means imsg makes no explicit request —
-/// the kernel/BlueZ default (whatever the existing pairing/bond negotiated) applies unchanged.
-/// `key_size: 0` is the `BT_SECURITY` convention for "any size" — this only pins the policy
-/// tier, not a minimum key length.
-const fn security_from_config(
-    level: Option<config::SecurityLevel>,
-) -> Option<bluer::rfcomm::Security> {
-    let Some(level) = level else { return None };
-    let level = match level {
-        config::SecurityLevel::Sdp => bluer::rfcomm::SecurityLevel::Sdp,
-        config::SecurityLevel::Low => bluer::rfcomm::SecurityLevel::Low,
-        config::SecurityLevel::Medium => bluer::rfcomm::SecurityLevel::Medium,
-        config::SecurityLevel::High => bluer::rfcomm::SecurityLevel::High,
-    };
-    Some(bluer::rfcomm::Security { level, key_size: 0 })
-}
-
-/// Builds the production PBAP connector: every call establishes a fresh, short-lived RFCOMM/OBEX
-/// PBAP session to `addr`:`channel` — no persistent session, no notification registration.
-fn make_pbap_connector(addr: bluer::Address, channel: u8) -> PbapConnector<Stream> {
-    Box::new(move || Box::pin(session::lifecycle::connect_pbap(addr, channel)))
 }
 
 /// Accepts connections until the actor signals shutdown. Each connection runs in its own task with

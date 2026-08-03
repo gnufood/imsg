@@ -143,10 +143,12 @@ async fn watch_exits_promptly_on_shutdown_cancel() -> anyhow::Result<()> {
     let (bc_tx, _bc_rx) = broadcast::channel(4);
     let token = CancellationToken::new();
     let watched = token.clone();
+    let (subscribed_tx, subscribed_rx) = oneshot::channel();
 
     // Fake actor: answers Backfill/Subscribe then holds the subscription open, never sending an
     // event and never closing — only the shutdown token can end the connection's loop.
     tokio::spawn(async move {
+        let mut subscribed_tx = Some(subscribed_tx);
         while let Some(op) = op_rx.recv().await {
             match op {
                 DeviceOp::Backfill { reply } => {
@@ -154,6 +156,9 @@ async fn watch_exits_promptly_on_shutdown_cancel() -> anyhow::Result<()> {
                 }
                 DeviceOp::Subscribe { reply } => {
                     let _ = reply.send(bc_tx.subscribe());
+                    if let Some(tx) = subscribed_tx.take() {
+                        let _ = tx.send(());
+                    }
                 }
                 _ => {}
             }
@@ -165,7 +170,7 @@ async fn watch_exits_promptly_on_shutdown_cancel() -> anyhow::Result<()> {
     });
     let mut framed = Framed::new(client, codec());
     send_request(&mut framed, &BrokerRequest::Watch).await?;
-    tokio::time::sleep(Duration::from_millis(20)).await; // let Subscribe land
+    subscribed_rx.await.context("Subscribe never landed")?;
     watched.cancel();
 
     tokio::time::timeout(Duration::from_millis(500), task)

@@ -15,11 +15,14 @@ use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
 use super::handler::handle_connection;
-use super::types::{ActorHandles, ConnectPolicy, Connectors, TerminalReason};
+use super::types::{
+    ActorHandles, ConnState, ConnectPolicy, Connectors, DeviceHandle, TerminalReason,
+};
 
 /// Bound on how long shutdown waits for in-flight connections to finish and for the actor to
 /// confirm it disconnected, each. Not yet configurable.
@@ -79,29 +82,14 @@ async fn accept_and_drain(
 ) -> Result<()> {
     let ActorHandles { handle, state, mut shutdown } = handles;
     let tasks = TaskTracker::new();
-    loop {
-        let stream = tokio::select! {
-            biased;
-            result = shutdown.changed() => {
-                if result.is_err() || shutdown.borrow_and_update().is_some() {
-                    break;
-                }
-                continue;
-            }
-            () = token.cancelled() => break,
-            result = listener.accept() => result.context("accept error")?,
-        };
-        let h = handle.clone();
-        let st = state.clone();
-        let dev = device.clone();
-        let tok = token.clone();
-        tasks.spawn(async move {
-            if let Err(e) = handle_connection(stream, &h, st, dev, readiness_wait, Some(&tok)).await
-            {
-                tracing::warn!("connection error: {e}");
-            }
-        });
-    }
+    let cfg = AcceptConfig {
+        listener: &listener,
+        device: &device,
+        readiness_wait,
+        token: &token,
+        tasks: &tasks,
+    };
+    run_accept_loop(&handle, &state, &mut shutdown, cfg).await?;
 
     // Drop the listener now, not when this function returns — a connection that manages to
     // connect() into the kernel backlog after we stop accepting but before this drop would
@@ -121,6 +109,54 @@ async fn accept_and_drain(
             Err(anyhow::anyhow!("daemon stopped: unrecoverable MAP failure: {reason:?}"))
         }
         _ => Ok(()),
+    }
+}
+
+/// Immutable per-connection config shared by every task [`run_accept_loop`] spawns — bundled so
+/// the loop itself stays under the argument-count ceiling.
+struct AcceptConfig<'a> {
+    listener: &'a IpcListener,
+    device: &'a str,
+    readiness_wait: Duration,
+    token: &'a CancellationToken,
+    tasks: &'a TaskTracker,
+}
+
+/// Accepts connections into `cfg.tasks` until `cfg.token` cancels or the actor's `shutdown`
+/// watch fires. Split out of [`accept_and_drain`] to keep it under the size ceiling.
+///
+/// # Errors
+///
+/// Returns an error if `cfg.listener.accept()` fails fatally.
+async fn run_accept_loop(
+    handle: &DeviceHandle,
+    state: &watch::Receiver<ConnState>,
+    shutdown: &mut watch::Receiver<Option<TerminalReason>>,
+    cfg: AcceptConfig<'_>,
+) -> Result<()> {
+    loop {
+        let stream = tokio::select! {
+            biased;
+            result = shutdown.changed() => {
+                if result.is_err() || shutdown.borrow_and_update().is_some() {
+                    return Ok(());
+                }
+                continue;
+            }
+            () = cfg.token.cancelled() => return Ok(()),
+            result = cfg.listener.accept() => result.context("accept error")?,
+        };
+        let h = handle.clone();
+        let st = state.clone();
+        let dev = cfg.device.to_owned();
+        let tok = cfg.token.clone();
+        let readiness_wait = cfg.readiness_wait;
+        cfg.tasks.spawn(async move {
+            if let Err(e) = handle_connection(stream, &h, st, dev, readiness_wait, Some(&tok)).await
+            {
+                tracing::warn!("connection error: {e}");
+            }
+        });
     }
 }
 

@@ -6,7 +6,7 @@ use interprocess::local_socket::{GenericNamespaced, ListenerOptions, ToNsName as
 use secrecy::SecretBox;
 
 use super::*;
-use crate::runtime::types::no_link_events;
+use crate::runtime::types::{no_link_events, ConnectPolicy, Connector, PbapConnector};
 
 const MAP_CONNECT_RSP: &[u8] =
     include_bytes!("../../../../imsg-obex/tests/fixtures/connect_rsp.bin");

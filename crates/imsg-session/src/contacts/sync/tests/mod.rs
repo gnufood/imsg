@@ -5,8 +5,11 @@ mod meta;
 mod refresh;
 
 use bytes::Bytes;
+use futures::{SinkExt, StreamExt};
 use obex_core::headers::Header;
 use obex_core::packet::{OpCode, Packet, PacketExtra};
+use pbap_core::client::PbapClient;
+use pbap_core::phonebook::PhonebookPath;
 use secrecy::SecretBox;
 use store::Store;
 
@@ -27,6 +30,30 @@ async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
     let key: SecretBox<[u8; 32]> = SecretBox::new(Box::new([0u8; 32]));
     let s = Store::open(dir.path().join("test.db"), key).await?;
     Ok((s, dir))
+}
+
+/// Connects a `PbapClient` over an in-memory duplex, replies CONNECT then `responses` in order,
+/// and runs `sync_contacts` against `db` concurrently. Returns once both sides finish.
+async fn run_sync(db: &Store, responses: &[Bytes]) -> anyhow::Result<anyhow::Result<SyncReport>> {
+    let (client_io, server_io) = tokio::io::duplex(8192);
+    let (server_result, report) = futures::join!(
+        async {
+            let mut srv = obex_core::wrap(server_io);
+            let _ = srv.next().await;
+            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
+            for r in responses {
+                let _ = srv.next().await;
+                srv.send(r.clone()).await?;
+            }
+            Ok::<(), anyhow::Error>(())
+        },
+        async {
+            let mut client = PbapClient::connect(client_io).await?;
+            sync_contacts(&mut client, db, PhonebookPath::Pb).await
+        },
+    );
+    server_result?;
+    Ok(report)
 }
 
 fn tlv(tag: u8, value: &[u8]) -> Vec<u8> {

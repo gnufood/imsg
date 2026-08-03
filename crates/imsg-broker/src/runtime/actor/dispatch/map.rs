@@ -56,8 +56,7 @@ pub(in crate::runtime::actor) async fn do_sync<T: AsyncRead + AsyncWrite + Unpin
     }
     match session::sync::backfill(client, store, scope).await {
         Ok(()) => Ok(BrokerResponse::Text("sync complete".to_owned())),
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -75,8 +74,7 @@ pub(in crate::runtime::actor) async fn do_send<T: AsyncRead + AsyncWrite + Unpin
     let now = session::util::now_ms();
     match session::outbox::send_sms(client, store, &number, &message, now).await {
         Ok(confirmation) => Ok(BrokerResponse::Text(confirmation)),
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -121,8 +119,7 @@ pub(in crate::runtime::actor) async fn do_delete<T: AsyncRead + AsyncWrite + Unp
             });
             Ok(BrokerResponse::Text(format!("deleted {handle}")))
         }
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -137,8 +134,18 @@ pub(in crate::runtime::actor) async fn do_backfill<T: AsyncRead + AsyncWrite + U
 ) -> Result<BrokerResponse> {
     match session::sync::backfill_catch_up(client, store).await {
         Ok(()) => Ok(BrokerResponse::Ok),
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
+    }
+}
+
+/// Converts a non-fatal MAP-op error into [`BrokerResponse::Failed`], or re-raises it when
+/// [`session::outbox::is_fatal_anyhow`] judges the session dead. The common tail every handler
+/// in this module and [`live`] shares after a failed op.
+fn classify_err(e: anyhow::Error) -> Result<BrokerResponse> {
+    if session::outbox::is_fatal_anyhow(&e) {
+        Err(e)
+    } else {
+        Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string())))
     }
 }
 

@@ -82,13 +82,21 @@ pub(crate) enum FolderArg {
     Deleted,
 }
 
+/// Lowers a folder argument to its [`Folder`] equivalent (1:1, no default).
+pub(crate) const fn folder_arg_to_folder(arg: FolderArg) -> Folder {
+    match arg {
+        FolderArg::Inbox => Folder::Inbox,
+        FolderArg::Sent => Folder::Sent,
+        FolderArg::Outbox => Folder::Outbox,
+        FolderArg::Deleted => Folder::Deleted,
+    }
+}
+
 /// Lowers the optional folder argument to a [`Folder`], defaulting to the inbox when omitted.
 pub(crate) const fn folder_of(arg: Option<FolderArg>) -> Folder {
     match arg {
-        Some(FolderArg::Inbox) | None => Folder::Inbox,
-        Some(FolderArg::Sent) => Folder::Sent,
-        Some(FolderArg::Outbox) => Folder::Outbox,
-        Some(FolderArg::Deleted) => Folder::Deleted,
+        Some(f) => folder_arg_to_folder(f),
+        None => Folder::Inbox,
     }
 }
 

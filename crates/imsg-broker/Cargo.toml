@@ -24,7 +24,6 @@ store      = { package = "imsg-store",     version = "0.3.1", path = "../imsg-st
 tokio      = { version = "1.52.3", features = ["rt-multi-thread", "macros", "fs", "net", "sync", "signal", "time"] }
 tokio-util = { version = "0.7.18", features = ["codec"] }
 tracing              = "0.1.44"
-tracing-subscriber   = { version = "0.3.23", features = ["env-filter"] }
 transport  = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
 
 [dev-dependencies]

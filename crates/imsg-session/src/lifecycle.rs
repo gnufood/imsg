@@ -1,4 +1,5 @@
-//! Connection lifecycle: SDP lookup, RFCOMM connect, OBEX session establishment and teardown.
+//! Connection lifecycle: RFCOMM connect, OBEX session establishment, and teardown, given an
+//! already-resolved device address and channel (SDP lookup happens in `imsg-transport::discover`).
 
 use std::time::Duration;
 

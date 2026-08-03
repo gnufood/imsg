@@ -2,8 +2,10 @@
 //! (store write + subscriber fan-out).
 //!
 //! Second impl block for [`Actor`]; the connection lifecycle lives in [`super::inner`], PBAP op
-//! dispatch lives in [`pbap`], and MNS event handling lives in [`mns`].
+//! dispatch lives in [`pbap`], live MAP op dispatch lives in [`live`], and MNS event handling
+//! lives in [`mns`].
 
+mod live;
 mod mns;
 mod pbap;
 
@@ -77,8 +79,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
     }
 
     /// Dispatches one [`DeviceOp`]. Watch ops adjust the subscriber count; MAP ops run via
-    /// [`dispatch`] and finish through [`finish_map`][Self::finish_map]; PBAP ops (contacts sync
-    /// and live browsing) delegate to [`handle_pbap_op`][Self::handle_pbap_op].
+    /// [`dispatch`] and finish through [`finish_map`][Self::finish_map] (the `Live*`/`Backfill`
+    /// ones via [`handle_live_op`][Self::handle_live_op], split out to keep this under the size
+    /// ceiling); PBAP ops (contacts sync and live browsing) delegate to
+    /// [`handle_pbap_op`][Self::handle_pbap_op].
     async fn handle_op(
         &mut self,
         client: &mut MapClient<T>,
@@ -102,36 +106,12 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send + 'static> Actor<T> {
                 dispatch::do_delete(client, &self.store, msg_handle, folder, &self.watch_tx).await,
                 reply,
             ),
-            DeviceOp::LiveMarkRead { handle, reply } => {
-                Self::finish_map(dispatch::do_live_mark_read(client, handle).await, reply)
-            }
-            DeviceOp::LiveSend { number, message, reply } => {
-                Self::finish_map(dispatch::do_live_send(client, number, message).await, reply)
-            }
-            DeviceOp::Backfill { reply } => {
-                Self::finish_map(dispatch::do_backfill(client, &self.store).await, reply)
-            }
-            DeviceOp::LiveList { folder, unread, from, since, limit, offset, reply } => {
-                Self::finish_map(
-                    dispatch::do_live_list(client, folder, unread, from, since, limit, offset)
-                        .await,
-                    reply,
-                )
-            }
-            DeviceOp::LiveGet { handle, reply } => {
-                Self::finish_map(dispatch::do_live_get(client, handle).await, reply)
-            }
-            DeviceOp::LiveThreads { reply } => {
-                Self::finish_map(dispatch::do_live_threads(client).await, reply)
-            }
-            DeviceOp::LiveFolders { reply } => {
-                Self::finish_map(dispatch::do_live_folders(client).await, reply)
-            }
             op @ (DeviceOp::SyncContacts { .. }
             | DeviceOp::ListContacts { .. }
             | DeviceOp::GetContact { .. }
             | DeviceOp::LookupContact { .. }
             | DeviceOp::PullAllContacts { .. }) => self.handle_pbap_op(pbap, op).await,
+            op => self.handle_live_op(client, op).await,
         }
     }
 

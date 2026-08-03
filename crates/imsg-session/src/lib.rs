@@ -1,4 +1,6 @@
-//! Session lifecycle — SDP lookup, RFCOMM connect, OBEX handshake, retry policy, MNS relay, and store sync.
+//! Session lifecycle — RFCOMM/iroh connect, OBEX handshake, retry policy, MNS relay, and store
+//! sync. SDP channel discovery happens upstream in `imsg-transport::discover`; callers here pass
+//! an already-resolved device/channel or hub target.
 
 pub mod conn;
 pub mod contacts;

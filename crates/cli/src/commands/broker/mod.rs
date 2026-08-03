@@ -18,6 +18,12 @@ use ipc::{BrokerRequest, BrokerResponse};
 pub(in crate::commands) use broker_client::{connect_retry, query_persistent, query_state};
 pub(in crate::commands) use client::{run_status, run_stop};
 
+/// Resolves the effective device address: the explicit `--device` override if given, else the
+/// configured `device.address`.
+pub(in crate::commands) fn resolve_addr<'a>(cfg: &'a Config, device: Option<&'a str>) -> &'a str {
+    device.unwrap_or_else(|| cfg.device.address())
+}
+
 /// Sends `req` to the broker (auto-starting if necessary) and returns one response frame.
 ///
 /// Resolves the abstract socket name from `cfg.device.address()` unless `device` overrides it.
@@ -33,7 +39,7 @@ pub(crate) async fn call(
     config_path: Option<&Path>,
     req: BrokerRequest,
 ) -> Result<BrokerResponse> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = resolve_addr(cfg, device);
     spawn::ensure_running(cfg, device, config_path).await?;
     send_request(addr, req).await
 }
@@ -52,7 +58,7 @@ pub(crate) async fn send(
     number: String,
     message: String,
 ) -> Result<String> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = resolve_addr(cfg, device);
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::send(addr, number, message).await?)
 }
@@ -71,7 +77,7 @@ pub(crate) async fn delete(
     handle: String,
     folder: String,
 ) -> Result<String> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = resolve_addr(cfg, device);
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::delete(addr, handle, folder).await?)
 }
@@ -88,7 +94,7 @@ pub(crate) async fn folders(
     device: Option<&str>,
     config_path: Option<&Path>,
 ) -> Result<Vec<ipc::FolderDto>> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = resolve_addr(cfg, device);
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::folders(addr).await?)
 }
@@ -106,7 +112,7 @@ pub(crate) async fn sync(
     config_path: Option<&Path>,
     folder: Option<String>,
 ) -> Result<String> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = resolve_addr(cfg, device);
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::sync(addr, folder).await?)
 }
@@ -123,7 +129,7 @@ pub(crate) async fn sync_contacts(
     device: Option<&str>,
     config_path: Option<&Path>,
 ) -> Result<ipc::SyncReportDto> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = resolve_addr(cfg, device);
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::sync_contacts(addr).await?)
 }

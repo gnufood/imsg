@@ -9,7 +9,7 @@ use map_core::MessageStatus;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::super::super::dto::{to_body_dto, to_folder_dto, to_message_dto, to_thread_dto};
-use super::parse_folder;
+use super::{classify_err, parse_folder};
 
 /// Lists a folder live and returns lean message DTOs, applying the client-side filters.
 ///
@@ -42,8 +42,7 @@ pub(in crate::runtime::actor) async fn do_live_list<T: AsyncRead + AsyncWrite + 
     };
     match session::live::list(client, folder_val, &filter).await {
         Ok(msgs) => Ok(BrokerResponse::Messages(msgs.into_iter().map(to_message_dto).collect())),
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -56,8 +55,7 @@ pub(in crate::runtime::actor) async fn do_live_get<T: AsyncRead + AsyncWrite + U
 ) -> Result<BrokerResponse> {
     match session::live::get(client, handle).await {
         Ok(body) => Ok(BrokerResponse::Body(to_body_dto(body))),
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -71,8 +69,7 @@ pub(in crate::runtime::actor) async fn do_live_threads<T: AsyncRead + AsyncWrite
         Ok(threads) => {
             Ok(BrokerResponse::Threads(threads.into_iter().map(to_thread_dto).collect()))
         }
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -86,8 +83,7 @@ pub(in crate::runtime::actor) async fn do_live_folders<T: AsyncRead + AsyncWrite
         Ok(folders) => {
             Ok(BrokerResponse::Folders(folders.into_iter().map(to_folder_dto).collect()))
         }
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }
 
@@ -101,14 +97,7 @@ pub(in crate::runtime::actor) async fn do_live_mark_read<T: AsyncRead + AsyncWri
 ) -> Result<BrokerResponse> {
     match client.set_message_status_read(&handle, MessageStatus::Read).await {
         Ok(()) => Ok(BrokerResponse::Ok),
-        Err(e) => {
-            let e = anyhow::Error::new(e);
-            if session::outbox::is_fatal_anyhow(&e) {
-                Err(e)
-            } else {
-                Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string())))
-            }
-        }
+        Err(e) => classify_err(anyhow::Error::new(e)),
     }
 }
 
@@ -123,7 +112,6 @@ pub(in crate::runtime::actor) async fn do_live_send<T: AsyncRead + AsyncWrite + 
 ) -> Result<BrokerResponse> {
     match session::outbox::push_sms(client, &number, &message).await {
         Ok(confirmation) => Ok(BrokerResponse::Text(confirmation)),
-        Err(e) if session::outbox::is_fatal_anyhow(&e) => Err(e),
-        Err(e) => Ok(BrokerResponse::Failed(Reason::OperationFailed(e.to_string()))),
+        Err(e) => classify_err(e),
     }
 }

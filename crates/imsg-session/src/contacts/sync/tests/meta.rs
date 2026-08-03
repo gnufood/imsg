@@ -1,13 +1,9 @@
 //! Cases driven by the metadata-only probe: no-op, wipe-vs-no-wipe on `PbapMeta` changes.
 
-use bytes::Bytes;
-use futures::{SinkExt, StreamExt};
-use pbap_core::client::PbapClient;
-use pbap_core::phonebook::PhonebookPath;
 use store::{NewContact, PbapMeta, PhoneField};
 
-use super::{body_rsp, fake_store, hex16, list_body, metadata_rsp, sync_contacts, vcard};
-use super::{Refresh, SyncReport, A, B, C, CONNECT_RSP, D};
+use super::{body_rsp, fake_store, hex16, list_body, metadata_rsp, run_sync, vcard};
+use super::{Refresh, SyncReport, A, B, C, D};
 
 #[tokio::test]
 async fn noop_when_metadata_unchanged() -> anyhow::Result<()> {
@@ -18,23 +14,7 @@ async fn noop_when_metadata_unchanged() -> anyhow::Result<()> {
         secondary_version: Some(hex16(C)),
     })
     .await?;
-    let (client_io, server_io) = tokio::io::duplex(8192);
-
-    let (server_result, report) = futures::join!(
-        async {
-            let mut srv = obex_core::wrap(server_io);
-            let _ = srv.next().await;
-            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
-            let _ = srv.next().await;
-            srv.send(metadata_rsp(A, B, C)?).await?;
-            Ok::<(), anyhow::Error>(())
-        },
-        async {
-            let mut client = PbapClient::connect(client_io).await?;
-            sync_contacts(&mut client, &db, PhonebookPath::Pb).await
-        },
-    );
-    server_result?;
+    let report = run_sync(&db, &[metadata_rsp(A, B, C)?]).await?;
     assert_eq!(report?, SyncReport::UpToDate);
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));
     assert!(db.contacts_synced_at().await?.is_some());
@@ -56,27 +36,15 @@ async fn refreshes_without_wipe_when_only_counters_change() -> anyhow::Result<()
         secondary_version: Some(hex16(C)),
     })
     .await?;
-    let (client_io, server_io) = tokio::io::duplex(8192);
-
-    let (server_result, report) = futures::join!(
-        async {
-            let mut srv = obex_core::wrap(server_io);
-            let _ = srv.next().await;
-            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
-            let _ = srv.next().await;
-            srv.send(metadata_rsp(A, D, D)?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&list_body(&["1.vcf"]))?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&vcard(Some("uid-new"), "New", "+15550002"))?).await?;
-            Ok::<(), anyhow::Error>(())
-        },
-        async {
-            let mut client = PbapClient::connect(client_io).await?;
-            sync_contacts(&mut client, &db, PhonebookPath::Pb).await
-        },
-    );
-    server_result?;
+    let report = run_sync(
+        &db,
+        &[
+            metadata_rsp(A, D, D)?,
+            body_rsp(&list_body(&["1.vcf"]))?,
+            body_rsp(&vcard(Some("uid-new"), "New", "+15550002"))?,
+        ],
+    )
+    .await?;
     assert_eq!(
         report?,
         SyncReport::Refreshed(Refresh {
@@ -109,27 +77,15 @@ async fn wipes_when_database_id_changes() -> anyhow::Result<()> {
         secondary_version: Some(hex16(C)),
     })
     .await?;
-    let (client_io, server_io) = tokio::io::duplex(8192);
-
-    let (server_result, report) = futures::join!(
-        async {
-            let mut srv = obex_core::wrap(server_io);
-            let _ = srv.next().await;
-            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
-            let _ = srv.next().await;
-            srv.send(metadata_rsp(D, D, D)?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&list_body(&["1.vcf"]))?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&vcard(Some("uid-new"), "New", "+15550002"))?).await?;
-            Ok::<(), anyhow::Error>(())
-        },
-        async {
-            let mut client = PbapClient::connect(client_io).await?;
-            sync_contacts(&mut client, &db, PhonebookPath::Pb).await
-        },
-    );
-    server_result?;
+    let report = run_sync(
+        &db,
+        &[
+            metadata_rsp(D, D, D)?,
+            body_rsp(&list_body(&["1.vcf"]))?,
+            body_rsp(&vcard(Some("uid-new"), "New", "+15550002"))?,
+        ],
+    )
+    .await?;
     assert_eq!(
         report?,
         SyncReport::Refreshed(Refresh {

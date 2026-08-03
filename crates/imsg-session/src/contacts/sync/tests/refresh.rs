@@ -9,34 +9,22 @@ use pbap_core::phonebook::PhonebookPath;
 use store::PbapMeta;
 
 use super::{
-    body_rsp, error_rsp, fake_store, hex16, list_body, metadata_rsp, sync_contacts, vcard,
+    body_rsp, error_rsp, fake_store, hex16, list_body, metadata_rsp, run_sync, sync_contacts, vcard,
 };
 use super::{Refresh, SyncReport, A, B, C, CONNECT_RSP};
 
 #[tokio::test]
 async fn first_run_fetches_and_persists_meta() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
-    let (client_io, server_io) = tokio::io::duplex(8192);
-
-    let (server_result, report) = futures::join!(
-        async {
-            let mut srv = obex_core::wrap(server_io);
-            let _ = srv.next().await;
-            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
-            let _ = srv.next().await;
-            srv.send(metadata_rsp(A, B, C)?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&list_body(&["1.vcf"]))?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&vcard(Some("uid-1"), "Alice", "+15550001"))?).await?;
-            Ok::<(), anyhow::Error>(())
-        },
-        async {
-            let mut client = PbapClient::connect(client_io).await?;
-            sync_contacts(&mut client, &db, PhonebookPath::Pb).await
-        },
-    );
-    server_result?;
+    let report = run_sync(
+        &db,
+        &[
+            metadata_rsp(A, B, C)?,
+            body_rsp(&list_body(&["1.vcf"]))?,
+            body_rsp(&vcard(Some("uid-1"), "Alice", "+15550001"))?,
+        ],
+    )
+    .await?;
     assert_eq!(
         report?,
         SyncReport::Refreshed(Refresh {
@@ -64,29 +52,16 @@ async fn first_run_fetches_and_persists_meta() -> anyhow::Result<()> {
 #[tokio::test]
 async fn skips_entries_without_uid() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
-    let (client_io, server_io) = tokio::io::duplex(8192);
-
-    let (server_result, report) = futures::join!(
-        async {
-            let mut srv = obex_core::wrap(server_io);
-            let _ = srv.next().await;
-            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
-            let _ = srv.next().await;
-            srv.send(metadata_rsp(A, B, C)?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&list_body(&["1.vcf", "2.vcf"]))?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&vcard(None, "NoUid", "+15550001"))?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&vcard(Some("uid-2"), "HasUid", "+15550002"))?).await?;
-            Ok::<(), anyhow::Error>(())
-        },
-        async {
-            let mut client = PbapClient::connect(client_io).await?;
-            sync_contacts(&mut client, &db, PhonebookPath::Pb).await
-        },
-    );
-    server_result?;
+    let report = run_sync(
+        &db,
+        &[
+            metadata_rsp(A, B, C)?,
+            body_rsp(&list_body(&["1.vcf", "2.vcf"]))?,
+            body_rsp(&vcard(None, "NoUid", "+15550001"))?,
+            body_rsp(&vcard(Some("uid-2"), "HasUid", "+15550002"))?,
+        ],
+    )
+    .await?;
     assert_eq!(
         report?,
         SyncReport::Refreshed(Refresh {
@@ -107,29 +82,16 @@ async fn skips_entries_without_uid() -> anyhow::Result<()> {
 #[tokio::test]
 async fn counts_failed_pulls_without_aborting() -> anyhow::Result<()> {
     let (db, _dir) = fake_store().await?;
-    let (client_io, server_io) = tokio::io::duplex(8192);
-
-    let (server_result, report) = futures::join!(
-        async {
-            let mut srv = obex_core::wrap(server_io);
-            let _ = srv.next().await;
-            srv.send(Bytes::from_static(CONNECT_RSP)).await?;
-            let _ = srv.next().await;
-            srv.send(metadata_rsp(A, B, C)?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&list_body(&["1.vcf", "2.vcf"]))?).await?;
-            let _ = srv.next().await;
-            srv.send(error_rsp()?).await?;
-            let _ = srv.next().await;
-            srv.send(body_rsp(&vcard(Some("uid-2"), "Reached", "+15550002"))?).await?;
-            Ok::<(), anyhow::Error>(())
-        },
-        async {
-            let mut client = PbapClient::connect(client_io).await?;
-            sync_contacts(&mut client, &db, PhonebookPath::Pb).await
-        },
-    );
-    server_result?;
+    let report = run_sync(
+        &db,
+        &[
+            metadata_rsp(A, B, C)?,
+            body_rsp(&list_body(&["1.vcf", "2.vcf"]))?,
+            error_rsp()?,
+            body_rsp(&vcard(Some("uid-2"), "Reached", "+15550002"))?,
+        ],
+    )
+    .await?;
     assert_eq!(
         report?,
         SyncReport::Refreshed(Refresh {

@@ -27,7 +27,7 @@ pub(in crate::commands) async fn run_status(
     device: Option<&str>,
     label: &str,
 ) -> Result<String> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = super::resolve_addr(cfg, device);
     let Ok(resp) = send_request(addr, BrokerRequest::Status).await else {
         return Ok(format!("{label} for {addr}: not running"));
     };
@@ -51,7 +51,7 @@ pub(in crate::commands) async fn run_status(
 ///
 /// Returns an error if the connection succeeds but sending or receiving the frame fails.
 pub(in crate::commands) async fn run_stop(cfg: &Config, device: Option<&str>) -> Result<String> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = super::resolve_addr(cfg, device);
     let Ok(resp) = send_request(addr, BrokerRequest::Shutdown).await else {
         return Ok(format!("daemon for {addr}: not running"));
     };

@@ -9,7 +9,8 @@ use clap_complete::Shell;
 use clap_verbosity_flag::Verbosity;
 
 pub(crate) use self::args::{
-    folder_of, path_name, path_of, BrokerCmd, ConfigCmd, DaemonCmd, FolderArg, PathArg, SpokeCmd,
+    folder_arg_to_folder, folder_of, path_name, path_of, BrokerCmd, ConfigCmd, DaemonCmd,
+    FolderArg, PathArg, SpokeCmd,
 };
 
 /// Top-level invocation: global transport/config options plus the chosen subcommand.

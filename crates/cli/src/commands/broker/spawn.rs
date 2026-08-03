@@ -23,7 +23,7 @@ pub(super) async fn ensure_running(
     device: Option<&str>,
     config_path: Option<&Path>,
 ) -> Result<()> {
-    let addr = device.unwrap_or_else(|| cfg.device.address());
+    let addr = super::resolve_addr(cfg, device);
 
     if probe(addr).await {
         tracing::debug!("broker: reusing already-running broker/daemon for {addr}");

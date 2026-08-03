@@ -123,7 +123,7 @@ async fn start_background(
     device: Option<&str>,
     config_path: Option<PathBuf>,
 ) -> Result<String> {
-    let addr = device.unwrap_or_else(|| cfg.device.address()).to_owned();
+    let addr = broker::resolve_addr(cfg, device).to_owned();
     match broker::query_persistent(&addr).await {
         Some(true) => return Ok(format!("daemon for {addr}: already running")),
         Some(false) => {
