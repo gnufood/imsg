@@ -46,8 +46,10 @@ pub enum MessageType {
 }
 
 impl MessageType {
-    pub(super) const fn as_str() -> &'static str {
-        "SMS_GSM"
+    pub(super) const fn as_str(&self) -> &'static str {
+        match self {
+            Self::SmsGsm => "SMS_GSM",
+        }
     }
 }
 
@@ -101,6 +103,13 @@ impl BMessage {
     #[inline]
     pub const fn status(&self) -> &MessageStatus {
         &self.status
+    }
+
+    /// Wire TYPE field: `SMS_GSM` (the only value iOS reports).
+    #[must_use]
+    #[inline]
+    pub const fn message_type(&self) -> &MessageType {
+        &self.type_
     }
 
     /// FOLDER field value, e.g. `telecom/msg/outbox`.

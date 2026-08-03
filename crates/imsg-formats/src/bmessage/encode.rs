@@ -1,6 +1,6 @@
 //! bMessage encoder: produces CRLF-terminated wire format.
 
-use super::types::{BMessage, BVCard, MessageType};
+use super::types::{BMessage, BVCard};
 
 impl BMessage {
     /// CRLF line endings throughout. LENGTH = byte count of the CRLF `BEGIN:MSG…END:MSG` block;
@@ -11,7 +11,7 @@ impl BMessage {
         line(&mut out, "BEGIN:BMSG");
         line(&mut out, "VERSION:1.0");
         line(&mut out, &format!("STATUS:{}", self.status().as_str()));
-        line(&mut out, &format!("TYPE:{}", MessageType::as_str()));
+        line(&mut out, &format!("TYPE:{}", self.message_type().as_str()));
         line(&mut out, &format!("FOLDER:{}", self.folder()));
         if let Some(orig) = self.originator() {
             encode_vcard(&mut out, orig);

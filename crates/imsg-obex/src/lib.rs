@@ -1,5 +1,9 @@
 //! Sans-IO OBEX packet codec, framing, and client/server state machines.
 
+// Not covered by the workspace's `todo`/`unimplemented`/`panic` denials — scoped here rather
+// than workspace-wide since other crates (e.g. `cli`) still rely on `unreachable!()`.
+#![deny(clippy::unreachable)]
+
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;

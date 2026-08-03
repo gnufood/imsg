@@ -83,7 +83,7 @@ impl ObexClient {
     /// # Errors
     /// Returns `ConnectRejected` if the server returns a non-OK opcode, `MissingConnectionId`
     /// if the response contains no `ConnectionId` header, or `Packet` on decode failure.
-    pub fn handle_connect_response(&mut self, data: &[u8]) -> Result<u32, ObexError> {
+    pub fn handle_connect_response(&mut self, data: &Bytes) -> Result<u32, ObexError> {
         let packet = Packet::decode_connect_response(data)?;
         if !packet.opcode.is_ok() {
             return Err(ObexError::ConnectRejected(packet.opcode.to_byte()));
@@ -198,7 +198,7 @@ impl ObexClient {
     ///
     /// # Errors
     /// Returns `Packet` on any decode failure.
-    pub fn parse_response(data: &[u8]) -> Result<Packet, ObexError> {
+    pub fn parse_response(data: &Bytes) -> Result<Packet, ObexError> {
         Ok(Packet::decode(data)?)
     }
 

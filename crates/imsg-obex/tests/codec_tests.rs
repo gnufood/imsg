@@ -19,7 +19,8 @@ const CONN_ID: u32 = 0xD0A0_6130;
 
 fn connected_client() -> Result<ObexClient, ObexError> {
     let mut client = ObexClient::new();
-    client.handle_connect_response(include_bytes!("fixtures/connect_rsp.bin"))?;
+    client
+        .handle_connect_response(&Bytes::from_static(include_bytes!("fixtures/connect_rsp.bin")))?;
     Ok(client)
 }
 
@@ -33,8 +34,8 @@ fn encode_connect_request_matches_fixture() -> Result<(), ObexError> {
 
 #[test]
 fn decode_connect_request() -> Result<(), PacketError> {
-    let fixture = include_bytes!("fixtures/connect_req.bin");
-    let packet = Packet::decode(fixture)?;
+    let fixture = Bytes::from_static(include_bytes!("fixtures/connect_req.bin"));
+    let packet = Packet::decode(&fixture)?;
     assert_eq!(packet.opcode, OpCode::Connect);
     assert_eq!(
         packet.extra,
@@ -58,8 +59,8 @@ fn encode_connect_request_with_app_params_includes_header() -> Result<(), ObexEr
 
 #[test]
 fn decode_connect_response() -> Result<(), PacketError> {
-    let fixture = include_bytes!("fixtures/connect_rsp.bin");
-    let packet = Packet::decode_connect_response(fixture)?;
+    let fixture = Bytes::from_static(include_bytes!("fixtures/connect_rsp.bin"));
+    let packet = Packet::decode_connect_response(&fixture)?;
     assert_eq!(packet.opcode, OpCode::Ok);
     assert_eq!(packet.header_connection_id(), Some(CONN_ID));
     Ok(())
@@ -69,7 +70,8 @@ fn decode_connect_response() -> Result<(), PacketError> {
 fn handle_connect_response_transitions_state() -> Result<(), ObexError> {
     let mut client = ObexClient::new();
     assert!(!client.is_connected());
-    let conn_id = client.handle_connect_response(include_bytes!("fixtures/connect_rsp.bin"))?;
+    let conn_id = client
+        .handle_connect_response(&Bytes::from_static(include_bytes!("fixtures/connect_rsp.bin")))?;
     assert!(client.is_connected());
     assert_eq!(conn_id, CONN_ID);
     Ok(())
@@ -101,8 +103,8 @@ fn encode_setpath_backup_matches_fixture() -> Result<(), ObexError> {
 
 #[test]
 fn decode_setpath_telecom_request() -> Result<(), PacketError> {
-    let fixture = include_bytes!("fixtures/setpath_telecom_req.bin");
-    let packet = Packet::decode(fixture)?;
+    let fixture = Bytes::from_static(include_bytes!("fixtures/setpath_telecom_req.bin"));
+    let packet = Packet::decode(&fixture)?;
     assert_eq!(packet.opcode, OpCode::SetPath);
     assert_eq!(packet.extra, PacketExtra::SetPath { flags: 0x02, constants: 0x00 });
     assert_eq!(packet.header_connection_id(), Some(CONN_ID));
@@ -129,8 +131,8 @@ fn encode_get_folder_listing_matches_fixture() -> Result<(), ObexError> {
 
 #[test]
 fn decode_get_folder_listing_response_is_ok_with_body() -> Result<(), PacketError> {
-    let fixture = include_bytes!("fixtures/get_folder_listing_000_rsp.bin");
-    let packet = Packet::decode(fixture)?;
+    let fixture = Bytes::from_static(include_bytes!("fixtures/get_folder_listing_000_rsp.bin"));
+    let packet = Packet::decode(&fixture)?;
     assert!(packet.opcode.is_ok());
     let body = packet.body_payload().ok_or(PacketError::InvalidHeader)?;
     assert!(body.starts_with(b"<?xml"));
@@ -154,8 +156,8 @@ fn encode_disconnect_matches_fixture() -> Result<(), ObexError> {
 
 #[test]
 fn decode_disconnect_response() -> Result<(), PacketError> {
-    let fixture = include_bytes!("fixtures/disconnect_rsp.bin");
-    let packet = Packet::decode(fixture)?;
+    let fixture = Bytes::from_static(include_bytes!("fixtures/disconnect_rsp.bin"));
+    let packet = Packet::decode(&fixture)?;
     assert!(packet.opcode.is_ok());
     Ok(())
 }
@@ -164,8 +166,8 @@ fn decode_disconnect_response() -> Result<(), PacketError> {
 
 #[test]
 fn encode_put_final_matches_push_message_fixture() -> Result<(), ObexError> {
-    let fixture_req = include_bytes!("fixtures/put_push_message_req.bin");
-    let packet = ObexClient::parse_response(fixture_req)?;
+    let fixture_req = Bytes::from_static(include_bytes!("fixtures/put_push_message_req.bin"));
+    let packet = ObexClient::parse_response(&fixture_req)?;
     let body = packet.body_payload().ok_or(ObexError::Packet(PacketError::InvalidHeader))?;
     let len = u32::try_from(body.len()).map_err(|_| ObexError::BodyTooLarge)?;
     let encoded = connected_client()?.put_final_request(
@@ -183,8 +185,8 @@ fn encode_put_final_matches_push_message_fixture() -> Result<(), ObexError> {
 
 #[test]
 fn decode_push_message_response_contains_handle() -> Result<(), PacketError> {
-    let fixture = include_bytes!("fixtures/put_push_message_rsp.bin");
-    let packet = Packet::decode(fixture)?;
+    let fixture = Bytes::from_static(include_bytes!("fixtures/put_push_message_rsp.bin"));
+    let packet = Packet::decode(&fixture)?;
     assert!(packet.opcode.is_ok());
     let name = packet
         .headers
@@ -199,12 +201,12 @@ fn decode_push_message_response_contains_handle() -> Result<(), PacketError> {
 
 #[test]
 fn decode_empty_input_returns_error() {
-    assert!(Packet::decode(&[]).is_err());
+    assert!(Packet::decode(&Bytes::new()).is_err());
 }
 
 #[test]
 fn decode_truncated_input_returns_error() {
-    assert!(Packet::decode(&[0x80, 0x00]).is_err());
+    assert!(Packet::decode(&Bytes::from_static(&[0x80, 0x00])).is_err());
 }
 
 #[test]
@@ -244,16 +246,14 @@ fn arb_packet() -> impl Strategy<Value = Packet> {
 
 #[test]
 fn decode_connect_response_with_bad_headers_returns_error() {
-    assert!(Packet::decode_connect_response(&[
-        0xA0, 0x00, 0x0A, 0x10, 0x00, 0xFF, 0xFF, 0x01, 0x00, 0x01
-    ])
-    .is_err());
+    let data = Bytes::from_static(&[0xA0, 0x00, 0x0A, 0x10, 0x00, 0xFF, 0xFF, 0x01, 0x00, 0x01]);
+    assert!(Packet::decode_connect_response(&data).is_err());
 }
 
 #[test]
 fn handle_connect_response_missing_conn_id_returns_error() {
-    let result =
-        ObexClient::new().handle_connect_response(&[0xA0, 0x00, 0x07, 0x10, 0x00, 0xFF, 0xFF]);
+    let data = Bytes::from_static(&[0xA0, 0x00, 0x07, 0x10, 0x00, 0xFF, 0xFF]);
+    let result = ObexClient::new().handle_connect_response(&data);
     assert!(matches!(result, Err(ObexError::MissingConnectionId)));
 }
 
@@ -262,7 +262,36 @@ fn handle_connect_response_missing_conn_id_returns_error() {
 #[case(&[0x83, 0x00, 0x09, 0x01, 0x00, 0x06, 0x00, 0x74, 0x00])]
 #[case(&[0x83, 0x00, 0x06, 0x01, 0x00, 0x02])]
 fn decode_name_header_errors(#[case] data: &[u8]) {
-    assert!(Packet::decode(data).is_err());
+    assert!(Packet::decode(&Bytes::copy_from_slice(data)).is_err());
+}
+
+#[test]
+fn decode_body_header_shares_backing_buffer_with_input() -> Result<(), PacketError> {
+    let fixture = include_bytes!("fixtures/put_push_message_req.bin");
+    let original = Bytes::copy_from_slice(fixture);
+    let original_range = original.as_ptr_range();
+    let packet = Packet::decode(&original)?;
+    let body = packet.body_payload().ok_or(PacketError::InvalidHeader)?;
+    assert!(
+        original_range.contains(&body.as_ptr()),
+        "decoded Body/EndOfBody payload should alias the input buffer, not a fresh allocation"
+    );
+    Ok(())
+}
+
+#[test]
+fn encode_header_too_large_returns_error() {
+    let oversized = Header::Type(Bytes::from(vec![0u8; 65_533]));
+    let packet =
+        Packet { opcode: OpCode::GetFinal, extra: PacketExtra::None, headers: vec![oversized] };
+    assert!(matches!(packet.encode(), Err(PacketError::HeaderTooLarge)));
+}
+
+#[test]
+fn encode_packet_too_large_returns_error() {
+    let headers = vec![Header::EndOfBody(Bytes::from(vec![0u8; 65_530]))];
+    let packet = Packet { opcode: OpCode::PutFinal, extra: PacketExtra::None, headers };
+    assert!(matches!(packet.encode(), Err(PacketError::PacketTooLarge)));
 }
 
 proptest! {

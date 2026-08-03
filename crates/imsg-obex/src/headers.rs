@@ -106,10 +106,13 @@ fn encode_4byte(id: u8, val: u32, buf: &mut BytesMut) {
 }
 
 // advances input to its end
-pub(crate) fn decode_headers(input: &mut &[u8]) -> Result<Vec<Header>, PacketError> {
+pub(crate) fn decode_headers(
+    original: &Bytes,
+    input: &mut &[u8],
+) -> Result<Vec<Header>, PacketError> {
     let mut headers = Vec::new();
     while !input.is_empty() {
-        headers.push(decode_one(input)?);
+        headers.push(decode_one(original, input)?);
     }
     Ok(headers)
 }
@@ -133,7 +136,7 @@ fn decode_name_str(data: &[u8]) -> Result<String, PacketError> {
     String::from_utf16(&utf16).map_err(|_| PacketError::InvalidName)
 }
 
-fn decode_one(input: &mut &[u8]) -> Result<Header, PacketError> {
+fn decode_one(original: &Bytes, input: &mut &[u8]) -> Result<Header, PacketError> {
     let id = be_u8(input).map_err(|_: ContextError| PacketError::InvalidHeader)?;
     let kind = (id >> 6) & 0x03;
     let header = match kind {
@@ -159,7 +162,7 @@ fn decode_one(input: &mut &[u8]) -> Result<Header, PacketError> {
             let data = take(body_len)
                 .parse_next(input)
                 .map_err(|_: ContextError| PacketError::InvalidHeader)?;
-            let bytes = Bytes::copy_from_slice(data);
+            let bytes = original.slice_ref(data);
             match id {
                 HDR_TYPE => Header::Type(bytes),
                 HDR_TARGET => Header::Target(bytes),
@@ -185,7 +188,7 @@ fn decode_one(input: &mut &[u8]) -> Result<Header, PacketError> {
                 _ => Header::Unknown(id, Bytes::copy_from_slice(&val.to_be_bytes())),
             }
         }
-        _ => unreachable!(),
+        _ => return Err(PacketError::InvalidHeader),
     };
     Ok(header)
 }

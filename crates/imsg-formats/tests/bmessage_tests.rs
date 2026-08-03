@@ -1,9 +1,22 @@
 //! Integration tests for bMessage parsing and encoding.
 
-use imsg_formats::bmessage::{BMessage, BMessageError, MessageStatus};
+use imsg_formats::bmessage::{BMessage, BMessageError, MessageStatus, MessageType};
 
 fn expected() -> BMessage {
     BMessage::outbound_sms("+15559876543", "Hello from Linux")
+}
+
+#[test]
+fn outbound_sms_message_type_is_sms_gsm() {
+    assert_eq!(*expected().message_type(), MessageType::SmsGsm);
+}
+
+#[test]
+fn parse_exposes_parsed_message_type() -> Result<(), BMessageError> {
+    let src = "BEGIN:BMSG\r\nVERSION:1.0\r\nSTATUS:READ\r\nTYPE:SMS_GSM\r\nFOLDER:telecom/msg/inbox\r\nBEGIN:BENV\r\nBEGIN:BBODY\r\nENCODING:8BIT\r\nCHARSET:UTF-8\r\nLANGUAGE:UNKNOWN\r\nLENGTH:24\r\nBEGIN:MSG\r\nhi\r\nEND:MSG\r\nEND:BBODY\r\nEND:BENV\r\nEND:BMSG\r\n";
+    let msg = BMessage::parse(src)?;
+    assert_eq!(*msg.message_type(), MessageType::SmsGsm);
+    Ok(())
 }
 
 #[test]

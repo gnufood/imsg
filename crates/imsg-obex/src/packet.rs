@@ -193,7 +193,7 @@ impl Packet {
     /// # Errors
     /// Returns `TooShort` if `data` is shorter than the declared length, or `InvalidHeader`
     /// if any header tag or length encoding is malformed.
-    pub fn decode(data: &[u8]) -> Result<Self, PacketError> {
+    pub fn decode(data: &Bytes) -> Result<Self, PacketError> {
         parse_packet(data)
     }
 
@@ -202,7 +202,7 @@ impl Packet {
     /// # Errors
     /// Returns `TooShort` if `data` is shorter than the declared length, or `InvalidHeader`
     /// if any header is malformed.
-    pub fn decode_connect_response(data: &[u8]) -> Result<Self, PacketError> {
+    pub fn decode_connect_response(data: &Bytes) -> Result<Self, PacketError> {
         parse_connect_response(data)
     }
 
@@ -213,11 +213,15 @@ impl Packet {
     /// individual header payload exceeds 65532 bytes.
     #[must_use = "encoded bytes must be sent"]
     pub fn encode(&self) -> Result<Bytes, PacketError> {
-        let mut body = BytesMut::with_capacity(256);
+        // Reserve the 3-byte frame header as a placeholder and patch it in place once the
+        // total length is known, instead of building the body in a second buffer and copying
+        // it — avoids doubling every packet's allocation and memcpy cost.
+        let mut out = BytesMut::with_capacity(256);
+        out.put_bytes(0, 3);
         match &self.extra {
             PacketExtra::None => {}
             PacketExtra::Connect { version, flags, max_packet } => {
-                body.put_slice(
+                out.put_slice(
                     ConnectWire {
                         version: *version,
                         flags: *flags,
@@ -227,22 +231,16 @@ impl Packet {
                 );
             }
             PacketExtra::SetPath { flags, constants } => {
-                body.put_slice(SetPathWire { flags: *flags, constants: *constants }.as_bytes());
+                out.put_slice(SetPathWire { flags: *flags, constants: *constants }.as_bytes());
             }
         }
         for h in &self.headers {
-            h.encode_into(&mut body)?;
+            h.encode_into(&mut out)?;
         }
-        let total = body
-            .len()
-            .checked_add(3)
-            .and_then(|n| u16::try_from(n).ok())
-            .ok_or(PacketError::PacketTooLarge)?;
-        let mut out = BytesMut::with_capacity(total.into());
-        out.put_slice(
-            FrameHeader { opcode: self.opcode.to_byte(), length: U16::new(total) }.as_bytes(),
-        );
-        out.put(body);
+        let total = u16::try_from(out.len()).map_err(|_| PacketError::PacketTooLarge)?;
+        FrameHeader { opcode: self.opcode.to_byte(), length: U16::new(total) }
+            .write_to_prefix(&mut out)
+            .map_err(|_| PacketError::PacketTooLarge)?; // unreachable: `out.len()` is always >= 3
         Ok(out.freeze())
     }
 
@@ -303,7 +301,7 @@ fn framed(data: &[u8]) -> Result<(OpCode, &[u8]), PacketError> {
     Ok((OpCode::from_byte(hdr.opcode), body))
 }
 
-fn parse_packet(data: &[u8]) -> Result<Packet, PacketError> {
+fn parse_packet(data: &Bytes) -> Result<Packet, PacketError> {
     let (opcode, body) = framed(data)?;
     let (extra, headers_bytes) = match opcode {
         OpCode::Connect => {
@@ -326,16 +324,16 @@ fn parse_packet(data: &[u8]) -> Result<Packet, PacketError> {
         _ => (PacketExtra::None, body),
     };
     let mut input = headers_bytes;
-    let headers = decode_headers(&mut input)?;
+    let headers = decode_headers(data, &mut input)?;
     Ok(Packet { opcode, extra, headers })
 }
 
-fn parse_connect_response(data: &[u8]) -> Result<Packet, PacketError> {
+fn parse_connect_response(data: &Bytes) -> Result<Packet, PacketError> {
     let (opcode, body) = framed(data)?;
     let (w, rest) = ConnectWire::ref_from_prefix(body).map_err(|_| PacketError::TooShort)?;
     let extra =
         PacketExtra::Connect { version: w.version, flags: w.flags, max_packet: w.max_packet.get() };
     let mut input = rest;
-    let headers = decode_headers(&mut input)?;
+    let headers = decode_headers(data, &mut input)?;
     Ok(Packet { opcode, extra, headers })
 }

@@ -31,7 +31,7 @@ impl ObexServer {
     /// Returns [`ObexError::Packet`] if `data` cannot be decoded as a valid OBEX packet.
     pub fn handle_connect(
         &mut self,
-        data: &[u8],
+        data: &Bytes,
         who_uuid: &[u8; 16],
     ) -> Result<(Packet, Bytes), ObexError> {
         let packet = Packet::decode(data)?;
@@ -58,9 +58,14 @@ impl ObexServer {
     /// # Errors
     ///
     /// Returns [`ObexError::Packet`] if `data` cannot be decoded as a valid OBEX packet.
-    pub fn handle_put(data: &[u8]) -> Result<(Option<Bytes>, Bytes), ObexError> {
+    pub fn handle_put(data: &Bytes) -> Result<(Option<Bytes>, Bytes), ObexError> {
         let packet = Packet::decode(data)?;
-        let body = packet.body_payload().map(Bytes::copy_from_slice);
+        // `Bytes::clone` is a refcount bump, not a copy — the payload already shares `data`'s
+        // buffer after decode, so this keeps the zero-copy path intact through to the caller.
+        let body = packet.headers.iter().find_map(|h| match h {
+            Header::EndOfBody(b) | Header::Body(b) => Some(b.clone()),
+            _ => None,
+        });
         Ok((body, Self::ok_response()))
     }
 
