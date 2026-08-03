@@ -109,18 +109,18 @@ Research work produces a validated technical direction, prototype, or implementa
 
 *Settings and configuration behavior that requires stronger validation or error handling.*
 
-- [ ]  **CONF-01** — Prevent messaging and contact services from using the same channel, and save channel overrides atomically
-- [ ]  **CONF-02** — Surface unreadable or invalid configuration files instead of launching first-time setup
+- [ ]  **CONF-01** — Prevent messaging and contact services from using the same channel, and save channel overrides atomically — [#1](https://github.com/gnufood/imsg/issues/1)
+- [ ]  **CONF-02** — Surface unreadable or invalid configuration files instead of launching first-time setup — [#2](https://github.com/gnufood/imsg/issues/2)
 
 ### Device Integration
 
 *Device workflows that require improved reliability, synchronization, or interoperability.*
 
-- [ ]  **DEVC-02** — Retry automatic channel detection after transient connection failures
-- [ ]  **DEVC-03** — Preserve successful contact-sync status and prevent malformed contact names from entering the cache
-- [ ]  **DEVC-04** — File sent messages into the correct folder and target deletion using the resolved folder
-- [ ]  **DEVC-05** — Resolve and display participant contact names in conversation views
-- [ ]  **DEVC-06** — Run initial device discovery concurrently with the splash animation
+- [ ]  **DEVC-02** — Retry automatic channel detection after transient connection failures — [#3](https://github.com/gnufood/imsg/issues/3)
+- [ ]  **DEVC-03** — Preserve successful contact-sync status and prevent malformed contact names from entering the cache — [#4](https://github.com/gnufood/imsg/issues/4)
+- [ ]  **DEVC-04** — File sent messages into the correct folder and target deletion using the resolved folder — [#5](https://github.com/gnufood/imsg/issues/5)
+- [ ]  **DEVC-05** — Resolve and display participant contact names in conversation views — [#6](https://github.com/gnufood/imsg/issues/6)
+- [ ]  **DEVC-06** — Run initial device discovery concurrently with the splash animation — [#7](https://github.com/gnufood/imsg/issues/7)
 
 ---
 
