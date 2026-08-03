@@ -3,7 +3,7 @@
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-use ipc::BrokerResponse;
+use ipc::{BrokerResponse, SyncReportDto};
 use serial_test::serial;
 
 use super::*;
@@ -35,7 +35,7 @@ fn run_parks_at_awaiting_device_config_then_completes_once_persisted() -> anyhow
                 vec![
                     status_info(true),
                     BrokerResponse::Text("synced".to_owned()),
-                    BrokerResponse::ContactsSynced { count: 0 },
+                    BrokerResponse::ContactsSynced { report: SyncReportDto::UpToDate },
                 ],
             ));
             state.proceed();
@@ -76,7 +76,7 @@ fn run_reports_daemon_failure_then_recovers_on_proceed() -> anyhow::Result<()> {
                 vec![
                     status_info(true),
                     BrokerResponse::Text("synced".to_owned()),
-                    BrokerResponse::ContactsSynced { count: 0 },
+                    BrokerResponse::ContactsSynced { report: SyncReportDto::UpToDate },
                 ],
             ));
             state.proceed();
@@ -121,7 +121,7 @@ fn run_reports_sync_failure_and_reuses_open_store_on_retry() -> anyhow::Result<(
                 vec![
                     status_info(true),
                     BrokerResponse::Text("synced".to_owned()),
-                    BrokerResponse::ContactsSynced { count: 0 },
+                    BrokerResponse::ContactsSynced { report: SyncReportDto::UpToDate },
                 ],
             ));
             state.proceed();
@@ -155,7 +155,7 @@ fn run_reports_store_open_failure_as_daemon_stage_and_reopens_on_retry() -> anyh
                     status_info(true),
                     status_info(true),
                     BrokerResponse::Text("synced".to_owned()),
-                    BrokerResponse::ContactsSynced { count: 0 },
+                    BrokerResponse::ContactsSynced { report: SyncReportDto::UpToDate },
                 ],
             ));
             let ready = spawn_run(&state, counting_opener(dir.path(), Arc::clone(&calls), 1));

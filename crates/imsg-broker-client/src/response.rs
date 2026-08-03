@@ -3,7 +3,7 @@
 //! Shared by every consumer (`Send`, `SendLive`, `Delete`, `SyncContacts`, ...) instead of
 //! each one hand-rolling the same match over response variants.
 
-use ipc::{BrokerResponse, Reason};
+use ipc::{BrokerResponse, Reason, SyncReportDto};
 
 /// A text-returning broker request answered with something other than
 /// [`BrokerResponse::Text`].
@@ -36,16 +36,16 @@ pub fn text_result(resp: BrokerResponse) -> Result<String, CallError> {
     }
 }
 
-/// Extracts the upserted-row count from a [`BrokerResponse::ContactsSynced`], or the typed
+/// Extracts the sync report from a [`BrokerResponse::ContactsSynced`], or the typed
 /// [`CallError`] describing why it didn't succeed.
 ///
 /// # Errors
 ///
 /// Returns [`CallError::Failed`] for a device/session rejection, [`CallError::Error`] for an
 /// IPC-plumbing failure, or [`CallError::Unexpected`] for any other response shape.
-pub fn contacts_synced_result(resp: BrokerResponse) -> Result<usize, CallError> {
+pub fn contacts_synced_result(resp: BrokerResponse) -> Result<SyncReportDto, CallError> {
     match resp {
-        BrokerResponse::ContactsSynced { count } => Ok(count),
+        BrokerResponse::ContactsSynced { report } => Ok(report),
         BrokerResponse::Failed(reason) => Err(CallError::Failed(reason)),
         BrokerResponse::Error(e) => Err(CallError::Error(e)),
         other => Err(CallError::Unexpected(Box::new(other))),

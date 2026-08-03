@@ -5,4 +5,4 @@ mod live;
 mod sync;
 
 pub use live::{get, list, lookup, pull_all};
-pub use sync::sync_contacts;
+pub use sync::{sync_contacts, Refresh, SyncReport};

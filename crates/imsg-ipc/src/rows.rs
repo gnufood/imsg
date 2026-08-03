@@ -73,6 +73,41 @@ pub struct BodyDto {
     pub text: String,
 }
 
+/// Outcome of a contacts cache sync, mirroring `session::contacts::SyncReport`.
+///
+/// Adjacently tagged for the same reason [`crate::BrokerResponse`] is: the newtype variant
+/// wraps a struct, and internal tagging can't represent every shape this enum may grow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(tag = "outcome", content = "data", rename_all = "snake_case")]
+pub enum SyncReportDto {
+    /// Device's phonebook watermark matched the cache; no vCards were fetched. Still a
+    /// successful sync — the freshness markers are stamped either way.
+    UpToDate,
+    /// A full refresh ran; see [`RefreshDto`].
+    Refreshed(RefreshDto),
+}
+
+/// Per-entry accounting for one phonebook refresh, mirroring `session::contacts::Refresh`.
+///
+/// `written < listed` means the cache is an incomplete view of the device's phonebook. The
+/// counters deliberately don't sum to `listed`: the skipped `0.vcf` owner card has no counter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct RefreshDto {
+    /// Entries the device's listing reported, including the skipped owner card.
+    pub listed: usize,
+    /// Entries whose vCard fetch failed; skipped, never fatal to the sync.
+    pub pull_failed: usize,
+    /// Fetched vCards with no `UID`, which the cache can't key on.
+    pub no_uid: usize,
+    /// Contacts written to the cache.
+    pub written: usize,
+    /// `true` when a changed device identity discarded the whole cache first; a first-ever sync
+    /// leaves this `false`.
+    pub wiped: bool,
+}
+
 /// One phonebook listing entry from a live `list`, mirroring `pbap_core::CardEntry`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]

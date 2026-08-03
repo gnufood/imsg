@@ -3,7 +3,7 @@
 use interprocess::local_socket::tokio::prelude::*;
 use interprocess::local_socket::tokio::Listener;
 use interprocess::local_socket::ListenerOptions;
-use ipc::{BrokerResponse, MAX_FRAME_LEN};
+use ipc::{BrokerResponse, RefreshDto, SyncReportDto, MAX_FRAME_LEN};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 use bytes::Bytes;
@@ -31,7 +31,10 @@ async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<(
 async fn succeeds_silently_on_success() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:06:01";
     let listener = bind_for(addr)?;
-    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { count: 3 }));
+    let server = tokio::spawn(serve_one(
+        listener,
+        BrokerResponse::ContactsSynced { report: SyncReportDto::UpToDate },
+    ));
 
     ensure_synced_best_effort(addr).await;
 
@@ -46,14 +49,21 @@ async fn swallows_failure_when_broker_unreachable() {
 }
 
 #[tokio::test]
-async fn sync_now_returns_synced_count_on_success() -> anyhow::Result<()> {
+async fn sync_now_returns_report_on_success() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:06:03";
     let listener = bind_for(addr)?;
-    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { count: 5 }));
+    let report = SyncReportDto::Refreshed(RefreshDto {
+        listed: 6,
+        pull_failed: 1,
+        no_uid: 0,
+        written: 5,
+        wiped: false,
+    });
+    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { report }));
 
-    let count = sync_now(addr).await?;
+    let got = sync_now(addr).await?;
 
-    assert_eq!(count, 5);
+    assert_eq!(got, report, "the GUI must see the same report the CLI does, not a bare count");
     server.await??;
     Ok(())
 }

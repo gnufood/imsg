@@ -42,9 +42,9 @@ pub(crate) async fn run(
 
     if spoke.is_none() {
         let text = broker::sync(cfg, device, config_path, folder_name).await?;
-        let contacts_count = contacts::run_sync(cfg, spoke, device, store, config_path).await?;
+        let contacts = contacts::run_sync(cfg, spoke, device, store, config_path).await?;
         store.set_meta("sync_enabled", "true").await?;
-        return Ok(format!("{text}; {contacts_count} contacts synced"));
+        return Ok(format!("{text}; {contacts}"));
     }
 
     // Hub path: direct MAP connection.
@@ -58,7 +58,7 @@ pub(crate) async fn run(
     let now = session::util::now_ms();
     session::outbox::drain_outbox(&mut client, store, now).await?;
     session::sync::backfill(&mut client, store, folder_scope).await?;
-    let contacts_count = contacts::run_sync(cfg, spoke, device, store, config_path).await?;
+    let contacts = contacts::run_sync(cfg, spoke, device, store, config_path).await?;
     store.set_meta("sync_enabled", "true").await?;
-    Ok(format!("sync complete; {contacts_count} contacts synced"))
+    Ok(format!("sync complete; {contacts}"))
 }

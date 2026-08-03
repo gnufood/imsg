@@ -58,7 +58,7 @@ pub async fn lookup_contact(
 /// Returns [`CommandError`] if the broker can't be reached or rejects the request.
 #[tauri::command]
 #[specta::specta]
-pub async fn sync_contacts_now(addr: String) -> Result<usize, CommandError> {
+pub async fn sync_contacts_now(addr: String) -> Result<ipc::SyncReportDto, CommandError> {
     Ok(crate::contacts::sync_now(&addr).await?)
 }
 

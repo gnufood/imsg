@@ -4,7 +4,7 @@
 //! follow `list.rs`/`get.rs`/`threads.rs`'s existing pattern instead: call
 //! `commands::broker::call` directly and match the response inline at the CLI call site.
 
-use ipc::BrokerRequest;
+use ipc::{BrokerRequest, SyncReportDto};
 
 use crate::response::{contacts_synced_result, CallError};
 use crate::transport::send_request;
@@ -21,13 +21,13 @@ pub enum ContactsError {
 }
 
 /// Pulls the main phonebook and upserts contact display names into the broker's local cache,
-/// returning the number of address rows upserted.
+/// returning what the sync did — see [`SyncReportDto`].
 ///
 /// # Errors
 ///
 /// Returns [`ContactsError::Connect`] if the broker can't be reached, or
 /// [`ContactsError::Call`] if it rejects the request.
-pub async fn sync_contacts(addr: &str) -> Result<usize, ContactsError> {
+pub async fn sync_contacts(addr: &str) -> Result<SyncReportDto, ContactsError> {
     let resp = send_request(addr, BrokerRequest::SyncContacts).await?;
     Ok(contacts_synced_result(resp)?)
 }

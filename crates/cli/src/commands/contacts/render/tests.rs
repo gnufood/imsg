@@ -6,8 +6,9 @@
 
 use std::fmt::Write as _;
 
-use ipc::PhoneDto;
+use ipc::{PhoneDto, RefreshDto, SyncReportDto};
 use pbap_core::{Contact, ContactError};
+use session::contacts::{Refresh, SyncReport};
 use store::{ContactEntryRow, ContactRow, PhoneField};
 
 use super::*;
@@ -153,4 +154,70 @@ fn offset_of_computes_zero_indexed_offset() {
 #[test]
 fn offset_of_saturates_instead_of_overflowing() {
     assert_eq!(offset_of(Some(u16::MAX), Some(u16::MAX)), u16::MAX);
+}
+
+/// "0" is what made the old output misleading: an already-current cache must not render as a
+/// count at all.
+#[test]
+fn render_sync_names_the_no_op_instead_of_counting_zero() {
+    let dto = render_sync_dto(&SyncReportDto::UpToDate);
+    let domain = render_sync_report(&SyncReport::UpToDate);
+
+    assert_eq!(dto, "contacts already up to date");
+    assert_eq!(dto, domain, "broker and spoke paths must word the same outcome identically");
+}
+
+#[test]
+fn render_sync_reports_a_clean_refresh_as_a_plain_count() {
+    let out = render_sync_dto(&SyncReportDto::Refreshed(RefreshDto {
+        listed: 194,
+        pull_failed: 0,
+        no_uid: 0,
+        written: 194,
+        wiped: false,
+    }));
+
+    assert_eq!(out, "synced 194 contacts");
+}
+
+/// The point of the report: entries the device listed but the cache never got are named, not
+/// silently folded into a smaller number.
+#[test]
+fn render_sync_names_discarded_entries() {
+    let out = render_sync_dto(&SyncReportDto::Refreshed(RefreshDto {
+        listed: 200,
+        pull_failed: 4,
+        no_uid: 2,
+        written: 194,
+        wiped: false,
+    }));
+
+    assert_eq!(out, "synced 194 contacts (4 failed to fetch, 2 without a UID)");
+}
+
+#[test]
+fn render_sync_flags_a_rebuilt_cache() {
+    let out = render_sync_report(&SyncReport::Refreshed(Refresh {
+        listed: 3,
+        pull_failed: 0,
+        no_uid: 0,
+        written: 3,
+        wiped: true,
+    }));
+
+    assert_eq!(out, "synced 3 contacts (cache rebuilt)");
+}
+
+/// Singulars read as English, not `1 contacts`/`1 failed`.
+#[test]
+fn render_sync_singularises() {
+    let out = render_sync_dto(&SyncReportDto::Refreshed(RefreshDto {
+        listed: 3,
+        pull_failed: 1,
+        no_uid: 1,
+        written: 1,
+        wiped: false,
+    }));
+
+    assert_eq!(out, "synced 1 contact (1 failed to fetch, 1 without a UID)");
 }

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::rows::{BodyDto, CardEntryDto, ContactDto, MessageDto, ThreadDto};
+use crate::rows::{BodyDto, CardEntryDto, ContactDto, MessageDto, SyncReportDto, ThreadDto};
 use crate::{Reason, SessionState};
 
 /// Maximum frame size for broker IPC frames, in bytes.
@@ -176,8 +176,8 @@ pub enum BrokerResponse {
     },
     /// Contacts cache sync completed; sole answer to [`BrokerRequest::SyncContacts`].
     ContactsSynced {
-        /// Number of address rows upserted into the local contacts cache.
-        count: usize,
+        /// What the sync did — an untouched cache, or a refresh and what it managed to store.
+        report: SyncReportDto,
     },
     /// Live phonebook listing rows; sole answer to [`BrokerRequest::ListContacts`].
     ContactEntries(Vec<CardEntryDto>),

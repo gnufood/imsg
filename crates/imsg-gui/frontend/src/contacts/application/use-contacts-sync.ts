@@ -2,15 +2,17 @@ import { useCallback, useReducer } from 'react'
 import type UseContactsSyncResult from '@/contacts/application/use-contacts-sync.types.ts'
 import { commands } from '@/bindings.ts'
 
+type Report = UseContactsSyncResult['report']
+
 interface State {
   error: string | undefined
-  synced: number | undefined
+  report: Report
   syncing: boolean
 }
 
-const initialState: State = { error: undefined, synced: undefined, syncing: false }
+const initialState: State = { error: undefined, report: undefined, syncing: false }
 
-type Action = { type: 'syncStarted' } | { count: number; type: 'syncSucceeded' } | { message: string; type: 'syncFailed' }
+type Action = { type: 'syncStarted' } | { report: NonNullable<Report>; type: 'syncSucceeded' } | { message: string; type: 'syncFailed' }
 
 const reduce = (state: State, action: Action): State => {
   switch (action.type) {
@@ -18,7 +20,7 @@ const reduce = (state: State, action: Action): State => {
       return { ...state, error: undefined, syncing: true }
     }
     case 'syncSucceeded': {
-      return { ...state, error: undefined, synced: action.count, syncing: false }
+      return { ...state, error: undefined, report: action.report, syncing: false }
     }
     case 'syncFailed': {
       return { ...state, error: action.message, syncing: false }
@@ -48,7 +50,7 @@ const syncContacts = async ({ dispatch }: SyncArgs): Promise<void> => {
     dispatch({ message: result.error.message, type: 'syncFailed' })
     return
   }
-  dispatch({ count: Number(result.data), type: 'syncSucceeded' })
+  dispatch({ report: result.data, type: 'syncSucceeded' })
 }
 
 // Application boundary for the contacts sync action (see internal/GUI_ATOMIC_DESIGN.md) — the

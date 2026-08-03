@@ -7,7 +7,7 @@ use pbap_core::phonebook::PhonebookPath;
 use store::{NewContact, PbapMeta, PhoneField};
 
 use super::{body_rsp, fake_store, hex16, list_body, metadata_rsp, sync_contacts, vcard};
-use super::{A, B, C, CONNECT_RSP, D};
+use super::{Refresh, SyncReport, A, B, C, CONNECT_RSP, D};
 
 #[tokio::test]
 async fn noop_when_metadata_unchanged() -> anyhow::Result<()> {
@@ -20,7 +20,7 @@ async fn noop_when_metadata_unchanged() -> anyhow::Result<()> {
     .await?;
     let (client_io, server_io) = tokio::io::duplex(8192);
 
-    let (server_result, synced) = futures::join!(
+    let (server_result, report) = futures::join!(
         async {
             let mut srv = obex_core::wrap(server_io);
             let _ = srv.next().await;
@@ -35,7 +35,7 @@ async fn noop_when_metadata_unchanged() -> anyhow::Result<()> {
         },
     );
     server_result?;
-    assert_eq!(synced?, 0);
+    assert_eq!(report?, SyncReport::UpToDate);
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));
     assert!(db.contacts_synced_at().await?.is_some());
     Ok(())
@@ -58,7 +58,7 @@ async fn refreshes_without_wipe_when_only_counters_change() -> anyhow::Result<()
     .await?;
     let (client_io, server_io) = tokio::io::duplex(8192);
 
-    let (server_result, synced) = futures::join!(
+    let (server_result, report) = futures::join!(
         async {
             let mut srv = obex_core::wrap(server_io);
             let _ = srv.next().await;
@@ -77,7 +77,16 @@ async fn refreshes_without_wipe_when_only_counters_change() -> anyhow::Result<()
         },
     );
     server_result?;
-    assert_eq!(synced?, 1);
+    assert_eq!(
+        report?,
+        SyncReport::Refreshed(Refresh {
+            listed: 1,
+            pull_failed: 0,
+            no_uid: 0,
+            written: 1,
+            wiped: false,
+        })
+    );
     assert!(db.get_contact("uid-old").await?.is_some(), "no-wipe path must preserve old contact");
     assert!(db.get_contact("uid-new").await?.is_some());
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));
@@ -102,7 +111,7 @@ async fn wipes_when_database_id_changes() -> anyhow::Result<()> {
     .await?;
     let (client_io, server_io) = tokio::io::duplex(8192);
 
-    let (server_result, synced) = futures::join!(
+    let (server_result, report) = futures::join!(
         async {
             let mut srv = obex_core::wrap(server_io);
             let _ = srv.next().await;
@@ -121,7 +130,16 @@ async fn wipes_when_database_id_changes() -> anyhow::Result<()> {
         },
     );
     server_result?;
-    assert_eq!(synced?, 1);
+    assert_eq!(
+        report?,
+        SyncReport::Refreshed(Refresh {
+            listed: 1,
+            pull_failed: 0,
+            no_uid: 0,
+            written: 1,
+            wiped: true,
+        })
+    );
     assert!(db.get_contact("uid-stale").await?.is_none(), "changed database_id must wipe cache");
     assert!(db.get_contact("uid-new").await?.is_some());
     assert_eq!(db.get_meta("contacts_synced").await?.as_deref(), Some("true"));

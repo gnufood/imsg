@@ -6,7 +6,7 @@ use futures::{SinkExt as _, StreamExt as _};
 use interprocess::local_socket::tokio::prelude::*;
 use interprocess::local_socket::tokio::Listener;
 use interprocess::local_socket::ListenerOptions;
-use ipc::{BrokerRequest, BrokerResponse, Reason, MAX_FRAME_LEN};
+use ipc::{BrokerRequest, BrokerResponse, Reason, RefreshDto, SyncReportDto, MAX_FRAME_LEN};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 use super::{sync_contacts, ContactsError};
@@ -30,14 +30,39 @@ async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<(
 }
 
 #[tokio::test]
-async fn sync_contacts_returns_count_on_success() -> anyhow::Result<()> {
+async fn sync_contacts_returns_report_on_success() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:04:01";
     let listener = bind_for(addr)?;
-    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { count: 7 }));
+    let report = SyncReportDto::Refreshed(RefreshDto {
+        listed: 8,
+        pull_failed: 1,
+        no_uid: 0,
+        written: 7,
+        wiped: false,
+    });
+    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { report }));
 
     let got = sync_contacts(addr).await?;
 
-    assert_eq!(got, 7);
+    assert_eq!(got, report);
+    server.await??;
+    Ok(())
+}
+
+/// The no-op outcome has to survive the wire as itself, not collapse into a zero count — the
+/// whole reason the response carries a report.
+#[tokio::test]
+async fn sync_contacts_returns_up_to_date_distinctly() -> anyhow::Result<()> {
+    let addr = "TE:ST:00:00:04:05";
+    let listener = bind_for(addr)?;
+    let server = tokio::spawn(serve_one(
+        listener,
+        BrokerResponse::ContactsSynced { report: SyncReportDto::UpToDate },
+    ));
+
+    let got = sync_contacts(addr).await?;
+
+    assert_eq!(got, SyncReportDto::UpToDate);
     server.await??;
     Ok(())
 }

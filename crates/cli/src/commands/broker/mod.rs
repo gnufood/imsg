@@ -105,7 +105,7 @@ pub(crate) async fn sync_contacts(
     cfg: &Config,
     device: Option<&str>,
     config_path: Option<&Path>,
-) -> Result<usize> {
+) -> Result<ipc::SyncReportDto> {
     let addr = device.unwrap_or_else(|| cfg.device.address());
     spawn::ensure_running(cfg, device, config_path).await?;
     Ok(broker_client::sync_contacts(addr).await?)

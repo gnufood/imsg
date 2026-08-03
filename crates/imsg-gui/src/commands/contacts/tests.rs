@@ -7,7 +7,7 @@ use futures::{SinkExt as _, StreamExt as _};
 use interprocess::local_socket::tokio::prelude::*;
 use interprocess::local_socket::tokio::Listener;
 use interprocess::local_socket::ListenerOptions;
-use ipc::{BrokerResponse, MAX_FRAME_LEN};
+use ipc::{BrokerResponse, RefreshDto, SyncReportDto, MAX_FRAME_LEN};
 use secrecy::SecretBox;
 use store::{NewContact, PhoneField, Store};
 use tauri::Manager;
@@ -84,14 +84,21 @@ async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<(
 }
 
 #[tokio::test]
-async fn sync_contacts_now_returns_synced_count_on_success() -> anyhow::Result<()> {
+async fn sync_contacts_now_returns_report_on_success() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:06:05";
     let listener = bind_for(addr)?;
-    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { count: 2 }));
+    let report = SyncReportDto::Refreshed(RefreshDto {
+        listed: 2,
+        pull_failed: 0,
+        no_uid: 0,
+        written: 2,
+        wiped: false,
+    });
+    let server = tokio::spawn(serve_one(listener, BrokerResponse::ContactsSynced { report }));
 
-    let count = sync_contacts_now(addr.to_owned()).await?;
+    let got = sync_contacts_now(addr.to_owned()).await?;
 
-    assert_eq!(count, 2);
+    assert_eq!(got, report);
     server.await??;
     Ok(())
 }

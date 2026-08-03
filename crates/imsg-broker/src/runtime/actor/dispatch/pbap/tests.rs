@@ -64,9 +64,9 @@ async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
 }
 
 /// A full sync writes every phone number on the pulled contact into the store cache and reports
-/// the row count.
+/// what the refresh did.
 #[tokio::test]
-async fn do_sync_contacts_upserts_and_reports_count() -> anyhow::Result<()> {
+async fn do_sync_contacts_upserts_and_reports_refresh() -> anyhow::Result<()> {
     let (store, _dir) = fake_store().await?;
     let body = b"BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nUID:uid-alice\r\n\
 TEL:+15551110000\r\nEND:VCARD\r\n";
@@ -74,7 +74,12 @@ TEL:+15551110000\r\nEND:VCARD\r\n";
 
     let resp = do_sync_contacts(&mut pbap, &store).await?;
 
-    assert!(matches!(resp, BrokerResponse::ContactsSynced { count: 1 }));
+    assert!(matches!(
+        resp,
+        BrokerResponse::ContactsSynced {
+            report: ipc::SyncReportDto::Refreshed(ipc::RefreshDto { written: 1, wiped: false, .. })
+        }
+    ));
     let contact =
         store.lookup_contact("+15551110000").await?.ok_or_else(|| anyhow::anyhow!("missing"))?;
     assert_eq!(contact.display_name.as_deref(), Some("Alice"));

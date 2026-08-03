@@ -10,7 +10,7 @@ use pbap_core::phonebook::PhonebookPath;
 use store::Store;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::runtime::actor::dto::{to_card_entry_dto, to_contact_dto};
+use crate::runtime::actor::dto::{to_card_entry_dto, to_contact_dto, to_sync_report_dto};
 
 /// Pulls the main phonebook via `pbap` and upserts contact display names into the local
 /// contacts cache (see `session::contacts::sync_contacts`).
@@ -22,8 +22,8 @@ pub(in crate::runtime::actor) async fn do_sync_contacts<T: AsyncRead + AsyncWrit
     pbap: &mut PbapClient<T>,
     store: &Store,
 ) -> Result<BrokerResponse> {
-    let count = session::contacts::sync_contacts(pbap, store, PhonebookPath::Pb).await?;
-    Ok(BrokerResponse::ContactsSynced { count })
+    let report = session::contacts::sync_contacts(pbap, store, PhonebookPath::Pb).await?;
+    Ok(BrokerResponse::ContactsSynced { report: to_sync_report_dto(report) })
 }
 
 /// Lowercases `name` and maps it to the matching [`PhonebookPath`]; `None` if unrecognized.

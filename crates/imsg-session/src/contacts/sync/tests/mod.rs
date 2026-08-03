@@ -10,7 +10,7 @@ use obex_core::packet::{OpCode, Packet, PacketExtra};
 use secrecy::SecretBox;
 use store::Store;
 
-use super::{hex16, sync_contacts};
+use super::{hex16, sync_contacts, Refresh, SyncReport};
 
 const CONNECT_RSP: &[u8] = &[
     0xa0, 0x00, 0x1f, 0x10, 0x00, 0x0f, 0xa0, 0xcb, 0xdd, 0x20, 0x40, 0xd0, 0x4a, 0x00, 0x13, 0x79,
@@ -54,6 +54,12 @@ fn body_rsp(body: &[u8]) -> anyhow::Result<Bytes> {
         headers: vec![Header::EndOfBody(Bytes::copy_from_slice(body))],
     }
     .encode()?)
+}
+
+/// A failed-request response: `collect_response` maps any non-OK, non-CONTINUE opcode to
+/// `PbapError::ServerError`, which is what `refresh_contacts` counts as a failed pull.
+fn error_rsp() -> anyhow::Result<Bytes> {
+    Ok(Packet { opcode: OpCode::NotFound, extra: PacketExtra::None, headers: vec![] }.encode()?)
 }
 
 fn list_body(handles: &[&str]) -> Vec<u8> {

@@ -50,8 +50,7 @@ pub(in crate::commands) async fn run_contacts(
 ) -> Result<String> {
     if opts.sync {
         let fut = contacts::run_sync(cfg, spoke, device, db, config_path);
-        let count = with_spinner("syncing contacts", fut).await?;
-        return Ok(format!("synced {count} contacts"));
+        return with_spinner("syncing contacts", fut).await;
     }
     // Normalise `--lookup` once, before the fork: the store path matches on canonical, and the
     // live path now sends the same canonical form to the device's own PBAP search.

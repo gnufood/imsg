@@ -76,7 +76,12 @@ async fn sync_contacts_reuses_persistent_pbap_session() -> anyhow::Result<()> {
 
     for _ in 0..2 {
         let resp = sync_contacts(&h).await?;
-        assert!(matches!(resp, ipc::BrokerResponse::ContactsSynced { count: 0 }));
+        assert!(matches!(
+            resp,
+            ipc::BrokerResponse::ContactsSynced {
+                report: ipc::SyncReportDto::Refreshed(ipc::RefreshDto { written: 0, .. })
+            }
+        ));
     }
     assert_eq!(
         calls.load(Ordering::SeqCst),
@@ -166,7 +171,12 @@ async fn pbap_failure_reconnects_independently_of_map_session() -> anyhow::Resul
     state.wait_for(|s| matches!(s, ConnState::Active)).await?;
 
     let first = sync_contacts(&h).await?;
-    assert!(matches!(first, ipc::BrokerResponse::ContactsSynced { count: 0 }));
+    assert!(matches!(
+        first,
+        ipc::BrokerResponse::ContactsSynced {
+            report: ipc::SyncReportDto::Refreshed(ipc::RefreshDto { written: 0, .. })
+        }
+    ));
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 
     // Second call reuses the same (now exhausted) connection and fails.
@@ -176,7 +186,12 @@ async fn pbap_failure_reconnects_independently_of_map_session() -> anyhow::Resul
 
     // Third call must reconnect PBAP rather than reuse the dead session.
     let third = sync_contacts(&h).await?;
-    assert!(matches!(third, ipc::BrokerResponse::ContactsSynced { count: 0 }));
+    assert!(matches!(
+        third,
+        ipc::BrokerResponse::ContactsSynced {
+            report: ipc::SyncReportDto::Refreshed(ipc::RefreshDto { written: 0, .. })
+        }
+    ));
     assert_eq!(calls.load(Ordering::SeqCst), 2, "failed PBAP op must reconnect on the next call");
     Ok(())
 }

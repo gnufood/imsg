@@ -15,7 +15,7 @@ pub async fn ensure_synced_best_effort(addr: &str) {
     }
 }
 
-/// Triggers an immediate contacts refresh via the broker at `addr`.
+/// Triggers an immediate contacts refresh via the broker at `addr`, reporting what it did.
 ///
 /// Surfaces any failure to the caller — unlike [`ensure_synced_best_effort`], meant for a
 /// user-initiated "Refresh contacts" action rather than the silent, retried-next-launch gate step.
@@ -23,7 +23,7 @@ pub async fn ensure_synced_best_effort(addr: &str) {
 /// # Errors
 ///
 /// Returns [`broker_client::ContactsError`] if the broker can't be reached or rejects the request.
-pub async fn sync_now(addr: &str) -> Result<usize, broker_client::ContactsError> {
+pub async fn sync_now(addr: &str) -> Result<ipc::SyncReportDto, broker_client::ContactsError> {
     broker_client::sync_contacts(addr).await
 }
 

@@ -11,10 +11,14 @@ use pbap_core::phonebook::PhonebookPath;
 use store::Store;
 use transport::iroh::Endpoint;
 
+use super::render::{render_sync_dto, render_sync_report};
 use crate::commands::{broker, conn};
 
-/// Refreshes the local contacts cache from the device, returning the number of address rows
-/// upserted.
+/// Refreshes the local contacts cache from the device, returning the rendered outcome line.
+///
+/// Renders here rather than returning the report itself: the two transports answer with
+/// different types (broker DTO vs. domain value) and both call sites — `contacts --sync` and
+/// `imsg sync`'s contacts step — want the same sentence.
 ///
 /// # Errors
 ///
@@ -25,14 +29,15 @@ pub(crate) async fn run(
     device: Option<&str>,
     store: &Store,
     config_path: Option<&std::path::Path>,
-) -> Result<usize> {
+) -> Result<String> {
     if endpoint.is_none() {
-        return broker::sync_contacts(cfg, device, config_path).await;
+        let report = broker::sync_contacts(cfg, device, config_path).await?;
+        return Ok(render_sync_dto(&report));
     }
     let mut client = conn::connect_pbap(cfg, endpoint, device).await?;
-    let count = session::contacts::sync_contacts(&mut client, store, PhonebookPath::Pb).await?;
+    let report = session::contacts::sync_contacts(&mut client, store, PhonebookPath::Pb).await?;
     if let Err(e) = client.disconnect().await {
         tracing::warn!("PBAP disconnect failed: {e}");
     }
-    Ok(count)
+    Ok(render_sync_report(&report))
 }

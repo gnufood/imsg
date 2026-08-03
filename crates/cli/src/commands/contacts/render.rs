@@ -3,8 +3,9 @@
 
 use std::fmt::Write as _;
 
-use ipc::{CardEntryDto, ContactDto};
+use ipc::{CardEntryDto, ContactDto, SyncReportDto};
 use pbap_core::{CardEntry, Contact};
+use session::contacts::SyncReport;
 use store::{ContactEntryRow, ContactRow, PhoneField};
 
 /// One phone number borrowed from its source, exposing both forms so the renderer can pick.
@@ -103,6 +104,56 @@ pub(super) fn render_entry_view(v: &EntryView) -> String {
 /// Renders listing entries one per line. An empty slice renders as the empty string.
 pub(super) fn render_entries_view(views: &[EntryView]) -> String {
     views.iter().map(render_entry_view).collect::<Vec<_>>().join("\n")
+}
+
+/// Renders a broker-reported sync outcome. Paired with [`render_sync_report`], which words the
+/// spoke path's domain-typed outcome identically — same split as [`ContactView`]'s per-source
+/// constructors, since the two paths never share a type.
+pub(super) fn render_sync_dto(r: &SyncReportDto) -> String {
+    match *r {
+        SyncReportDto::UpToDate => up_to_date(),
+        SyncReportDto::Refreshed(f) => render_refresh(f.pull_failed, f.no_uid, f.written, f.wiped),
+    }
+}
+
+/// Renders a directly-synced (spoke path) outcome; see [`render_sync_dto`].
+pub(super) fn render_sync_report(r: &SyncReport) -> String {
+    match *r {
+        SyncReport::UpToDate => up_to_date(),
+        SyncReport::Refreshed(f) => render_refresh(f.pull_failed, f.no_uid, f.written, f.wiped),
+    }
+}
+
+fn up_to_date() -> String {
+    "contacts already up to date".to_owned()
+}
+
+/// `written` leads, since that's what the cache actually holds; anything lost or invalidated
+/// follows in parentheses so a partial sync can't read as a clean one.
+fn render_refresh(pull_failed: usize, no_uid: usize, written: usize, wiped: bool) -> String {
+    let mut out = format!("synced {written} {}", plural(written, "contact"));
+    let mut notes: Vec<String> = Vec::new();
+    if wiped {
+        notes.push("cache rebuilt".to_owned());
+    }
+    if pull_failed > 0 {
+        notes.push(format!("{pull_failed} failed to fetch"));
+    }
+    if no_uid > 0 {
+        notes.push(format!("{no_uid} without a UID"));
+    }
+    if !notes.is_empty() {
+        let _ = write!(out, " ({})", notes.join(", "));
+    }
+    out
+}
+
+fn plural(n: usize, word: &str) -> String {
+    if n == 1 {
+        word.to_owned()
+    } else {
+        format!("{word}s")
+    }
 }
 
 /// Converts a 1-indexed page number to a device/broker-side row offset.
