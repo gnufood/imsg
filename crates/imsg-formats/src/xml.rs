@@ -1,4 +1,4 @@
-//! MAP XML structures: folder listing parser. Use [`FolderListing::parse`].
+//! MAP XML structures: folder listing parser. Use [`crate::xml::FolderListing::parse`].
 
 use quick_xml::{events::Event, Reader};
 use thiserror::Error;

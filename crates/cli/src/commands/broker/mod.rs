@@ -2,8 +2,8 @@
 //! `imsg-broker-client`.
 //!
 //! Split into two sub-modules by concern:
-//! - [`client`] — formats `imsg-broker-client`'s structured responses for `broker status`/`stop`
-//! - [`spawn`] — process management (spawn the ephemeral one-shot broker subprocess)
+//! - `client` — formats `imsg-broker-client`'s structured responses for `broker status`/`stop`
+//! - `spawn` — process management (spawn the ephemeral one-shot broker subprocess)
 
 mod client;
 mod spawn;

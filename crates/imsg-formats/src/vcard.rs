@@ -1,6 +1,6 @@
 //! PBAP contact normalisation using calcard.
 //!
-//! Use [`Contact::from_vcard_str`] to extract display name and phone numbers
+//! Use [`crate::vcard::Contact::from_vcard_str`] to extract display name and phone numbers
 //! from a raw vCard 3.0 string pulled via PBAP.
 
 use calcard::vcard::{VCardProperty, VCardValue};

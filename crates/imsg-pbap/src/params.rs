@@ -23,7 +23,7 @@ pub const fn connect_params() -> Bytes {
 /// Wire encoding: `[0x06, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x83]`.
 const PROPERTY_SELECTOR: &[u8] = b"\x06\x08\x00\x00\x00\x00\x00\x20\x00\x83";
 
-/// `PullPhoneBook` app-params: `Format=vcard30`, [`PROPERTY_SELECTOR`], `MaxListCount=limit`.
+/// `PullPhoneBook` app-params: `Format=vcard30`, `PROPERTY_SELECTOR`, `MaxListCount=limit`.
 ///
 /// `0xFFFF` when `limit` is `None`, matching the "fetch everything" default. `ListStartOffset` is
 /// included only when `offset != 0`, so the wire bytes for a full unwindowed pull are unchanged
@@ -87,7 +87,7 @@ pub fn search_params(
     Bytes::from(out)
 }
 
-/// `PullvCardEntry` app-params: `Format=vcard30`, [`PROPERTY_SELECTOR`].
+/// `PullvCardEntry` app-params: `Format=vcard30`, `PROPERTY_SELECTOR`.
 ///
 /// Wire encoding: `[0x07, 0x01, 0x01, 0x06, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00,
 /// 0x83]`.

@@ -95,7 +95,7 @@ impl OpCode {
         }
     }
 
-    /// Inverse of [`from_byte`]; raw wire octet.
+    /// Inverse of [`Self::from_byte`]; raw wire octet.
     #[must_use]
     pub const fn to_byte(self) -> u8 {
         match self {

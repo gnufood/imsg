@@ -1,7 +1,8 @@
 //! iroh QUIC hub/spoke transport — replaces the TCP bridge for remote machines.
 //!
-//! The hub owns the RFCOMM link and runs [`run_hub`]; spokes reach it over QUIC via the hub's
-//! [`EndpointId`]. Each profile rides its own ALPN-tagged bidirectional stream: MAP and PBAP
+//! The hub owns the RFCOMM link and runs [`crate::iroh::run_hub`]; spokes reach it over QUIC
+//! via the hub's [`crate::iroh::EndpointId`]. Each profile rides its own ALPN-tagged
+//! bidirectional stream: MAP and PBAP
 //! requests are proxied spoke→hub into RFCOMM, MNS events are fanned hub→spoke.
 
 use std::io;

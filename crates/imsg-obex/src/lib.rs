@@ -10,7 +10,7 @@ pub mod client;
 pub mod codec;
 /// OBEX header types; wire tag bytes 0x01–0xCB.
 pub mod headers;
-/// [`Packet`], [`OpCode`], `PacketExtra`, and `PacketError` types.
+/// [`crate::packet::Packet`], [`crate::packet::OpCode`], `PacketExtra`, and `PacketError` types.
 pub mod packet;
 /// OBEX server state machine — decodes requests and encodes responses.
 pub mod server;
@@ -40,7 +40,7 @@ pub enum TransportError {
 /// OBEX-framed async transport over any [`AsyncRead`] + [`AsyncWrite`] stream.
 ///
 /// Yields and accepts complete OBEX packets as [`bytes::Bytes`]. Obtain via
-/// [`wrap`]; use [`futures::SinkExt`] / [`futures::StreamExt`] to send and receive.
+/// [`wrap`]; use `futures::SinkExt` / `futures::StreamExt` to send and receive.
 pub type ObexTransport<T> = Framed<T, ObexCodec>;
 
 /// Buffers reads until a complete OBEX packet arrives.

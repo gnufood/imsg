@@ -59,11 +59,11 @@ pub struct MessageRow {
     pub text: String,
     /// Outgoing delivery state; `None` for all received messages and for sent messages
     /// that pre-date the Phase 4 outbox. Non-`None` only on rows with `direction = Sent`
-    /// created via [`Store::enqueue_send`].
+    /// created via [`crate::Store::enqueue_send`].
     pub outgoing_status: Option<OutgoingStatus>,
 }
 
-/// A per-contact conversation thread summary returned by [`Store::threads`].
+/// A per-contact conversation thread summary returned by [`crate::Store::threads`].
 ///
 /// Covers all stored messages for a given `address`, sorted by the most recent message
 /// timestamp. `total` and `unread` are `i64` to match `SQLite` aggregate return types.
@@ -107,7 +107,7 @@ pub struct NewMessage {
     pub text: String,
     /// Outgoing delivery state; `None` for received messages and for sync-ingested sent messages.
     /// Set to `Some(OutgoingStatus::Queued)` only for speculative rows created by
-    /// [`Store::enqueue_send`].
+    /// [`crate::Store::enqueue_send`].
     pub outgoing_status: Option<OutgoingStatus>,
 }
 

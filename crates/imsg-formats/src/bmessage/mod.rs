@@ -1,6 +1,7 @@
 //! bMessage encoder and parser (MAP spec appendix B).
 //!
-//! Parse with [`BMessage::parse`]; encode with [`BMessage::encode`].
+//! Parse with [`crate::bmessage::BMessage::parse`]; encode with
+//! [`crate::bmessage::BMessage::encode`].
 
 mod encode;
 mod parser;
