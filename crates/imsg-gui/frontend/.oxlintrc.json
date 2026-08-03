@@ -66,15 +66,6 @@
         // an avoidable literal.
         "unicorn/no-null": "off"
       }
-    },
-    {
-      // `commands.listMessages`'s `folder`/`sinceMs` params are `string | null`/`... | null`
-      // (specta's mirror of Rust's `Option<T>`) — "no filter" is only expressible as the literal
-      // `null`, not `undefined`. Same forced-wire-contract exception as the CSF override above.
-      "files": ["**/messages/application/use-conversation.ts"],
-      "rules": {
-        "unicorn/no-null": "off"
-      }
     }
   ]
 }

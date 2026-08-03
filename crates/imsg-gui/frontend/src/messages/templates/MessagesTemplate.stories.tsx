@@ -34,10 +34,16 @@ const meta = {
   args: {
     conversationMessages: undefined,
     conversationPollFailed: false,
+    deleting: false,
+    leftCollapsed: false,
+    onRequestDelete: fn(),
     onResumeConversationPolling: fn(),
     onResumeThreadsPolling: fn(),
     onSelectThread: fn(),
     onSendMessage: fn(),
+    onToggleLeft: fn(),
+    onToggleRight: fn(),
+    rightCollapsed: false,
     selectedAddress: undefined,
     sendError: undefined,
     sendPending: false,
@@ -74,4 +80,12 @@ export const ConversationFailed: Story = {
 
 export const ConversationReady: Story = {
   args: { conversationMessages: [...MESSAGES], selectedAddress: THREADS[0].address, threads: [...THREADS] },
+}
+
+export const LeftCollapsed: Story = {
+  args: { conversationMessages: [...MESSAGES], leftCollapsed: true, selectedAddress: THREADS[0].address, threads: [...THREADS] },
+}
+
+export const RightCollapsed: Story = {
+  args: { conversationMessages: [...MESSAGES], rightCollapsed: true, selectedAddress: THREADS[0].address, threads: [...THREADS] },
 }

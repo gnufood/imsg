@@ -48,6 +48,9 @@ interface PollArgs {
 // `listMessages` returns newest-first (see bindings.ts) — reversed here so the conversation
 // Renders oldest-at-top, chat convention.
 const pollMessages = async ({ address, cancelled, dispatch }: PollArgs): Promise<void> => {
+  // `folder`/`sinceMs` are `string | null`/`... | null` (specta's mirror of Rust's `Option<T>`) —
+  // "no filter" is only expressible as the literal `null`, not `undefined`.
+  // eslint-disable-next-line unicorn/no-null
   const result = await commands.listMessages(null, false, address, null, MESSAGE_LIMIT, 0)
   if (cancelled.current) {
     return

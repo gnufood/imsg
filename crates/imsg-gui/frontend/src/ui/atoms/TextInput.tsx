@@ -4,11 +4,13 @@ interface TextInputProps {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
+  // For explicit `<label htmlFor>` pairing when the field isn't nested inside its own label.
+  id?: string
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void
   placeholder?: string
 }
 
-const TextInput = ({ value, onChange, disabled = false, onKeyDown, placeholder }: TextInputProps): React.JSX.Element => {
+const TextInput = ({ value, onChange, disabled = false, id, onKeyDown, placeholder }: TextInputProps): React.JSX.Element => {
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       onChange(event.target.value)
@@ -19,6 +21,7 @@ const TextInput = ({ value, onChange, disabled = false, onKeyDown, placeholder }
   return (
     <input
       type="text"
+      id={id}
       value={value}
       onChange={handleChange}
       onKeyDown={onKeyDown}

@@ -27,6 +27,12 @@ const meta = {
       },
     ],
     conversationPollFailed: false,
+    deleteConfirmOpen: false,
+    deleteError: undefined,
+    deleting: false,
+    onCancelDelete: fn(),
+    onConfirmDelete: fn(),
+    onRequestDelete: fn(),
     onResumeConversationPolling: fn(),
     onResumeThreadsPolling: fn(),
     onSelectThread: fn(),
@@ -51,3 +57,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+export const DeleteConfirming: Story = {
+  args: { deleteConfirmOpen: true },
+}
+
+export const DeleteFailed: Story = {
+  args: { deleteConfirmOpen: true, deleteError: "Couldn't reach the device." },
+}
