@@ -11,9 +11,9 @@ pub const STATUS_READ: i32 = 1;
 /// Whether a message was received from the remote or sent by the local device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
-    /// Stored as 0.
+    /// Inbound — received from the remote device.
     Received = 0,
-    /// Stored as 1.
+    /// Outbound — sent from this device.
     Sent = 1,
 }
 
@@ -87,7 +87,8 @@ pub struct ThreadRow {
     pub contact_name: Option<String>,
 }
 
-/// A message to be inserted; rowid and `synced_at` are assigned by the caller.
+/// A message to be inserted; the store auto-assigns `rowid` on insert. `synced_at` is a field
+/// here (unlike `MessageRow`, which reads it back from the row) because the caller controls it.
 #[derive(Debug, Clone)]
 pub struct NewMessage {
     /// MAP protocol message handle identifying the message within the remote folder.

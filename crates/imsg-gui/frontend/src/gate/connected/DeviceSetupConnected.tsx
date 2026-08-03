@@ -5,8 +5,6 @@ interface DeviceSetupConnectedProps {
   onComplete: () => void
 }
 
-// Production IPC-connected wrapper (see internal/GUI_ATOMIC_DESIGN.md) — the seam between
-// `useDeviceSetupFlow`'s real backend calls and `DeviceSetup`'s presentational page.
 const DeviceSetupConnected = ({ onComplete }: DeviceSetupConnectedProps): React.JSX.Element => {
   const { retryList, retryPersist, retryResolve, selectDevice, state } = useDeviceSetupFlow(onComplete)
 

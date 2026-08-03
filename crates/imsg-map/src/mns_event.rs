@@ -1,4 +1,4 @@
-//! MAP MNS event types, event struct, parser error, and XML event-report parser.
+//! MAP-event-report event types and the parser that decodes them from the phone's MNS PUT body.
 
 use std::fmt;
 
@@ -117,10 +117,10 @@ pub enum MnsError {
     /// Document contained no `<event>` element; body may be empty or malformed.
     #[error("MAP-event-report contained no <event> element")]
     MissingEvent,
-    /// OBEX protocol-level error during MNS server operation.
+    /// Packet decode failure while framing an MNS request or response.
     #[error("OBEX: {0}")]
     Obex(#[from] ObexError),
-    /// Transport I/O error during MNS server operation.
+    /// I/O failure reading or writing the MNS OBEX stream.
     #[error("transport: {0}")]
     Transport(#[from] TransportError),
     /// Transport stream closed before the device sent a clean OBEX DISCONNECT.

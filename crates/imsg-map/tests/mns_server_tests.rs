@@ -1,4 +1,5 @@
-//! Integration tests for the MNS OBEX server.
+//! Drives the MNS server over an in-memory `tokio::io::duplex` pair, playing the iPhone side
+//! of each exchange (CONNECT/PUT/DISCONNECT) by hand — no real device or MAP client needed.
 
 use bytes::Bytes;
 use futures::{SinkExt, StreamExt};
@@ -24,7 +25,6 @@ const NEW_MESSAGE_XML: &[u8] = b"<?xml version='1.0'?>\
 <event type='NewMessage' handle='ABC123' folder='TELECOM/MSG/INBOX' msg_type='SMS_GSM'/>\
 </MAP-event-report>";
 
-/// Sends a CONNECT request and reads back the server's CONNECT OK response.
 async fn iphone_connect(
     t: &mut obex_core::ObexTransport<tokio::io::DuplexStream>,
 ) -> Result<(), MnsError> {
@@ -34,7 +34,6 @@ async fn iphone_connect(
     Ok(())
 }
 
-/// Sends a `PUT_FINAL` with the given body and reads back the `RSP_OK`.
 async fn iphone_put(
     t: &mut obex_core::ObexTransport<tokio::io::DuplexStream>,
     body: &[u8],
@@ -52,7 +51,6 @@ async fn iphone_put(
     Ok(())
 }
 
-/// Sends an OBEX DISCONNECT and reads back the `RSP_OK`.
 async fn iphone_disconnect(
     t: &mut obex_core::ObexTransport<tokio::io::DuplexStream>,
 ) -> Result<(), MnsError> {

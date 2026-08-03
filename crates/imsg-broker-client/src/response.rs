@@ -5,8 +5,8 @@
 
 use ipc::{BrokerResponse, FolderDto, Reason, SyncReportDto};
 
-/// A text-returning broker request answered with something other than
-/// [`BrokerResponse::Text`].
+/// A broker request answered with something other than its expected success shape
+/// (`Text`, `Folders`, or `ContactsSynced`, depending on the caller).
 #[derive(Debug, thiserror::Error)]
 pub enum CallError {
     /// The device/session rejected the operation.
@@ -15,7 +15,7 @@ pub enum CallError {
     /// IPC-plumbing failure reported by the broker (malformed frame, broker shutting down).
     #[error("{0}")]
     Error(String),
-    /// A response shape no text-returning request should produce (e.g. `Messages`, `StatusInfo`).
+    /// A response shape none of these extractors should ever produce (e.g. `Messages`, `WatchEvent`).
     #[error("unexpected broker response: {0:?}")]
     Unexpected(Box<BrokerResponse>),
 }

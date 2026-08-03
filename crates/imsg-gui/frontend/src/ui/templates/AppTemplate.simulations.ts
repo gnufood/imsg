@@ -4,15 +4,6 @@ import type DaemonControlsArgs from '@/settings/organisms/DaemonControls.types.t
 import type SecurityLevelArgs from '@/settings/organisms/SecurityLevelForm.types.ts'
 import { fn } from 'storybook/test'
 
-// Simulated round trips for `AppTemplate.stories.tsx`'s settings slot — the one story that
-// Renders the real `Settings` page, where static `fn()` args leave a prop-driven organism looking
-// Dead in the canvas (pick a value, watch it snap back). Split out of the story to keep that file
-// Under this repo's 250-line module ceiling; the `null`-bearing message fixtures stay there,
-// Since `unicorn/no-null` is only disabled for `*.stories.tsx`.
-//
-// These mirror what the real application hooks do *today*, open bugs included — see
-// `useSimulatedChannelOverrides`. They are not a specification of intended behavior.
-
 const SIMULATED_DELAY_MS = 400
 
 interface SecuritySimState {
@@ -52,9 +43,6 @@ interface DaemonSimState {
 
 const DAEMON_SIM_INITIAL: DaemonSimState = { installing: false, uninstalling: false, userInstalled: false }
 
-// Brief pending state, then the installed flag flips — what `use-daemon-actions.ts` drives.
-// `DaemonControls` owns the uninstall confirm-dialog step itself, so this only reacts once that's
-// Resolved into a real `onUninstall` call.
 const useSimulatedDaemonControls = (): DaemonControlsArgs => {
   const [state, setState] = useState(DAEMON_SIM_INITIAL)
 
@@ -85,7 +73,6 @@ const useSimulatedDaemonControls = (): DaemonControlsArgs => {
     serviceStatusPollFailed: false,
     stopError: undefined,
     stopping: false,
-    // Status-only in `DaemonControls`; the simulated round trip never flips it.
     systemInstalled: false,
     uninstallError: undefined,
     uninstalling: state.uninstalling,
@@ -113,12 +100,8 @@ const CHANNEL_SIM_INITIAL: ChannelSimState = {
   saving: false,
 }
 
-// Drafts a successful "Detect from device" fills in — kept distinct from the committed pair so
-// The fill is visible, and left unpersisted until Apply, matching the real hook.
 const CHANNEL_SIM_DETECTED = { map: '16', pbap: '19' }
 
-// Pure transitions, mirroring `use-channel-overrides.ts`'s own `reduce` — and keeping the hook
-// Below inside this repo's 50-line-per-function limit.
 const withRevertedDrafts = (current: ChannelSimState): ChannelSimState => ({
   ...current,
   editorOpen: false,
@@ -141,12 +124,6 @@ const withCommittedDrafts = (current: ChannelSimState): ChannelSimState => ({
   saving: false,
 })
 
-// Mirrors `use-channel-overrides.ts` as it behaves now: Cancel reverts the drafts and closes the
-// Editor, a successful Apply commits them and closes it, and a failed Apply would keep it open
-// With the error. One open finding is still reproduced deliberately — MAP and PBAP may be set to
-// The same channel, which nothing rejects here, in the Tauri commands, or in `imsg-config`'s
-// Per-field `validate_channel`. Detect's failure path isn't simulated; the real one depends on a
-// Live SDP query.
 const useSimulatedChannelOverrides = (): ChannelOverridesArgs => {
   const [state, setState] = useState(CHANNEL_SIM_INITIAL)
 

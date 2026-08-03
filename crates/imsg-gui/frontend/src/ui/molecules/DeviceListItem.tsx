@@ -9,7 +9,6 @@ interface DeviceListItemProps {
   onSelect: (address: string) => void
 }
 
-// Expects a `<ul>`/`<ol>` ancestor — DeviceList owns the list semantics, this is just the `<li>`.
 const DeviceListItem = ({ device, onSelect }: DeviceListItemProps): React.JSX.Element => {
   const handleClick = useCallback(() => {
     onSelect(device.address)

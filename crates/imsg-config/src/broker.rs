@@ -6,8 +6,8 @@ use serde::Deserialize;
 
 use crate::ConfigError;
 
-/// Margin the CLI readiness deadline must keep above the broker's own startup budget, so the
-/// CLI never gives up while the broker is still legitimately connecting. Covers IPC round-trip.
+// margin the CLI readiness deadline must keep above the broker's own startup budget, so the
+// CLI never gives up while the broker is still legitimately connecting. Covers IPC round-trip.
 const READINESS_MARGIN_SECS: u64 = 2;
 
 /// Broker lifecycle and startup-timing policy.

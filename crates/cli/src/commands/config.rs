@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-/// Returns it rendered for display.
+/// Loads the config and renders it for display.
 ///
 /// # Errors
 ///

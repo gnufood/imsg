@@ -13,9 +13,6 @@ interface SettingsProps {
   statusPanel: StatusPanelArgs
 }
 
-// Pure forwarder — the five grouped prop bags are built (and memoized) in `SettingsConnected`,
-// The one place that actually owns the underlying hook state; this stays a plain pass-through so
-// It never constructs a fresh object as a JSX prop itself (see internal/GUI_ATOMIC_DESIGN.md).
 const Settings = ({ appearance, channelOverrides, daemonControls, securityLevel, statusPanel }: SettingsProps): React.JSX.Element => (
   <SettingsTemplate
     appearance={appearance}

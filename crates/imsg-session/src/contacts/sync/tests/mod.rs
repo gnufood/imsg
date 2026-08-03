@@ -56,8 +56,8 @@ fn body_rsp(body: &[u8]) -> anyhow::Result<Bytes> {
     .encode()?)
 }
 
-/// A failed-request response: `collect_response` maps any non-OK, non-CONTINUE opcode to
-/// `PbapError::ServerError`, which is what `refresh_contacts` counts as a failed pull.
+// collect_response maps any non-OK, non-CONTINUE opcode to PbapError::ServerError, which is
+// what refresh_contacts counts as a failed pull
 fn error_rsp() -> anyhow::Result<Bytes> {
     Ok(Packet { opcode: OpCode::NotFound, extra: PacketExtra::None, headers: vec![] }.encode()?)
 }

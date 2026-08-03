@@ -22,7 +22,6 @@ async fn fake_store() -> anyhow::Result<(Store, tempfile::TempDir)> {
     Ok((s, dir))
 }
 
-/// A message row builder for tests; only the fields each test varies need overriding.
 fn sample_message(direction: Direction, outgoing_status: Option<OutgoingStatus>) -> NewMessage {
     let folder =
         if direction == Direction::Sent { "telecom/msg/sent" } else { "telecom/msg/inbox" };
@@ -39,8 +38,8 @@ fn sample_message(direction: Direction, outgoing_status: Option<OutgoingStatus>)
     }
 }
 
-/// A connected client whose fake server only answers CONNECT — sufficient for every event type
-/// except `NewMessage`, the only branch that issues further MAP requests.
+// fake server only answers CONNECT — sufficient for every event type except NewMessage, the
+// only branch that issues further MAP requests
 async fn fake_client() -> anyhow::Result<MapClient<DuplexStream>> {
     let (client_io, server_io) = duplex(4096);
     tokio::spawn(async move {
@@ -51,8 +50,8 @@ async fn fake_client() -> anyhow::Result<MapClient<DuplexStream>> {
     Ok(MapClient::connect(client_io).await?)
 }
 
-/// A connected client whose fake server also answers the 3-segment `set_folder` SETPATH
-/// sequence and a `GetMessage` GET, replying with `wire` as the bMessage body.
+// fake server also answers the 3-segment set_folder SETPATH sequence and a GetMessage GET,
+// replying with wire as the bMessage body
 async fn fake_client_with_message(wire: String) -> anyhow::Result<MapClient<DuplexStream>> {
     let (client_io, server_io) = duplex(4096);
     tokio::spawn(async move {

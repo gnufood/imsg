@@ -47,7 +47,7 @@ pub struct Refresh {
     pub wiped: bool,
 }
 
-/// Hex-encodes a 16-byte PBAP identifier/counter for storage in the text-only `meta` table.
+// hex-encodes a 16-byte PBAP identifier/counter for storage in the text-only meta table
 fn hex16(bytes: [u8; 16]) -> String {
     use std::fmt::Write as _;
     let mut s = String::with_capacity(32);
@@ -65,13 +65,10 @@ fn to_pbap_meta(m: &PhonebookMetadata) -> PbapMeta {
     }
 }
 
-/// Pulls the full phonebook at `path` and upserts every contact into the store, tallying what
-/// was lost on the way.
-///
-/// Skips PBAP's `0.vcf` owner card, and any entry whose pull fails or whose vCard carries no
-/// `UID` (the store's primary key) — a per-entry failure is logged, counted, and does not abort
-/// the sync. `wiped` is passed through to the report rather than decided here; the cache-wipe
-/// decision belongs to [`sync_contacts`], which owns the watermark comparison.
+// skips PBAP's 0.vcf owner card, and any entry whose pull fails or whose vCard carries no UID
+// (the store's primary key) — a per-entry failure is logged, counted, and doesn't abort the
+// sync. wiped is passed through to the report rather than decided here; the cache-wipe
+// decision belongs to sync_contacts, which owns the watermark comparison
 async fn refresh_contacts<T: AsyncRead + AsyncWrite + Unpin>(
     client: &mut PbapClient<T>,
     store: &Store,

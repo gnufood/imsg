@@ -31,7 +31,6 @@ fn start_foreground_args_with_overrides() {
     );
 }
 
-/// Round-trips through [`SmServiceStatus`] preserve the stopped-reason payload.
 #[test]
 fn service_state_from_status_preserves_stopped_reason() {
     assert_eq!(ServiceState::from(SmServiceStatus::NotInstalled), ServiceState::NotInstalled);

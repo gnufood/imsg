@@ -24,9 +24,9 @@ const MSG_RSP: &[u8] = include_bytes!("../../../imsg-obex/tests/fixtures/setpath
 const FOLDER_LISTING_RSP: &[u8] =
     include_bytes!("../../../imsg-obex/tests/fixtures/get_folder_listing_000_rsp.bin");
 
-/// A connected client whose fake server answers CONNECT, the `telecom` → `msg` SETPATHs, then
-/// the captured folder-listing GET — the full sequence `list_message_folders` drives. A freshly
-/// connected client is at depth 0, so its `reset_to_root` issues no backup SETPATHs.
+// fake server answers CONNECT, the telecom → msg SETPATHs, then the captured folder-listing
+// GET — the full sequence list_message_folders drives. A freshly connected client is at
+// depth 0, so its reset_to_root issues no backup SETPATHs
 async fn fake_folders_client(listing: &'static [u8]) -> anyhow::Result<MapClient<DuplexStream>> {
     let (client_io, server_io) = duplex(4096);
     tokio::spawn(async move {

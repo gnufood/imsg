@@ -5,13 +5,11 @@ import { useMemo } from 'react'
 interface SegmentedControlOption<Value extends string> {
   label: string
   value: Value
-  // Optional — rendered before the label when present (e.g. AppearanceSettings' Sun/Moon/Monitor).
   icon?: LucideIcon
 }
 
 interface SegmentedControlProps<Value extends string> {
   disabled?: boolean
-  // Groups the native radios — required since a screen can host more than one instance.
   name: string
   onChange: (value: Value) => void
   options: SegmentedControlOption<Value>[]
@@ -25,8 +23,6 @@ interface Segment<Value extends string> {
   value: Value
 }
 
-// Stable per-option handlers, built once per `options`/`onChange` identity rather than as a
-// Fresh closure per render inside the JSX below (see `jsx-no-new-function-as-prop`).
 const buildSegments = <Value extends string>(
   options: SegmentedControlOption<Value>[],
   onChange: (value: Value) => void,
@@ -40,9 +36,6 @@ const buildSegments = <Value extends string>(
     value: option.value,
   }))
 
-// Native `<input type="radio">` per option stays for keyboard (arrow-key group navigation is
-// Free from the browser) and screen-reader semantics, visually hidden — same `sr-only` +
-// Custom-visual pattern as `Checkbox`, styled as a tab-like segment instead of an icon.
 const SegmentedControl = <Value extends string>({
   disabled = false,
   name,

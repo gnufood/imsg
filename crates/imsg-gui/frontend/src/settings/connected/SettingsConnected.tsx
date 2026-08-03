@@ -7,13 +7,6 @@ import useDaemonStatus from '@/settings/application/use-daemon-status.ts'
 import { useMemo } from 'react'
 import useSecurityLevel from '@/settings/application/use-security-level.ts'
 
-// Production IPC-connected wrapper (see internal/GUI_ATOMIC_DESIGN.md) — the seam between the
-// Settings hooks' real backend calls and `Settings`'s presentational page. Also the one place
-// That groups their outputs into the per-organism prop bags `Settings`/`SettingsTemplate` just
-// Forward, memoized here since it's the actual owner of the underlying state.
-// `preference`/`onPreferenceChange` come from `AppReady` rather than a hook owned here — the
-// Single `useThemePreference` instance also drives the app-wide `data-theme` effect, so it's
-// Lifted one level up instead of a second, desynced instance living in this component.
 const SettingsConnected = ({ onPreferenceChange, preference }: AppearanceSettingsArgs): React.JSX.Element => {
   const { config, failed: configFailed, reload } = useConfig()
   const address = config?.device_address

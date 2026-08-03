@@ -3,8 +3,6 @@ import Text from '@/ui/atoms/Text.tsx'
 
 interface EmptyStateProps {
   message: string
-  // `typeof Inbox` (not a separate `LucideIcon` import) to avoid a duplicate-import from
-  // 'lucide-react' — same workaround as ErrorState.
   icon?: typeof Inbox
 }
 

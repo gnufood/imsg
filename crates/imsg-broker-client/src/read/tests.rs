@@ -16,7 +16,6 @@ fn bind_for(addr: &str) -> anyhow::Result<Listener> {
     Ok(ListenerOptions::new().name(ns).create_tokio()?)
 }
 
-/// Accepts one connection, returns the request it decoded, and replies with `resp`.
 async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<BrokerRequest> {
     let stream = listener.accept().await?;
     let codec = LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec();
@@ -57,8 +56,8 @@ async fn folders_maps_failed_response_to_call_error() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The failure that finding 1 is about: nothing is listening, so this must surface as a connect
-/// error the caller can act on rather than an empty listing.
+/// Nothing is listening, so this must surface as a connect error the caller can act on rather
+/// than an empty listing.
 #[tokio::test]
 async fn folders_maps_unreachable_broker_to_connect_error() -> anyhow::Result<()> {
     let Err(err) = folders("TE:ST:00:00:05:03").await else {

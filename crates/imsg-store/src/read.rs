@@ -7,10 +7,8 @@ use crate::{
     Error, OutgoingStatus, Store,
 };
 
-/// Maps a `messages` result row (columns 0–9) to a [`MessageRow`].
-///
-/// Column order must match every `SELECT` that uses this mapper:
-/// `rowid, map_handle, timestamp_ms, folder, direction, address, status, synced_at, text, outgoing_status`.
+// column order must match every SELECT that uses this mapper:
+// rowid, map_handle, timestamp_ms, folder, direction, address, status, synced_at, text, outgoing_status
 fn map_msg_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<MessageRow> {
     Ok(MessageRow {
         rowid: row.get(0)?,
@@ -26,11 +24,9 @@ fn map_msg_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<MessageRow> {
     })
 }
 
-/// Builds the SQL and bound parameters for [`Store::list_messages`].
-///
-/// Always appends `ORDER BY timestamp_ms DESC LIMIT ? OFFSET ?`; `limit` and `offset` are the
-/// final two parameters. Intended to be called inside a `tokio_rusqlite` closure so the
-/// returned `Vec<Box<dyn ToSql>>` does not need to be `Send`.
+// always appends ORDER BY timestamp_ms DESC LIMIT ? OFFSET ?; limit and offset are the final
+// two parameters. Called inside a tokio_rusqlite closure so the returned Vec<Box<dyn ToSql>>
+// doesn't need to be Send
 fn build_list_query(
     folder: Option<String>,
     unread_only: bool,

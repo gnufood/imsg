@@ -12,10 +12,8 @@ use crate::sync::backfill_catch_up;
 use crate::util::now_ms;
 use crate::{EventType, MnsEvent};
 
-/// Maps a MAP folder path segment (or full path like `telecom/msg/inbox`) to a [`Folder`].
-///
-/// Matches on the last `/`-delimited segment, case-insensitively — real devices report
-/// uppercase paths (e.g. `TELECOM/MSG/INBOX`). Returns `None` for unknown folder names.
+// matches on the last /-delimited segment, case-insensitively — real devices report uppercase
+// paths (e.g. TELECOM/MSG/INBOX). Returns None for unknown folder names
 fn parse_folder(s: &str) -> Option<Folder> {
     // rsplit('/').next() always yields Some on any &str; unwrap_or(s) is a no-op fallback.
     let leaf = s.rsplit('/').next().unwrap_or(s);
@@ -81,10 +79,8 @@ pub async fn handle_mns_event<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(())
 }
 
-/// Navigates to the event's folder, fetches the message body, and upserts it.
-///
-/// Missing `handle`/`folder` or an unparseable folder are logged and skipped, not errors —
-/// only a MAP transport/protocol failure or a store write failure propagates.
+// missing handle/folder or an unparseable folder are logged and skipped, not errors — only a
+// MAP transport/protocol failure or a store write failure propagates
 async fn handle_new_message<T: AsyncRead + AsyncWrite + Unpin>(
     event: &MnsEvent,
     client: &mut MapClient<T>,
@@ -118,14 +114,11 @@ async fn handle_new_message<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(())
 }
 
-/// Re-fetches the message and writes its true read/unread flag.
-///
-/// MAP's `ReadStatusChanged` event carries no directionality — it only signals that the flag
-/// changed, not which way — so the previous value can't be trusted to mean "became read";
-/// this must re-fetch and check.
-///
-/// Missing `handle`/`folder` or an unparseable folder are logged and skipped, not errors —
-/// only a MAP transport/protocol failure or a store write failure propagates.
+// MAP's ReadStatusChanged event carries no directionality — it only signals that the flag
+// changed, not which way — so the previous value can't be trusted to mean "became read"; this
+// must re-fetch and check. Missing handle/folder or an unparseable folder are logged and
+// skipped, not errors — only a MAP transport/protocol failure or a store write failure
+// propagates
 async fn handle_read_status_changed<T: AsyncRead + AsyncWrite + Unpin>(
     event: &MnsEvent,
     client: &mut MapClient<T>,
@@ -146,7 +139,7 @@ async fn handle_read_status_changed<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(())
 }
 
-/// Sets `outgoing_status` for the event's handle; a no-op when the event carries none.
+// no-op when the event carries no handle
 async fn mark_outgoing(
     event: &MnsEvent,
     store: &Store,

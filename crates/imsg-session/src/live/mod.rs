@@ -76,7 +76,7 @@ fn read_status_for(f: &ListFilter) -> Option<ReadStatus> {
     f.unread.then_some(ReadStatus::Unread)
 }
 
-/// Best-effort E.164 for grouping/matching; the raw form when it can't be resolved.
+// best-effort E.164 for grouping/matching; the raw form when it can't be resolved
 fn canonical(raw: &str) -> String {
     PhoneField::new(raw, None).display().to_owned()
 }

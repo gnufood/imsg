@@ -16,10 +16,7 @@ const readStoredPreference = (): ThemePreference => {
     if (isThemePreference(stored)) {
       return stored
     }
-  } catch {
-    // `localStorage` can throw in restricted contexts (private mode, disabled storage) —
-    // Fall back to 'system' rather than crash the app over a preference read.
-  }
+  } catch {}
   return 'system'
 }
 
@@ -37,10 +34,6 @@ const resolveTheme = (preference: ThemePreference, systemTheme: ResolvedTheme): 
   return preference
 }
 
-// Application boundary for theming (see internal/GUI_ATOMIC_DESIGN.md) — the only file allowed
-// To touch `localStorage`/`matchMedia`/`document.documentElement` directly. Only ever
-// Instantiated once, by `AppReady` (post-gate — see that file), so its `data-theme` effect never
-// Runs during Gate/Splash/DeviceSetup.
 const useThemePreference = (): UseThemePreferenceResult => {
   const [storedPreference, setStoredPreference] = useState<ThemePreference>(readStoredPreference)
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(resolveSystemTheme)
@@ -70,10 +63,7 @@ const useThemePreference = (): UseThemePreferenceResult => {
     setStoredPreference(next)
     try {
       globalThis.localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      // Same rationale as the read path — a failed write just means the choice won't persist
-      // Across relaunches this session, not a reason to throw.
-    }
+    } catch {}
   }, [])
 
   return { preference: storedPreference, setPreference }

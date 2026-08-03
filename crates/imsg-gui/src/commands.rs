@@ -3,6 +3,10 @@
 //! Split by domain (`reads`, `config`, `daemon`, `send`, `delete`) to stay under the
 //! 250-line module ceiling as the command surface grows; `CommandError` (shared across every
 //! domain) lives here.
+//!
+//! Commands taking `String`/`PathBuf` args (not `&str`/`&Path`) carry
+//! `#[allow(clippy::needless_pass_by_value)]`: `#[tauri::command]` arguments are deserialized
+//! from the frontend's IPC call and must be owned.
 
 pub mod config;
 pub mod contacts;

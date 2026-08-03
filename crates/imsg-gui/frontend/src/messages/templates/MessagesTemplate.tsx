@@ -26,8 +26,6 @@ interface SplitPaneArgs {
   threads: ThreadDto[]
 }
 
-// Pulled out of `MessagesTemplate` so it stays under this repo's max-lines-per-function limit —
-// Same pattern `ConversationPane`'s own `renderContent` uses.
 const renderSplitPane = ({
   conversationMessages,
   conversationPollFailed,

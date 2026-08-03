@@ -7,12 +7,9 @@ interface ButtonProps {
   icon?: LucideIcon
   disabled?: boolean
   children: ReactNode
-  // Borderless variant — for controls that shouldn't read as boxed actions (e.g. paired
-  // With another control right next to them, like `DaemonControls`' install/uninstall row).
   ghost?: boolean
 }
 
-// Hardcoded `type="button"` — this never triggers a form submit.
 const Button = ({ onClick, icon: Icon, disabled = false, children, ghost = false }: ButtonProps): React.JSX.Element => {
   let variantClass = 'rounded-md border border-line px-3.5 py-1.5'
   if (ghost) {

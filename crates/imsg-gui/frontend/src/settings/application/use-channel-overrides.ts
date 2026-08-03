@@ -22,8 +22,6 @@ const initialState: State = {
   saving: false,
 }
 
-// Split in two only to keep each `reduce` arm under this repo's max-statements limit — the
-// Editor/draft transitions a user drives directly, and the outcomes of an in-flight request.
 type EditorAction =
   | { mapChannel: number; pbapChannel: number; type: 'committedReceived' }
   | { draft: string; type: 'mapDraftChanged' }
@@ -41,9 +39,6 @@ type RequestAction =
 
 type Action = EditorAction | RequestAction
 
-// Drops whatever's in the drafts and returns to the last known-good committed values, errors
-// Included. Shared by the initial-load effect and by `cancel` — which used to be the same
-// Transition, but now differ on one thing: cancelling closes the editor and a reload must not.
 const reseeded = (state: State, mapChannel: number, pbapChannel: number): State => ({
   ...state,
   detectError: undefined,
@@ -52,10 +47,6 @@ const reseeded = (state: State, mapChannel: number, pbapChannel: number): State 
   saveError: undefined,
 })
 
-// `editorOpen` lives here rather than as local state in `ChannelOverridesForm` because closing
-// The editor is an *outcome* of the save landing, and only this boundary sees outcomes:
-// `saveSucceeded` closes it, `saveFailed` deliberately leaves it open so the error is shown in
-// Place with the drafts intact. Same split as `use-delete-conversation.ts`'s `confirmOpen`.
 const reduceRequest = (state: State, action: RequestAction): State => {
   switch (action.type) {
     case 'saveStarted': {
@@ -79,7 +70,6 @@ const reduceRequest = (state: State, action: RequestAction): State => {
   }
 }
 
-// Pure — every transition names the state it lands on explicitly.
 const reduce = (state: State, action: Action): State => {
   switch (action.type) {
     case 'committedReceived': {
@@ -110,8 +100,6 @@ interface SaveArgs {
   pbapChannel: number
 }
 
-// Best-effort, same convention as `use-delete-conversation.ts`: fires both writes concurrently
-// And surfaces one error if either failed, rather than aborting on the first failure.
 const saveChannels = async ({ dispatch, mapChannel, onSaved, pbapChannel }: SaveArgs): Promise<void> => {
   dispatch({ type: 'saveStarted' })
   const results = await Promise.all([commands.configSetMapChannel(mapChannel), commands.configSetPbapChannel(pbapChannel)])
@@ -129,11 +117,6 @@ interface DetectArgs {
   dispatch: React.Dispatch<Action>
 }
 
-// Re-runs the same SDP lookup the device-setup gate does on first run (see
-// `gate/application/use-device-setup-flow.ts`'s `resolveChannels`) and fills the drafts with the
-// Result — doesn't persist it. A missing channel is treated as a failure here (unlike the gate
-// Flow's dedicated "device unsupported" stage) since there's no equivalent stage to route to
-// Mid-edit; the existing drafts are left untouched so a partial SDP response can't clobber them.
 const detectChannels = async ({ address, dispatch }: DetectArgs): Promise<void> => {
   dispatch({ type: 'detectStarted' })
   const result = await commands.discoverResolveChannels(address)
@@ -154,8 +137,6 @@ interface CommittedArgs {
   pbapChannel: number | undefined
 }
 
-// Re-seeds the drafts from the committed config values whenever they change — initial load, and
-// Again after `onSaved` triggers a `reload`.
 const useCommittedSync = ({ dispatch, mapChannel, pbapChannel }: CommittedArgs): void => {
   useEffect(() => {
     if (mapChannel === undefined || pbapChannel === undefined) {
@@ -165,8 +146,6 @@ const useCommittedSync = ({ dispatch, mapChannel, pbapChannel }: CommittedArgs):
   }, [dispatch, mapChannel, pbapChannel])
 }
 
-// Discards whatever's in the drafts and closes the editor — the only way out of it besides a
-// Save that actually landed.
 const useCancelAction = ({ dispatch, mapChannel, pbapChannel }: CommittedArgs): (() => void) =>
   useCallback(() => {
     if (mapChannel === undefined || pbapChannel === undefined) {
@@ -198,8 +177,6 @@ interface SaveActionArgs {
 
 const useSaveAction = ({ dispatch, mapDraft, onSaved, pbapDraft }: SaveActionArgs): (() => void) =>
   useCallback(() => {
-    // `Number('')` is `0`, not `NaN` — checked separately so a blank draft doesn't silently
-    // Save as channel 0.
     const mapBlank = mapDraft.trim() === ''
     const pbapBlank = pbapDraft.trim() === ''
     const parsedMap = Math.trunc(Number(mapDraft))
@@ -218,11 +195,6 @@ interface UseChannelOverridesArgs {
   pbapChannel: number | undefined
 }
 
-// Application boundary for the settings feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here allowed to import `bindings.ts`'s `configSetChannels`/`discoverResolveChannels`.
-// Returns `ChannelOverridesArgs` directly, echoing the committed channels back out, so the
-// Connected wrapper forwards one object instead of renaming thirteen fields — same shape as
-// `use-security-level.ts`.
 const useChannelOverrides = ({ address, mapChannel, onSaved, pbapChannel }: UseChannelOverridesArgs): ChannelOverridesArgs => {
   const [state, dispatch] = useReducer(reduce, initialState)
 

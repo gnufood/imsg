@@ -10,7 +10,7 @@ pub mod client;
 pub mod codec;
 /// OBEX header types; wire tag bytes 0x01–0xCB.
 pub mod headers;
-/// [`crate::packet::Packet`], [`crate::packet::OpCode`], `PacketExtra`, and `PacketError` types.
+/// Wire packet representation — opcode, fixed extra-byte section, and header list; plus codec errors.
 pub mod packet;
 /// OBEX server state machine — decodes requests and encodes responses.
 pub mod server;

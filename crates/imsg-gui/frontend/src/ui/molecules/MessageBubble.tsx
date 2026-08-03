@@ -5,12 +5,9 @@ interface MessageBubbleProps {
   message: MessageDto
 }
 
-// Explicit options (no seconds) rather than bare `toLocaleString()`, which includes them.
 const TIMESTAMP_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' })
 const formatTimestamp = (timestampMs: bigint): string => TIMESTAMP_FORMAT.format(new Date(Number(timestampMs)))
 
-// Mirrors `store::OutgoingStatus`'s variants (see bindings.ts) — `None` (received messages)
-// Never reaches this map, guarded by the `outgoing_status !== null` check below.
 const OUTGOING_LABEL: Record<NonNullable<MessageDto['outgoing_status']>, string> = {
   FailedPermanent: 'Failed to send',
   FailedRetryable: 'Failed, retrying…',
@@ -21,8 +18,6 @@ const OUTGOING_LABEL: Record<NonNullable<MessageDto['outgoing_status']>, string>
   Unknown: 'Delivery unknown',
 }
 
-// Expects a `<ul>`/`<ol>` ancestor — ConversationView owns the list semantics, this is just
-// The `<li>`.
 const MessageBubble = ({ message }: MessageBubbleProps): React.JSX.Element => {
   if (message.direction === 'Sent') {
     return (

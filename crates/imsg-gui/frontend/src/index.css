@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Tokens sampled directly from crates/imsg-gui/assets/imsg.png (see internal/GUI.md) —
+/* Tokens sampled directly from crates/imsg-gui/assets/imsg.png —
    surface/ink from the icon's own light-mode rendering, accent from the chain-link color.
    surface/ink/muted/line/accent all swap between themes. */
 @theme {

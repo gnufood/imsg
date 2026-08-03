@@ -12,9 +12,6 @@ interface StatusDescription {
   tone: 'active' | 'error' | 'idle' | 'pending'
 }
 
-// Presentation-level mapping of the backend's connection enum to a label/tone pair — same
-// Pattern as `MessageBubble`'s `OUTGOING_LABEL`. `null` (no daemon reachable) isn't part of
-// `SessionState` itself, so it's handled before the switch rather than folded into it.
 const describeStatus = (status: Status): StatusDescription => {
   if (status === null) {
     return { label: 'No daemon detected', tone: 'idle' }

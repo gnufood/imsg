@@ -2,10 +2,7 @@ import { useCallback, useEffect, useReducer } from 'react'
 import type UseConversationResult from '@/messages/application/use-conversation.types.ts'
 import { commands } from '@/bindings.ts'
 
-// Same 5s cadence as use-threads.ts (see GUI_NEXT.md "Live updates — decided: poll").
 const POLL_MS = 5000
-// No pagination yet — a flat cap keeps the first read simple; revisit if real conversations
-// Exceed it.
 const MESSAGE_LIMIT = 200
 
 interface State {
@@ -21,7 +18,6 @@ type Action =
   | { type: 'resumePolling' }
   | { type: 'addressChanged' }
 
-// Pure — every transition names the state it lands on explicitly.
 const reduce = (state: State, action: Action): State => {
   switch (action.type) {
     case 'messagesReceived': {
@@ -45,11 +41,7 @@ interface PollArgs {
   dispatch: React.Dispatch<Action>
 }
 
-// `listMessages` returns newest-first (see bindings.ts) — reversed here so the conversation
-// Renders oldest-at-top, chat convention.
 const pollMessages = async ({ address, cancelled, dispatch }: PollArgs): Promise<void> => {
-  // `folder`/`sinceMs` are `string | null`/`... | null` (specta's mirror of Rust's `Option<T>`) —
-  // "no filter" is only expressible as the literal `null`, not `undefined`.
   // eslint-disable-next-line unicorn/no-null
   const result = await commands.listMessages(null, false, address, null, MESSAGE_LIMIT, 0)
   if (cancelled.current) {
@@ -62,9 +54,6 @@ const pollMessages = async ({ address, cancelled, dispatch }: PollArgs): Promise
   dispatch({ type: 'pollFailed' })
 }
 
-// Fires only when the selected address itself changes, not on every `active`/`pollFailed`
-// Toggle — otherwise a retry-after-failure would flash the view back to "loading" and lose
-// The last-known messages for no reason.
 const useResetOnAddressChange = (address: string | undefined, dispatch: React.Dispatch<Action>): void => {
   useEffect(() => {
     dispatch({ type: 'addressChanged' })
@@ -88,9 +77,6 @@ const usePollMessages = (address: string | undefined, active: boolean, dispatch:
   }, [address, active, dispatch])
 }
 
-// Application boundary for the messages feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here (alongside use-threads.ts) allowed to import `bindings.ts`. `address` is
-// `undefined` when no thread is selected — polling simply doesn't start.
 const useConversation = (address: string | undefined): UseConversationResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
   const { messages, pollFailed } = state

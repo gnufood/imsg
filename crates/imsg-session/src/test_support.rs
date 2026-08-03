@@ -50,7 +50,6 @@ pub(crate) async fn iphone_put(
     Ok(())
 }
 
-/// OBEX DISCONNECT.
 pub(crate) async fn iphone_disconnect(
     t: &mut obex_core::ObexTransport<DuplexStream>,
 ) -> Result<(), MnsError> {

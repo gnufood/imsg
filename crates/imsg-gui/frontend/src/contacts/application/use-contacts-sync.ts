@@ -32,13 +32,8 @@ interface SyncArgs {
   dispatch: React.Dispatch<Action>
 }
 
-// Looks up the device's own address fresh on every sync rather than caching it — same reasoning
-// As `use-send.ts`'s `sendMessage`, and avoids requiring the caller (`MessagesConnected`) to plumb
-// The device address down just for this one action.
 const syncContacts = async ({ dispatch }: SyncArgs): Promise<void> => {
   dispatch({ type: 'syncStarted' })
-  // `configPath` is `string | null` (specta's mirror of Rust's `Option<T>`) — `null` here means
-  // "use the default config file location," the only way to express that over this wire contract.
   // eslint-disable-next-line unicorn/no-null
   const config = await commands.configShow(null)
   if (config.status === 'error') {
@@ -53,10 +48,6 @@ const syncContacts = async ({ dispatch }: SyncArgs): Promise<void> => {
   dispatch({ report: result.data, type: 'syncSucceeded' })
 }
 
-// Application boundary for the contacts sync action (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here allowed to import `bindings.ts`'s `syncContactsNow`. Backs `MessagesConnected`'s
-// `ThreadListPane` header refresh button; the PBAP sync it triggers is what keeps `contact_name`
-// Resolution current even without a dedicated browse-contacts page.
 const useContactsSync = (): UseContactsSyncResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
 

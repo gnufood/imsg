@@ -11,7 +11,7 @@ use crate::phone::PhoneField;
 /// Contact parsing errors — calcard cannot parse the vCard input.
 #[derive(Debug, Error)]
 pub enum ContactError {
-    /// calcard could not parse the vCard; the input was not well-formed vCard.
+    /// The input was not well-formed vCard.
     #[error("vCard parse failed")]
     ParseFailed,
 }

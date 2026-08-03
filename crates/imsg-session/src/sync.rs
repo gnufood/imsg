@@ -11,10 +11,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::fetch::{fetch_folder, FetchedMessage};
 
-/// Maps a device-read message to a store insert record, stamping `synced_at`.
-///
-/// `direction` is derived from `sent`; `status` is `1` for read, `0` for unread. The persist
-/// boundary — store shape (`NewMessage`) stays out of the shared read path.
+// direction is derived from sent; status is 1 for read, 0 for unread. The persist boundary —
+// store shape (NewMessage) stays out of the shared read path
 fn to_new_message(msg: FetchedMessage, synced_at: i64) -> NewMessage {
     NewMessage {
         map_handle: msg.handle,
@@ -29,18 +27,12 @@ fn to_new_message(msg: FetchedMessage, synced_at: i64) -> NewMessage {
     }
 }
 
-/// Fetches and upserts all messages in `folder` since the per-folder cursor anchor, paging
-/// at 1024 messages per request.
-///
-/// Reads the cursor before fetching to derive `since_ms` (`None` on first run = full fetch).
-/// Tracks the highest `timestamp_ms` seen across all upserted messages; on success writes the
-/// cursor with `sync_status = Complete` and `highest_ts` set to that value (or the previous
-/// `highest_ts` when no new messages were found). The cursor is not updated on error —
-/// the next run retries from the same anchor.
-///
-/// # Errors
-///
-/// Returns an error if any MAP operation or store read/write fails.
+// fetches and upserts all messages in folder since the per-folder cursor anchor, paging at
+// 1024 messages per request. Reads the cursor before fetching to derive since_ms (None on
+// first run = full fetch). Tracks the highest timestamp_ms seen; on success writes the cursor
+// with sync_status = Complete and highest_ts set to that value (or the previous highest_ts
+// when no new messages were found). The cursor isn't updated on error — the next run retries
+// from the same anchor
 async fn backfill_folder<T: AsyncRead + AsyncWrite + Unpin>(
     client: &mut MapClient<T>,
     store: &Store,

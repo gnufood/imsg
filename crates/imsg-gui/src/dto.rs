@@ -224,9 +224,9 @@ impl From<&transport::discover::PairedDevice> for PairedDeviceDto {
 /// [`PairedDeviceDto`] for why this isn't `imsg-transport::discover::Channels` directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct ChannelsDto {
-    /// MAP (Message Access Profile) RFCOMM channel.
+    /// MAP RFCOMM channel.
     pub map: Option<u8>,
-    /// PBAP (Phone Book Access Profile) RFCOMM channel.
+    /// PBAP RFCOMM channel.
     pub pbap: Option<u8>,
 }
 

@@ -49,9 +49,9 @@ pub enum OpCode {
     Abort,
     /// Server requests the next chunk.
     Continue,
-    /// Success.
+    /// 0xA0 — success.
     Ok,
-    /// Object was created successfully.
+    /// 0xA1 — object created successfully.
     Created,
     /// Request was malformed.
     BadRequest,
@@ -149,7 +149,7 @@ pub enum PacketExtra {
     },
     /// SETPATH fixed header: navigation flags.
     SetPath {
-        /// Bit 1 = navigate to child; bit 0 = do not create.
+        /// Bit 0 = backup to parent (clear = navigate to child); bit 1 = do not create.
         flags: u8,
         /// Reserved; always 0x00.
         constants: u8,
@@ -161,7 +161,7 @@ pub enum PacketExtra {
 pub struct Packet {
     /// First wire byte, decoded.
     pub opcode: OpCode,
-    /// Fixed bytes between the length field and the headers.
+    /// See [`PacketExtra`].
     pub extra: PacketExtra,
     /// Variable-length headers in wire order.
     pub headers: Vec<Header>,

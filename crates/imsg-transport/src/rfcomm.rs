@@ -125,15 +125,9 @@ pub async fn link_events(
     Ok(futures::stream::once(async move { initial }).chain(transitions))
 }
 
-/// Polls `is_connected` every 25 ms until it returns `true` or `deadline` is exceeded.
-///
-/// In production `is_connected` wraps `stream.peer_addr().is_ok()`.  The plain `Fn`
-/// boundary lets the timing logic be exercised without RFCOMM hardware in tests.
-///
-/// # Errors
-///
-/// Returns [`TransportError::Io`] with [`std::io::ErrorKind::TimedOut`] if the deadline
-/// passes before `is_connected` returns `true`.
+// polls is_connected every 25ms; prod wraps peer_addr().is_ok(). Fn boundary lets
+// the timing logic run without RFCOMM hardware in tests; returns TimedOut once
+// deadline passes before is_connected succeeds
 async fn await_bt_connected(
     is_connected: impl Fn() -> bool,
     deadline: tokio::time::Instant,
@@ -196,11 +190,7 @@ mod tests {
     // socket and is untested here, matching this crate's existing convention for
     // hardware-backed calls (see discover.rs's note on `connect`/`listen_mns`).
 
-    /// `getpeername` on a newly created, unconnected socket returns `ENOTCONN`.
-    ///
-    /// This mirrors the `BT_CONNECT` state the RFCOMM socket is in when
-    /// `Stream::connect().await` returns.  If this invariant ever breaks the
-    /// `peer_addr().is_ok()` probe loses its meaning.
+    // mirrors the BT_CONNECT state — if this ever breaks, peer_addr().is_ok() loses its meaning
     #[test]
     fn unconnected_socket_peer_addr_returns_enotconn() -> io::Result<()> {
         let sock = Socket::new(Domain::IPV4, Type::STREAM, None)?;
@@ -212,10 +202,7 @@ mod tests {
         Ok(())
     }
 
-    /// `getpeername` on a connected socket returns the peer address.
-    ///
-    /// This mirrors the `BT_CONNECTED` state — proves `peer_addr().is_ok()` is the
-    /// correct exit condition for the polling loop.
+    // mirrors BT_CONNECTED — proves peer_addr().is_ok() is the correct loop-exit condition
     #[test]
     fn connected_socket_peer_addr_succeeds() -> io::Result<()> {
         use std::net::{TcpListener, TcpStream};
@@ -228,17 +215,13 @@ mod tests {
 
     // --- Logic tests for await_bt_connected ---
 
-    /// When `is_connected` is true on the first poll, the function returns immediately
-    /// without sleeping — handles the case where `BT_CONNECTED` was reached before we poll.
     #[tokio::test]
     async fn resolves_immediately_when_already_connected() -> Result<(), TransportError> {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
         await_bt_connected(|| true, deadline).await
     }
 
-    /// When `is_connected` is never true the function returns `TimedOut` after the deadline.
-    ///
-    /// Uses a 100 ms deadline so the test completes quickly.
+    // 100ms deadline keeps the test fast
     #[tokio::test]
     async fn times_out_when_link_never_establishes() {
         let deadline = tokio::time::Instant::now() + Duration::from_millis(100);
@@ -249,8 +232,6 @@ mod tests {
         );
     }
 
-    /// `is_connected` returns false for the first two polls then true — the loop retries
-    /// and resolves successfully rather than giving up after the first `false`.
     #[tokio::test]
     async fn resolves_after_transient_not_connected() -> Result<(), TransportError> {
         let polls = Arc::new(AtomicU32::new(0));

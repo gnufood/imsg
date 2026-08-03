@@ -26,7 +26,7 @@ impl Store {
     }
 }
 
-/// Encodes `key` as the `SQLCipher` hex-blob PRAGMA value `x'<hex>'`.
+// encodes key as the SQLCipher hex-blob PRAGMA value x'<hex>'
 fn make_key_hex(key: &[u8; 32]) -> String {
     use std::fmt::Write;
     let mut s = String::with_capacity(67); // "x'" + 64 hex chars + "'"

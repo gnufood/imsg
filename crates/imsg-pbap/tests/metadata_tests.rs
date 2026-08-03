@@ -1,4 +1,5 @@
-//! Integration tests for `PbapClient::phonebook_metadata`.
+//! Drives `phonebook_metadata` over an in-memory duplex pair, verifying `MaxListCount=0`
+//! triggers a bodyless response and that `AppParams` TLVs land in the right `PhonebookMetadata` fields.
 
 use bytes::Bytes;
 use futures::{SinkExt, StreamExt};

@@ -11,12 +11,9 @@ interface ThreadListItemProps {
   onSelect: (address: string) => void
 }
 
-// `latest_ms` is a wall-clock instant, not a duration. Explicit options (no seconds) rather than
-// Bare `toLocaleString()`, which includes them.
 const LATEST_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' })
 const formatLatest = (latestMs: bigint): string => LATEST_FORMAT.format(new Date(Number(latestMs)))
 
-// Expects a `<ul>`/`<ol>` ancestor — ThreadList owns the list semantics, this is just the `<li>`.
 const ThreadListItem = ({ thread, onSelect }: ThreadListItemProps): React.JSX.Element => {
   const handleClick = useCallback(() => {
     onSelect(thread.address)

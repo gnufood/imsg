@@ -1,4 +1,5 @@
-//! Integration tests for PBAP phonebook pull and vCard-listing operations.
+//! Pull/list/search/pull-entry against fixture CONTINUE+body responses, covering windowing
+//! (limit/offset), non-Pb phonebook paths, and the search-value CR/LF rejection.
 
 use bytes::Bytes;
 use futures::{SinkExt, StreamExt};

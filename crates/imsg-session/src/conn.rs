@@ -13,25 +13,19 @@ use transport::iroh::{Endpoint, EndpointId, HubStream, MAP_ALPN, PBAP_ALPN};
 /// MAP/PBAP session stream: iroh hub (Left) or RFCOMM (Right).
 pub type Stream = Either<HubStream, bluer::rfcomm::Stream>;
 
-/// Resolved transport target for one MAP or PBAP invocation.
+// resolved transport target for one MAP or PBAP invocation
 enum Target {
-    /// iroh hub mode — connects via QUIC to the given hub node.
+    // iroh hub mode — connects via QUIC to the given hub node
     Hub(EndpointId),
-    /// RFCOMM device address and channel.
+    // RFCOMM device address and channel
     Rfcomm(bluer::Address, u8),
 }
 
-/// Selects the transport target from CLI flags and config primitives.
-///
-/// In hub mode `hub_node_key` must be `Some` and parseable as an [`EndpointId`] — returns an
-/// error otherwise. In RFCOMM mode, resolves device address from `device_override` then
-/// `device_addr`. Does not validate that `channel` is within the RFCOMM range `[1, 30]` —
-/// validated at [`config::load`] time.
-///
-/// # Errors
-///
-/// Returns an error if `hub` is `true` and `hub_node_key` is absent or not a valid
-/// [`EndpointId`], or if the RFCOMM device address cannot be parsed as `XX:XX:XX:XX:XX:XX`.
+// selects the transport target from CLI flags and config primitives. In hub mode hub_node_key
+// must be Some and parseable as an EndpointId — errors otherwise. In RFCOMM mode, resolves
+// device address from device_override then device_addr. Doesn't validate channel is in [1, 30]
+// — validated at config::load time. Errors if hub is true and hub_node_key is absent/invalid,
+// or if the RFCOMM device address can't be parsed as XX:XX:XX:XX:XX:XX
 fn target(
     hub: bool,
     hub_node_key: Option<&str>,

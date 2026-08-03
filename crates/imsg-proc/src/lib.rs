@@ -12,12 +12,7 @@ use anyhow::{Context, Result};
 use tokio::fs::OpenOptions;
 use tokio::process::{Child, Command};
 
-/// Builds the argv for re-invoking the current binary: `verb` followed by `--device <addr>`
-/// and, if set, `--config <config_path>`.
-///
-/// # Errors
-///
-/// Returns an error if `config_path` is set and isn't valid UTF-8.
+// errors only if config_path is set and isn't valid UTF-8
 fn respawn_args(verb: &[&str], addr: &str, config_path: Option<&Path>) -> Result<Vec<String>> {
     let mut args: Vec<String> = verb.iter().map(|s| (*s).to_owned()).collect();
     args.push("--device".to_owned());
@@ -29,9 +24,7 @@ fn respawn_args(verb: &[&str], addr: &str, config_path: Option<&Path>) -> Result
     Ok(args)
 }
 
-/// Opens (creating/truncating) `log_path` for a detached child's stdio, creating its parent
-/// directory first. `0o600` on Unix — these logs outlive this process and may carry message
-/// content, so keep them off-limits to other users.
+// 0o600 on unix: these logs outlive this process and may carry message content
 async fn open_log(log_path: &Path) -> Result<std::fs::File> {
     if let Some(parent) = log_path.parent() {
         tokio::fs::create_dir_all(parent).await.context("creating log directory")?;

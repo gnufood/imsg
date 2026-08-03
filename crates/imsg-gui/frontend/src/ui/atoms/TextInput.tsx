@@ -5,7 +5,6 @@ interface TextInputProps {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
-  // For explicit `<label htmlFor>` pairing when the field isn't nested inside its own label.
   id?: string
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void
   placeholder?: string

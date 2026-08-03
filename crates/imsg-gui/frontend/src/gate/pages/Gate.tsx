@@ -5,8 +5,6 @@ import GateTemplate from '@/gate/templates/GateTemplate.tsx'
 interface GateProps {
   deviceSetupSlot: React.JSX.Element
   onProceed: () => void
-  // Caller-owned hand-off once the backend gate reports Ready — Gate only decides *when*,
-  // Never what happens after.
   onReady: () => void
   onResumePolling: () => void
   pollFailed: boolean
@@ -20,8 +18,6 @@ const Gate = ({ deviceSetupSlot, onProceed, onReady, onResumePolling, pollFailed
     setSplashDone(true)
   }, [])
 
-  // `Splash` may finish (its cap outlasts, not outraces, the floor) before the gate does —
-  // GateTemplate's loading branch after `splashDone` covers that window.
   useEffect(() => {
     if (splashDone && status === 'Ready') {
       onReady()

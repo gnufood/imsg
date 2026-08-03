@@ -8,18 +8,14 @@ use toml_edit::{DocumentMut, Item, Table};
 use super::ConfigError;
 use crate::broker::SecurityLevel;
 
-/// Opens (or creates) `~/.config/imsg/imsg.toml`, sets `[section].key = value`, writes back.
-///
-/// All other keys and sections are preserved. Parent directories are created if absent.
-/// `value` is written with its real TOML type (e.g. a bare integer for `impl Into<Value>`'s
-/// `i64` impl) — callers must pass the type the config struct actually deserializes into, or
-/// the next load will fail (a quoted string never coerces into a typed numeric field).
-///
-/// # Errors
-///
-/// Returns [`ConfigError::Io`] when the config directory cannot be determined or on FS failure.
-/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
-/// Returns [`ConfigError::Invalid`] when the section already exists but is not a TOML table.
+// opens (or creates) ~/.config/imsg/imsg.toml, sets [section].key = value, writes back.
+// all other keys/sections preserved; parent dirs created if absent. value is written with
+// its real TOML type (e.g. bare integer for i64) — callers must pass the type the config
+// struct actually deserializes into, or the next load fails (a quoted string never coerces
+// into a typed numeric field).
+//
+// errors: Io when the config dir can't be determined or on FS failure; Parse when the
+// existing file has invalid TOML; Invalid when the section exists but isn't a TOML table.
 fn patch_config(
     section: &'static str,
     key: &str,
@@ -105,7 +101,7 @@ pub fn set_pbap_channel(channel: u8) -> Result<(), ConfigError> {
 
 /// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
 ///
-/// Writes `address`, `map_channel`, and `pbap_channel` together — the combined write automatic
+/// Writes `address`, `map_channel`, and `pbap_channel` together — the combined write that automatic
 /// device discovery needs, since a resolved channel has no "not found" representation in config
 /// (the schema requires `u8`, not `Option<u8>`); callers must resolve or reject a missing SDP
 /// record themselves before calling this. All three inputs are validated before any I/O, so a
@@ -163,7 +159,7 @@ pub fn broker_abstract_name(addr: &str) -> io::Result<Name<'static>> {
     format!("imsg/broker/{addr}").to_ns_name::<GenericNamespaced>()
 }
 
-/// `$XDG_STATE_HOME/imsg/{kind}-{addr}.log`, falling back to `~/.local/state` then `$TMPDIR`.
+// $XDG_STATE_HOME/imsg/{kind}-{addr}.log, falling back to ~/.local/state then $TMPDIR
 fn state_log_path(kind: &str, addr: &str) -> PathBuf {
     let base = dirs::state_dir().unwrap_or_else(|| {
         dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")

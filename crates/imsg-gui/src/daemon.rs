@@ -124,7 +124,7 @@ pub enum StopError {
 /// Any connection failure (including a plain "nothing listening") is treated as
 /// [`StopOutcome::NotRunning`], not an error — mirrors the CLI's `daemon stop`. Unlike the
 /// CLI's `run_stop`, this does not block waiting for the socket to go unreachable; the GUI's own
-/// poll loop (see `internal/GUI.md`'s "Live updates") is expected to pick up the transition.
+/// poll loop picks up the transition on its next status query.
 ///
 /// # Errors
 ///

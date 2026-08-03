@@ -45,10 +45,6 @@ interface MessagesTemplateArgs {
   threadsPollFailed: boolean
 }
 
-// Pulled out of `Messages` so it stays under this repo's max-lines-per-function limit — same
-// Pattern as `renderDeleteDialog` above. Props enumerated explicitly, not spread — this repo's
-// `react/jsx-props-no-spreading` disallows constructing/spreading a fresh object at a JSX call
-// Site (see internal/GUI_NEXT.md's `SettingsConnected` note).
 const renderMessagesTemplate = ({
   conversationMessages,
   conversationPollFailed,
@@ -96,8 +92,6 @@ interface PaneCollapseState {
   toggleLeft: () => void
 }
 
-// Pulled out of the component so `Messages` itself stays under this repo's max-lines-per-function
-// Limit — still page-owned, presentation-only state, just packaged as a local hook.
 const usePaneCollapse = (): PaneCollapseState => {
   const [leftCollapsed, setLeftCollapsed] = useState(false)
 
@@ -130,9 +124,6 @@ interface MessagesProps {
   threadsPollFailed: boolean
 }
 
-// Derived from data this page already has (no extra IPC) — the same cached-display-name join
-// `ThreadListItem` uses, just looked up by address instead of iterated. Pulled out of `Messages`,
-// Same as `usePaneCollapse`, to stay under this repo's max-lines-per-function limit.
 const useSelectedContactName = (threads: ThreadDto[] | undefined, selectedAddress: string | undefined): string | undefined =>
   useMemo(() => threads?.find((thread) => thread.address === selectedAddress)?.contact_name ?? undefined, [threads, selectedAddress])
 
@@ -142,8 +133,6 @@ interface MessagesPageArgs extends MessagesProps {
   toggleLeft: () => void
 }
 
-// Pulled out of `Messages` so it stays under this repo's max-lines-per-function limit — same
-// Pattern as `renderDeleteDialog`/`renderMessagesTemplate` above.
 const renderMessagesPage = ({
   deleteConfirmOpen,
   deleteError,
@@ -163,13 +152,6 @@ const renderMessagesPage = ({
   </>
 )
 
-// Pane collapse/expand is presentation-only, per-session UI state — never persisted, never shared
-// With the polling hooks — so it lives here rather than in `MessagesConnected`. The delete-confirm
-// Dialog's open/pending/error state, by contrast, comes from `useDeleteConversation` (an
-// IPC-backed hook), so only its rendering — not its state — lives here. Props stay bundled as
-// `props` rather than destructured (unlike every other page/organism in this codebase) purely to
-// Keep this function under the max-lines-per-function limit once pane-collapse and the derived
-// Contact-name lookup are folded in — `renderMessagesPage` above still gets everything by name.
 const Messages = (props: MessagesProps): React.JSX.Element => {
   const { leftCollapsed, toggleLeft } = usePaneCollapse()
   const selectedContactName = useSelectedContactName(props.threads, props.selectedAddress)

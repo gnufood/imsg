@@ -216,8 +216,7 @@ pub(in crate::commands) fn load(path: Option<PathBuf>) -> Result<::config::Confi
 /// Initialises the keyring and opens the encrypted message store.
 ///
 /// `cfg.store.resolve()` provides the DB path; falls back to the XDG data dir default.
-/// Must be called after [`load`]. Errors if the Secret Service D-Bus daemon is unavailable,
-/// the keyring entry is corrupted, or the DB file cannot be opened/migrated.
+/// Must be called after [`load`].
 ///
 /// # Errors
 ///

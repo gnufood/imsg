@@ -14,8 +14,6 @@ const initialState: DeviceSetupState = {
   stage: 'listing',
 }
 
-// 'retry' folds the three identical "clear the error, re-enter a fetch stage" transitions
-// (list/resolve/persist) into one case — keeps `reduce` under this repo's max-statements limit.
 type Action =
   | { stage: 'listing' | 'persisting' | 'resolving'; type: 'retry' }
   | { devices: DeviceSetupState['devices']; type: 'devicesLoaded' }
@@ -26,7 +24,6 @@ type Action =
   | { message: string; type: 'resolveFailed' }
   | { message: string; type: 'persistFailed' }
 
-// Pure — every transition names the stage it lands on explicitly, no derived/implicit stage.
 const reduce = (state: DeviceSetupState, action: Action): DeviceSetupState => {
   switch (action.type) {
     case 'retry': {
@@ -88,9 +85,6 @@ const resolveChannels = async ({ address, cancelled, dispatch }: ResolveChannels
     dispatch({ message: result.error.message, type: 'resolveFailed' })
     return
   }
-  // A missing channel is a real device that just doesn't run that service — a success-path
-  // Case (see GUI_FRONTEND.md's "DeviceSetup's error handling"), checked via `typeof` rather
-  // Than a `null` comparison per this repo's `unicorn/no-null` lint rule.
   if (typeof result.data.map !== 'number' || typeof result.data.pbap !== 'number') {
     dispatch({ type: 'deviceUnsupported' })
     return
@@ -174,8 +168,6 @@ const usePersistDevice = ({ address, dispatch, mapChannel, onComplete, pbapChann
   }, [stage, address, mapChannel, pbapChannel, dispatch, onComplete])
 }
 
-// Application boundary for the device-setup feature slice (see internal/GUI_ATOMIC_DESIGN.md)
-// — the only file here allowed to import `bindings.ts`.
 const useDeviceSetupFlow = (onComplete: () => void): UseDeviceSetupFlowResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
   const { stage, address, mapChannel, pbapChannel } = state

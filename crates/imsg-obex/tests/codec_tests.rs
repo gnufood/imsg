@@ -1,4 +1,5 @@
-//! Integration tests for the OBEX codec and client.
+//! Fixtures under `fixtures/` are raw OBEX wire bytes, checked byte-for-byte against encode
+//! output and decoded field-by-field — not just round-tripped through this crate's own codec.
 
 use bytes::Bytes;
 use imsg_obex::{

@@ -1,7 +1,7 @@
 use super::*;
 
 /// A removal and a no-op must not render identically — reporting "uninstalled" for a level
-/// that had nothing registered is the false-success case finding 19 was mistaken for.
+/// that had nothing registered would be a false success.
 #[test]
 fn uninstall_message_distinguishes_removal_from_no_op() {
     let removed =

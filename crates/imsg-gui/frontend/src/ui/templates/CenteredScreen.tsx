@@ -2,9 +2,6 @@ import type { ReactNode } from 'react'
 
 interface CenteredScreenProps {
   children: ReactNode
-  // Gate screens render with nothing above them and fill the window. Screens nested inside
-  // `AppShellTemplate` sit below its nav, where a viewport-height child overflows the document
-  // By exactly the nav's height — explicit so a nested caller can't silently inherit the wrong one.
   fill?: 'parent' | 'viewport'
 }
 

@@ -9,10 +9,6 @@ interface CheckboxProps {
   onChange: (checked: boolean) => void
 }
 
-// The native `<input>` stays for keyboard/click/screen-reader semantics but is visually
-// Hidden (`sr-only`) — the checked/unchecked glyph is a lucide icon instead of the browser's
-// Own checkbox rendering, so it follows our tokens like every other atom. Label-wraps-input
-// Click delegation and tab order both still work on a `sr-only` (not `hidden`) input.
 const Checkbox = ({ checked, disabled = false, label, onChange }: CheckboxProps): React.JSX.Element => {
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {

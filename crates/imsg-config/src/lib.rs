@@ -16,8 +16,8 @@ use figment::providers::{Env, Format, Toml};
 use figment::Figment;
 use serde::Deserialize;
 
-/// Compiled-in defaults. `device.address` is intentionally absent — required from caller.
-/// No `[hub]` defaults — `hub.node_key` is absent until `imsg spoke add` writes it.
+// compiled-in defaults. device.address intentionally absent — required from caller.
+// no [hub] defaults — hub.node_key is absent until `imsg spoke add` writes it.
 const DEFAULTS: &str = r"
 [device]
 map_channel = 2
@@ -117,7 +117,7 @@ pub struct Config {
     /// Absent from config — `store.resolve()` falls back to [`db_path`].
     #[serde(default)]
     pub store: StoreConfig,
-    /// Session broker idle-timeout settings.
+    /// Session-broker lifecycle and startup-timing policy; see [`BrokerConfig`].
     #[serde(default)]
     pub broker: BrokerConfig,
 }
@@ -143,7 +143,7 @@ impl DeviceConfig {
 /// Absent until `imsg spoke add <KEY>` writes it. Unvalidated — checked at connect time via `node_key.parse::<EndpointId>()`.
 #[derive(Debug, Default, Deserialize)]
 pub struct HubConfig {
-    /// Validated at connect time, not at write time.
+    /// The iroh public key written by `imsg spoke add`.
     pub node_key: Option<String>,
 }
 

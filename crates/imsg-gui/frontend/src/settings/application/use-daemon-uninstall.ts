@@ -17,7 +17,6 @@ type Action =
   | { outcome: NonNullable<Outcome>; type: 'uninstallSucceeded' }
   | { message: string; type: 'uninstallFailed' }
 
-// Pure — every transition names the state it lands on explicitly.
 const reduce = (state: State, action: Action): State => {
   switch (action.type) {
     case 'uninstallStarted': {
@@ -39,7 +38,6 @@ interface UninstallArgs {
 
 const uninstallDaemon = async ({ dispatch, onUninstalled }: UninstallArgs): Promise<void> => {
   dispatch({ type: 'uninstallStarted' })
-  // Always the user-level service — see `use-daemon-install.ts`.
   const result = await commands.daemonUninstall(false)
   if (result.status === 'error') {
     dispatch({ message: result.error.message, type: 'uninstallFailed' })
@@ -49,9 +47,6 @@ const uninstallDaemon = async ({ dispatch, onUninstalled }: UninstallArgs): Prom
   onUninstalled()
 }
 
-// Application boundary for the settings feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here allowed to import `bindings.ts`'s `daemonUninstall`. Doesn't need the device
-// Address, unlike stop/restart/install.
 const useDaemonUninstall = (onUninstalled: () => void): UseDaemonUninstallResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
 

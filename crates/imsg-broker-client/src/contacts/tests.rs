@@ -17,7 +17,6 @@ fn bind_for(addr: &str) -> anyhow::Result<Listener> {
     Ok(ListenerOptions::new().name(ns).create_tokio()?)
 }
 
-/// Accepts one connection, decodes the request, replies with `resp`.
 async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<()> {
     let stream = listener.accept().await?;
     let codec = LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec();

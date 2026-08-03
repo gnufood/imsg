@@ -165,10 +165,8 @@ pub async fn drain_outbox<T: AsyncRead + AsyncWrite + Unpin>(
     Ok(())
 }
 
-/// Parses and pushes a single outbox entry, recording the outcome in the store.
-///
-/// Entries with unparseable payloads are skipped with a warning and left `queued`.
-/// Push and store errors are logged but do not propagate — callers continue with remaining entries.
+// entries with unparseable payloads are skipped with a warning and left queued. Push and
+// store errors are logged but don't propagate — callers continue with remaining entries
 async fn process_entry<T: AsyncRead + AsyncWrite + Unpin>(
     client: &mut MapClient<T>,
     store: &Store,
@@ -186,18 +184,14 @@ async fn process_entry<T: AsyncRead + AsyncWrite + Unpin>(
     }
 }
 
-/// Records a successful MAP push: marks the outbox entry sent and links the remote handle.
-///
-/// Store failures are logged and swallowed — the push already succeeded on the device.
+// store failures are logged and swallowed — the push already succeeded on the device
 async fn record_send_ok(store: &Store, entry_id: i64, placeholder: &str, handle: &str, now: i64) {
     store.complete_send(entry_id, placeholder, handle, now).await.unwrap_or_else(|e| {
         tracing::warn!("drain_outbox: store update failed for entry {entry_id}: {e:#}");
     });
 }
 
-/// Records a failed MAP push: classifies the error and updates both the outbox and message rows.
-///
-/// Store failures are logged and swallowed to ensure all update attempts run regardless.
+// store failures are logged and swallowed to ensure all update attempts run regardless
 async fn record_send_err(
     store: &Store,
     entry_id: i64,

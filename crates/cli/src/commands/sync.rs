@@ -47,7 +47,6 @@ pub(crate) async fn run(
         return Ok(format!("{text}; {contacts}"));
     }
 
-    // Hub path: direct MAP connection.
     let folder_scope = folder.map(|f| match f {
         FolderArg::Inbox => Folder::Inbox,
         FolderArg::Sent => Folder::Sent,

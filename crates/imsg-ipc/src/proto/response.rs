@@ -105,7 +105,7 @@ pub enum EventType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct WatchEvent {
-    /// The notification's event type.
+    /// Governs which of the fields below are populated.
     pub event_type: EventType,
     /// Opaque MAP message handle; absent for memory-state events.
     pub handle: Option<String>,

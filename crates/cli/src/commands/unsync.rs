@@ -33,7 +33,6 @@ mod tests;
 pub(crate) fn purge(db_path: PathBuf) -> Result<()> {
     std::fs::remove_file(&db_path)
         .with_context(|| format!("removing database: {}", db_path.display()))?;
-    // Best-effort cleanup of WAL and SHM; ignore absent files.
     let mut wal = db_path.clone().into_os_string();
     wal.push("-wal");
     let _ = std::fs::remove_file(PathBuf::from(wal));

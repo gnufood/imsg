@@ -7,7 +7,6 @@ interface CollapsedRailProps {
   expandLabel: string
 }
 
-// Narrow strip a pane shrinks to while collapsed — just its expand toggle, vertically centered.
 const CollapsedRail = ({ onExpand, expandIcon, expandLabel }: CollapsedRailProps): React.JSX.Element => (
   <div className="flex h-full flex-col items-center pt-4">
     <IconButton icon={expandIcon} label={expandLabel} onClick={onExpand} />

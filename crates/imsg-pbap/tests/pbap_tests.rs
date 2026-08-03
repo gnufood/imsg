@@ -1,4 +1,5 @@
-//! Integration tests for PBAP session lifecycle (connect / disconnect).
+//! Connect/disconnect against fixture wire bytes — including the exact CONNECT-time
+//! `PBAPSupportedFeatures` payload — plus a rejected-CONNECT error-mapping check.
 
 use bytes::Bytes;
 use futures::{SinkExt, StreamExt};

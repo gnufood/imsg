@@ -72,7 +72,6 @@ rust-version = "1.93.0"
 repository = "https://github.com/gnufood/imsg"
 readme = "README.md"
 
-# The profile that 'dist' will build with
 [profile.dist]
 inherits = "release"
 lto = true

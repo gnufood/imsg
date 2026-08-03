@@ -5,11 +5,6 @@ import useDaemonServiceStatus from '@/settings/application/use-daemon-service-st
 import useDaemonStop from '@/settings/application/use-daemon-stop.ts'
 import useDaemonUninstall from '@/settings/application/use-daemon-uninstall.ts'
 
-// Composes the five independent daemon-action/status hooks — each keeps its own concrete
-// Pending/error state, matching this codebase's one-hook-per-capability convention (`use-send.ts`,
-// `use-delete-conversation.ts`) rather than one generic parameterized hook — into
-// `DaemonControlsArgs`' shape directly, so `SettingsConnected` needs one statement for all five
-// Instead of five (see internal/GUI_ATOMIC_DESIGN.md, and its max-statements limit).
 const useDaemonActions = (addr: string | undefined, onChanged: () => void): DaemonControlsArgs => {
   const { error: stopError, stop, stopping } = useDaemonStop(addr, onChanged)
   const { error: restartError, restart, restarting } = useDaemonRestart(addr, onChanged)

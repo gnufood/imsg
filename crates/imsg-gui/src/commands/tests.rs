@@ -60,11 +60,8 @@ fn contacts_error_maps_to_command_error() {
     assert!(!command_err.message.is_empty());
 }
 
-/// Proves the actual wiring every command in this crate is built for — `super::builder`'s
-/// `collect_commands!` + `Builder::invoke_handler` — type-checks and constructs against real
-/// command paths, on Tauri's `MockRuntime`. Full IPC-frame dispatch
-/// (`tauri::test::assert_ipc_response`) is left for the `main.rs` integration once that's
-/// wired up; this only guards the registration seam.
+/// Full IPC-frame dispatch (`tauri::test::assert_ipc_response`) is left for the `main.rs`
+/// integration once that's wired up; this only guards the registration seam.
 #[test]
 fn commands_register_with_tauri_specta_builder() {
     let builder = super::builder::<tauri::test::MockRuntime>();

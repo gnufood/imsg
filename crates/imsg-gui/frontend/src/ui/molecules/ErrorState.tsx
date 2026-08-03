@@ -5,10 +5,6 @@ import Text from '@/ui/atoms/Text.tsx'
 interface ErrorStateProps {
   message: string
   onRetry: () => void
-  // Caller picks this — `CommandError` carries no error-kind discriminant (see bindings.ts).
-  // Only the call site (which knows which command it invoked) can tell errors apart.
-  // `typeof CircleAlert` (not a separate `LucideIcon` import) to avoid a duplicate-import from
-  // 'lucide-react' — this file already imports it as a value for the default icon.
   icon?: typeof CircleAlert
 }
 

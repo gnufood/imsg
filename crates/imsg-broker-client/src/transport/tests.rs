@@ -11,14 +11,13 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 use super::send_request;
 
-/// Binds at the same abstract name `connect_raw` derives from `addr` via
-/// `config::broker_abstract_name` — the naming scheme is production code, not duplicated here.
+// binds at the same abstract name connect_raw derives from addr via config::broker_abstract_name
+// — the naming scheme is production code, not duplicated here
 fn bind_for(addr: &str) -> anyhow::Result<Listener> {
     let ns = config::broker_abstract_name(addr)?;
     Ok(ListenerOptions::new().name(ns).create_tokio()?)
 }
 
-/// Accepts one connection, decodes one `BrokerRequest` frame, replies with `resp`.
 async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<BrokerRequest> {
     let stream = listener.accept().await?;
     let codec = LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec();
@@ -30,7 +29,6 @@ async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<B
     Ok(req)
 }
 
-/// `send_request` round-trips a real request/response pair over a real abstract socket.
 #[tokio::test]
 async fn send_request_roundtrips_through_real_socket() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:00:01";
@@ -50,7 +48,6 @@ async fn send_request_roundtrips_through_real_socket() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `send_request` fails when nothing is listening at the abstract name.
 #[tokio::test]
 async fn send_request_fails_when_unreachable() {
     let result = send_request("TE:ST:00:00:00:02", BrokerRequest::Status).await;

@@ -19,9 +19,9 @@ pub struct PairedDevice {
 /// A `None` field means the device has no service record for that profile — not a failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Channels {
-    /// MAP (Message Access Profile) RFCOMM channel.
+    /// MAP RFCOMM channel.
     pub map: Option<u8>,
-    /// PBAP (Phone Book Access Profile) RFCOMM channel.
+    /// PBAP RFCOMM channel.
     pub pbap: Option<u8>,
 }
 

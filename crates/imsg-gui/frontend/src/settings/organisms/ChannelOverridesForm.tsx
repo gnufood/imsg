@@ -6,7 +6,6 @@ import Select from '@/ui/atoms/Select.tsx'
 import SummaryRow from '@/ui/molecules/SummaryRow.tsx'
 import Text from '@/ui/atoms/Text.tsx'
 
-// RFCOMM server channels are 1-30 (5-bit DLCI) — matches `imsg-config`'s `validate_channel`.
 const CHANNEL_OPTIONS = Array.from({ length: 30 }, (_unused, index) => ({ label: String(index + 1), value: String(index + 1) }))
 
 const renderSummary = (mapChannel: number, pbapChannel: number): React.JSX.Element => (
@@ -92,12 +91,6 @@ const renderEditor = ({
   </div>
 )
 
-// Read-only `SummaryRow`s are always shown; the editable form is progressive disclosure behind
-// `editorOpen`, which `use-channel-overrides.ts` owns rather than this component — closing the
-// Editor is an outcome of the save landing, and only that boundary sees outcomes (same split as
-// `use-delete-conversation.ts`'s `confirmOpen`). So the only ways out are a discard (Cancel) or a
-// Save that succeeded: a failed Apply keeps the editor open with its error and the drafts intact,
-// And a half-edited draft is never left behind either way.
 const ChannelOverridesForm = ({
   detectError,
   detecting,

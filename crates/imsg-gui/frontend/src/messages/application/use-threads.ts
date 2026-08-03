@@ -2,8 +2,6 @@ import { useCallback, useEffect, useReducer } from 'react'
 import type UseThreadsResult from '@/messages/application/use-threads.types.ts'
 import { commands } from '@/bindings.ts'
 
-// 5s, not the gate's 250ms — this isn't gating startup, just keeping the list current (see
-// GUI_NEXT.md "Live updates — decided: poll").
 const POLL_MS = 5000
 
 interface State {
@@ -15,7 +13,6 @@ const initialState: State = { pollFailed: false, threads: undefined }
 
 type Action = { threads: NonNullable<UseThreadsResult['threads']>; type: 'threadsReceived' } | { type: 'pollFailed' } | { type: 'resumePolling' }
 
-// Pure — every transition names the state it lands on explicitly.
 const reduce = (state: State, action: Action): State => {
   switch (action.type) {
     case 'threadsReceived': {
@@ -64,8 +61,6 @@ const usePollThreads = (active: boolean, dispatch: React.Dispatch<Action>): void
   }, [active, dispatch])
 }
 
-// Application boundary for the messages feature slice (see internal/GUI_ATOMIC_DESIGN.md) — the
-// Only file here allowed to import `bindings.ts`.
 const useThreads = (): UseThreadsResult => {
   const [state, dispatch] = useReducer(reduce, initialState)
   const { pollFailed, threads } = state

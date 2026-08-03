@@ -7,9 +7,6 @@ interface AppNavProps {
   onSelectScreen: (screen: 'messages' | 'settings') => void
 }
 
-// Disables whichever nav item is already active, rather than a separate "selected" visual
-// Variant — no atom currently supports one, and "you're already here" is exactly what `disabled`
-// Already communicates.
 const AppNav = ({ activeScreen, onSelectScreen }: AppNavProps): React.JSX.Element => {
   const selectMessages = useCallback(() => {
     onSelectScreen('messages')

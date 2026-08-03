@@ -67,8 +67,7 @@ fn manager(level: ServiceLevel) -> Result<TypedServiceManager, Error> {
     Ok(manager)
 }
 
-/// Builds the `imsg daemon start --foreground [--device <addr>] [--config <path>]`
-/// argument list passed to the installed service's `ExecStart`.
+// builds imsg daemon start --foreground [--device <addr>] [--config <path>] for ExecStart
 fn start_foreground_args(device: Option<&str>, config_path: Option<&Path>) -> Vec<OsString> {
     let mut args =
         vec![OsString::from("daemon"), OsString::from("start"), OsString::from("--foreground")];
@@ -163,12 +162,11 @@ pub fn uninstall(level: ServiceLevel) -> Result<UninstallOutcome, Error> {
     Ok(UninstallOutcome::Uninstalled)
 }
 
-/// Starts the installed daemon service.
+/// Unused today — reserved for a future service-management caller (e.g. a GUI panel).
 ///
-/// Reserved for a future service-management caller (e.g. a GUI panel) — no CLI command wires
-/// this up yet, and it has only been exercised by the type-conversion unit tests in `tests.rs`,
-/// not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe` unit. Verify against a real
-/// service manager before adding the first caller.
+/// No CLI command wires this up yet, and it has only been exercised by the type-conversion
+/// unit tests in `tests.rs`, not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe`
+/// unit. Verify against a real service manager before adding the first caller.
 ///
 /// # Errors
 ///
@@ -178,12 +176,11 @@ pub fn start(level: ServiceLevel) -> Result<(), Error> {
     manager(level)?.start(ServiceStartCtx { label: label() }).map_err(Error::Operation)
 }
 
-/// Stops the installed daemon service.
+/// Unused today — reserved for a future service-management caller (e.g. a GUI panel).
 ///
-/// Reserved for a future service-management caller (e.g. a GUI panel) — no CLI command wires
-/// this up yet, and it has only been exercised by the type-conversion unit tests in `tests.rs`,
-/// not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe` unit. Verify against a real
-/// service manager before adding the first caller.
+/// No CLI command wires this up yet, and it has only been exercised by the type-conversion
+/// unit tests in `tests.rs`, not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe`
+/// unit. Verify against a real service manager before adding the first caller.
 ///
 /// # Errors
 ///
@@ -193,12 +190,11 @@ pub fn stop(level: ServiceLevel) -> Result<(), Error> {
     manager(level)?.stop(ServiceStopCtx { label: label() }).map_err(Error::Operation)
 }
 
-/// Returns the installed daemon service's current state.
+/// Unused today — reserved for a future service-management caller (e.g. a GUI panel).
 ///
-/// Reserved for a future service-management caller (e.g. a GUI panel) — no CLI command wires
-/// this up yet, and it has only been exercised by the type-conversion unit tests in `tests.rs`,
-/// not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe` unit. Verify against a real
-/// service manager before adding the first caller.
+/// No CLI command wires this up yet, and it has only been exercised by the type-conversion
+/// unit tests in `tests.rs`, not against a real `systemd`/`launchd`/`OpenRC`/`rc.d`/`sc.exe`
+/// unit. Verify against a real service manager before adding the first caller.
 ///
 /// # Errors
 ///

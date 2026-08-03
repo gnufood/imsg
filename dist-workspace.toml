@@ -1,7 +1,6 @@
 [workspace]
 members = ["cargo:."]
 
-# Config for 'dist'
 [dist]
 cargo-dist-version = "0.32.0"
 ci = "github"

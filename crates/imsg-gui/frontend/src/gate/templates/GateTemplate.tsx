@@ -29,17 +29,10 @@ const renderStatus = (status: GateStatus | undefined, deviceSetupSlot: React.JSX
   if (status !== undefined && status !== 'Initializing' && status !== 'Ready') {
     return <Preparing stage={failedStage(status.Failed.stage)} error={status.Failed.message} onRetry={onProceed} />
   }
-  // `undefined` (first poll in flight), 'Initializing', or 'Ready' — the last is a single
-  // Transitional frame (the handoff Effect in `Gate` fires on this same render pass, then the
-  // Parent swaps Gate out), reusing the loading treatment avoids rendering "nothing" (forbidden
-  // By `unicorn/no-null`/`react/jsx-no-useless-fragment`).
   return screen(<LoadingState message="Starting up…" />)
 }
 
 interface GateTemplateProps {
-  // Filled by the composition root with a connected component (e.g. `DeviceSetupConnected`)
-  // When `status` is `'AwaitingDeviceConfig'` — keeps this template IPC-agnostic and
-  // Renderable from fixtures for every other status.
   deviceSetupSlot: React.JSX.Element
   onProceed: () => void
   onResumePolling: () => void

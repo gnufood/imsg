@@ -10,17 +10,15 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 use super::{query_persistent, query_state};
 
-/// Binds at the same abstract name `connect_raw` derives from `addr` via
-/// `config::broker_abstract_name` — the naming scheme is production code, not duplicated here.
+// binds at the same abstract name connect_raw derives from addr via config::broker_abstract_name
+// — the naming scheme is production code, not duplicated here
 fn bind_for(addr: &str) -> anyhow::Result<Listener> {
     let ns = config::broker_abstract_name(addr)?;
     Ok(ListenerOptions::new().name(ns).create_tokio()?)
 }
 
-/// Accepts one connection, decodes the request, replies with `resp`.
-///
-/// `listener` must be bound before spawning this — binding it here instead would race the
-/// caller's immediate connect attempt.
+// listener must be bound before spawning this — binding it here instead would race the
+// caller's immediate connect attempt
 async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<()> {
     let stream = listener.accept().await?;
     let codec = LengthDelimitedCodec::builder().max_frame_length(MAX_FRAME_LEN).new_codec();
@@ -32,7 +30,6 @@ async fn serve_one(listener: Listener, resp: BrokerResponse) -> anyhow::Result<(
     Ok(())
 }
 
-/// `query_persistent` returns `Some(true)` when the broker reports persistent mode.
 #[tokio::test]
 async fn query_persistent_reports_daemon_mode() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:01:01";
@@ -51,13 +48,11 @@ async fn query_persistent_reports_daemon_mode() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `query_persistent` returns `None` when nothing answers.
 #[tokio::test]
 async fn query_persistent_is_none_when_unreachable() {
     assert_eq!(query_persistent("TE:ST:00:00:01:02").await, None);
 }
 
-/// `query_state` returns the broker's reported session state.
 #[tokio::test]
 async fn query_state_reports_session_state() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:01:03";
@@ -76,7 +71,6 @@ async fn query_state_reports_session_state() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `query_state` returns `None` when nothing answers.
 #[tokio::test]
 async fn query_state_is_none_when_unreachable() {
     assert_eq!(query_state("TE:ST:00:00:01:04").await, None);

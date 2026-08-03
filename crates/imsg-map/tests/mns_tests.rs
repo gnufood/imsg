@@ -1,4 +1,5 @@
-//! Unit tests for MAP-event-report XML parsing.
+//! One fixture per `EventType` variant, plus unknown-type/missing-`<event>` edge cases —
+//! exercises every branch of `parse_event_report`.
 
 use imsg_map::mns_event::{parse_event_report, EventType, MnsError};
 

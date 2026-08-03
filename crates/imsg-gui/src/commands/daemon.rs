@@ -17,8 +17,6 @@ use crate::daemon::UninstallResult;
 ///
 /// Returns [`CommandError`] if no native service manager is available or it rejects the
 /// install.
-// `String`/`PathBuf`, not `&str`/`&Path`: `#[tauri::command]` arguments are deserialized from
-// the frontend's IPC call and must be owned.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]

@@ -61,7 +61,6 @@ enum ServeOutcome {
 
 /// Outcome of dispatching one [`DeviceOp`] against the live client.
 enum OpOutcome {
-    /// Keep serving.
     Continue,
     /// The session died mid-operation; leave [`Actor::serve_active`].
     SessionLost,

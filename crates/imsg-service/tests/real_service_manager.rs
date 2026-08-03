@@ -34,8 +34,8 @@ fn install_status_uninstall_round_trip() -> Result<(), Error> {
     assert_eq!(uninstall(LEVEL)?, UninstallOutcome::Uninstalled);
     assert_eq!(status(LEVEL)?, ServiceState::NotInstalled);
 
-    // Finding 19: a repeat uninstall must report that nothing was there rather than
-    // erroring, and must not claim to have removed anything.
+    // a repeat uninstall must report that nothing was there rather than erroring, and must
+    // not claim to have removed anything
     assert_eq!(uninstall(LEVEL)?, UninstallOutcome::NotInstalled);
     Ok(())
 }

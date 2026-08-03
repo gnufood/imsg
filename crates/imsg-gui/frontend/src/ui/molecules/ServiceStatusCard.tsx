@@ -10,13 +10,6 @@ interface ServiceStatusCardProps {
   title: string
 }
 
-// One row of `DaemonControls`: a service level's identity (title/description), its
-// Installed/not-installed state, and the single action that flips it. `installed === undefined`
-// Means "not yet known" (first status fetch still pending), not "not installed" — the action
-// Button stays disabled rather than guessing which action to offer.
-//
-// `onToggle === undefined` renders the row read-only: status is still reported, but no action is
-// Offered. Used for a service level this process can observe but can't modify.
 const ServiceStatusCard = ({ description, disabled, installed, onToggle, title }: ServiceStatusCardProps): React.JSX.Element => {
   let statusLabel = 'Checking…'
   let statusTone: 'active' | 'idle' | 'pending' = 'pending'
@@ -36,8 +29,6 @@ const ServiceStatusCard = ({ description, disabled, installed, onToggle, title }
         <div className="flex items-center gap-1.5">
           <StatusDot tone={statusTone} />
           <Text>{title}</Text>
-          {/* `StatusDot` is decorative-only (see its own doc comment) — this is the visible
-          label it still needs for screen readers, just not rendered as its own line. */}
           <span className="sr-only">{statusLabel}</span>
         </div>
         <Text size="xs" tone="muted">

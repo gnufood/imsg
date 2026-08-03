@@ -5,13 +5,11 @@ use interprocess::local_socket::{GenericNamespaced, ListenerOptions, ToNsName as
 
 use super::{connect_retry, probe};
 
-/// `probe` is `false` when nothing is listening at the abstract name.
 #[tokio::test]
 async fn probe_is_false_when_unreachable() {
     assert!(!probe("imsg-broker-client-test/probe-nobody-home").await);
 }
 
-/// `probe` is `true` once a listener is bound at the abstract name `probe` derives from `addr`.
 #[tokio::test]
 async fn probe_is_true_when_listening() -> anyhow::Result<()> {
     let addr = "TE:ST:00:00:02:01";
@@ -21,8 +19,6 @@ async fn probe_is_true_when_listening() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `connect_retry` succeeds once the abstract socket becomes connectable.
-///
 /// A background task binds the socket after 100 ms — the retry loop must discover
 /// it within the 5 s deadline without a mock or a startup handshake.
 #[tokio::test]
@@ -51,8 +47,6 @@ async fn connect_retry_reaches_deferred_listener() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `connect_retry` returns `Err` immediately when the child exits before binding.
-///
 /// `true` exits with code 0 instantly; the socket `FE:ED:DE:AD:00:04` is never bound,
 /// so the only outcome is the child-exit arm of the `select!`.
 #[tokio::test]

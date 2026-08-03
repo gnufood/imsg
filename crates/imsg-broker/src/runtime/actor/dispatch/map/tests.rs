@@ -106,7 +106,6 @@ async fn do_delete_broadcasts_message_deleted_on_success() -> anyhow::Result<()>
 #[tokio::test]
 async fn do_delete_unknown_folder_does_not_broadcast() -> anyhow::Result<()> {
     let (store, _dir) = fake_store().await?;
-    // An unknown folder name returns before any MAP request beyond CONNECT is sent.
     let mut client = fake_client().await?;
     let (watch_tx, mut watch_rx) = broadcast::channel(4);
 

@@ -13,8 +13,6 @@ use super::CommandError;
 ///
 /// Returns [`CommandError`] if no config source sets `device.address`, an existing value fails
 /// validation, or the layered config sources can't be read.
-// `PathBuf`, not `&Path`: `#[tauri::command]` arguments are deserialized from the frontend's
-// IPC call and must be owned.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]
@@ -28,8 +26,6 @@ pub fn config_show(config_path: Option<PathBuf>) -> Result<ConfigDto, CommandErr
 ///
 /// Returns [`CommandError`] if `address` is not a valid `XX:XX:XX:XX:XX:XX` MAC, or the config
 /// file can't be written.
-// `String`, not `&str`: `#[tauri::command]` arguments are deserialized from the frontend's IPC
-// call and must be owned.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]
@@ -88,8 +84,6 @@ pub fn config_is_device_configured() -> bool {
 ///
 /// Returns [`CommandError`] if `address` is not a valid MAC, either channel is outside
 /// `[1, 30]`, or the config file can't be written.
-// `String`, not `&str`: `#[tauri::command]` arguments are deserialized from the frontend's IPC
-// call and must be owned.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]

@@ -15,12 +15,11 @@ pub const fn connect_params() -> Bytes {
     Bytes::from_static(b"\x10\x04\x00\x00\x00\x0d")
 }
 
-/// `PropertySelector`: `VERSION | FN | TEL | UID` (`0x0000000000200083`) — every vCard field this
-/// crate actually parses. Trims a PHOTO-laden pull from ~400KB to ~18KB (device-confirmed on
-/// `PullPhoneBook`; not separately confirmed on `PullvCardEntry`, but it's the same standard
-/// `AppParams` tag on the same GET-style operation).
-///
-/// Wire encoding: `[0x06, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x83]`.
+// PropertySelector: VERSION | FN | TEL | UID (0x0000000000200083) — every vCard field this
+// crate actually parses. Trims a PHOTO-laden pull from ~400KB to ~18KB (device-confirmed on
+// PullPhoneBook; not separately confirmed on PullvCardEntry, but it's the same standard
+// AppParams tag on the same GET-style operation).
+// wire encoding: [0x06, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x83]
 const PROPERTY_SELECTOR: &[u8] = b"\x06\x08\x00\x00\x00\x00\x00\x20\x00\x83";
 
 /// `PullPhoneBook` app-params: `Format=vcard30`, `PROPERTY_SELECTOR`, `MaxListCount=limit`.

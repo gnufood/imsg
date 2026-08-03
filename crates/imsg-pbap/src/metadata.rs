@@ -43,7 +43,7 @@ impl PhonebookMetadata {
     }
 }
 
-/// Iterates `(tag, value)` TLV entries in an OBEX `AppParams` byte sequence.
+// iterates (tag, value) TLV entries in an OBEX AppParams byte sequence
 fn tlv_entries(data: &[u8]) -> impl Iterator<Item = (u8, &[u8])> {
     let mut rest = data;
     std::iter::from_fn(move || {

@@ -49,8 +49,8 @@ async fn threads_carries_cached_contact_name_when_present() -> anyhow::Result<()
 
 #[tokio::test]
 async fn list_from_matches_across_formatting_via_canonical() -> anyhow::Result<()> {
-    // Finding 2: the stored raw ("+44(0)1753866488") and the query ("+441753866488") differ in
-    // formatting but normalise to the same E.164, so the filter must match on canonical.
+    // stored raw ("+44(0)1753866488") and the query ("+441753866488") differ in formatting but
+    // normalise to the same E.164, so the filter must match on canonical
     let (db, _dir) = fake_store().await?;
     db.upsert(sample_message("H1", "+44(0)1753866488")).await?;
 
@@ -62,8 +62,8 @@ async fn list_from_matches_across_formatting_via_canonical() -> anyhow::Result<(
 
 #[tokio::test]
 async fn threads_joins_contact_across_formatting_via_canonical() -> anyhow::Result<()> {
-    // Finding 17: message address and contact phone differ in formatting (trunk prefix) but share
-    // an E.164, so the contact_phones join must match on canonical.
+    // message address and contact phone differ in formatting (trunk prefix) but share an E.164,
+    // so the contact_phones join must match on canonical
     let (db, _dir) = fake_store().await?;
     db.upsert(sample_message("H1", "+44(0)1753866488")).await?;
     db.upsert_contacts(vec![NewContact {

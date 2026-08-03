@@ -11,8 +11,6 @@ interface SelectProps {
   onChange: (value: string) => void
   options: SelectOption[]
   disabled?: boolean
-  // For explicit `<label htmlFor>` pairing, same convention as `TextInput` — `<button>` is a
-  // Labelable element, so this still works.
   id?: string
 }
 
@@ -22,8 +20,6 @@ interface CloseOnOutsideArgs {
   setOpen: (open: boolean) => void
 }
 
-// Closes on an outside pointerdown or Escape — the two ways a native `<select>` popup dismisses
-// Itself for free, which this loses by not being one (see `Select`'s own comment for why).
 const useCloseOnOutside = ({ containerRef, open, setOpen }: CloseOnOutsideArgs): void => {
   useEffect(() => {
     if (!open) {
@@ -55,8 +51,6 @@ interface OptionRow {
   value: string
 }
 
-// Stable per-option handlers, built once per `options`/`value`/`onSelect` identity rather than a
-// Fresh closure per render inside the JSX below (see `SegmentedControl`'s own `buildSegments`).
 const buildOptionRows = (options: SelectOption[], value: string, onSelect: (optionValue: string) => void): OptionRow[] =>
   options.map((option) => ({
     handleSelect: () => {
@@ -81,15 +75,6 @@ const renderOption = (row: OptionRow): React.JSX.Element => {
   )
 }
 
-// Bounded choice from a fixed option list — `TextInput`'s free-text sibling, for fields with a
-// Known-valid set (e.g. ChannelOverridesForm's 1-30 RFCOMM channel) rather than parse-and-reject.
-// Not a native `<select>`: this app's Linux/WebKitGTK Tauri webview doesn't clip the native
-// Popup to the window — with 30 options it renders past the window edge with its own
-// Uncontrollable scrollbar. This panel is regular DOM content, so its own `max-h`/
-// `overflow-y-auto` actually bounds it. Plain buttons rather than `role="listbox"`/`"option"` —
-// Oxlint's `jsx-a11y` config here prefers the native `select`/`option` elements over those ARIA
-// Roles bolted onto `div`/`li`, so this leans on the buttons' own real interactive semantics
-// Instead.
 const Select = ({ value, onChange, options, disabled = false, id }: SelectProps): React.JSX.Element => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -123,10 +108,6 @@ const Select = ({ value, onChange, options, disabled = false, id }: SelectProps)
       >
         {selectedLabel}
       </button>
-      {/* `max-h-28` caps the panel at ~4 rows (28px/row) — keeps the editor short enough that
-      Appearance, below Channels in the same column, stays visible without scrolling the page
-      even with the panel open. `[scrollbar-width:none]`/`[&::-webkit-scrollbar]:hidden` keep it
-      scrollable past that without a visible scrollbar. */}
       {open && (
         <ul className="absolute z-10 mt-1 max-h-28 w-full overflow-y-auto rounded-md border border-line bg-surface py-1 shadow-lg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {rows.map((row) => renderOption(row))}

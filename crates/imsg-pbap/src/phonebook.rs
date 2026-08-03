@@ -63,11 +63,11 @@ impl PhonebookPath {
 /// `ListvCardObjects` `SearchAttribute` — which field [`PbapClient::search`](crate::client::PbapClient::search)'s value matches against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SearchAttribute {
-    /// Match against contact name.
+    /// Match against contact name. Wire value `0x00`.
     Name,
-    /// Match against phone number.
+    /// Match against phone number. Wire value `0x01`.
     Number,
-    /// Match against phonetic sound.
+    /// Match against phonetic sound. Wire value `0x02`.
     Sound,
 }
 

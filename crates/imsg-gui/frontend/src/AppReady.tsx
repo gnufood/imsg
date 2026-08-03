@@ -6,9 +6,6 @@ import useThemePreference from '@/theme/application/use-theme-preference.ts'
 
 type Screen = 'messages' | 'settings'
 
-// Split out of `App.tsx` so `useThemePreference` (and anything else post-gate) only ever mounts
-// Once `App.tsx`'s gate reports `ready` — mounting, not a runtime branch inside one component, is
-// What keeps its `data-theme` effect from ever running during Gate/Splash/DeviceSetup.
 const AppReady = (): React.JSX.Element => {
   const [screen, setScreen] = useState<Screen>('messages')
   const { preference, setPreference } = useThemePreference()

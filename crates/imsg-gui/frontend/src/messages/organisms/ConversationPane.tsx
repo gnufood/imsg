@@ -71,7 +71,6 @@ const ConversationPane = ({
       <Text as="span" tone="muted">
         {headerLabel(selectedAddress, contactName)}
       </Text>
-      {/* Only offer delete once a conversation is actually selected — nothing to delete otherwise. */}
       {selectedAddress !== undefined && <IconButton disabled={deleting} icon={Trash2} label="Delete conversation" onClick={onDelete} />}
     </div>
     <div className="min-h-0 flex-1">{renderContent({ messages, onResumePolling, pollFailed, selectedAddress })}</div>
