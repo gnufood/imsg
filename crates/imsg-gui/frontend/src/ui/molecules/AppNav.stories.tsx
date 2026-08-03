@@ -16,6 +16,10 @@ type Story = StoryObj<typeof meta>
 
 export const MessagesActive: Story = {}
 
+export const ContactsActive: Story = {
+  args: { activeScreen: 'contacts' },
+}
+
 export const SettingsActive: Story = {
   args: { activeScreen: 'settings' },
 }

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import Messages from '@/messages/pages/Messages.tsx'
+import useContactsSync from '@/contacts/application/use-contacts-sync.ts'
 import useConversation from '@/messages/application/use-conversation.ts'
 import useDeleteConversation from '@/messages/application/use-delete-conversation.ts'
 import useMarkRead from '@/messages/application/use-mark-read.ts'
@@ -7,15 +8,18 @@ import useSend from '@/messages/application/use-send.ts'
 import useThreads from '@/messages/application/use-threads.ts'
 
 // Production IPC-connected wrapper (see internal/GUI_ATOMIC_DESIGN.md) — the seam between
-// `useThreads`/`useConversation`/`useSend`/`useMarkRead`/`useDeleteConversation`'s real backend
-// Calls and `Messages`'s presentational page. Owns `selectedAddress` itself — it's the one piece
-// Of state shared across the hooks (which thread's messages to poll/send/mark-read/delete into),
-// Not local to any of them.
+// `useThreads`/`useConversation`/`useSend`/`useMarkRead`/`useDeleteConversation`/`useContactsSync`'s
+// Real backend calls and `Messages`'s presentational page. Owns `selectedAddress` itself — it's
+// The one piece of state shared across the hooks (which thread's messages to poll/send/mark-read/
+// Delete into), not local to any of them. `useContactsSync` here is its own independent instance
+// From `ContactsConnected`'s (see that hook's own doc comment) — this one only backs the
+// `ThreadListPane` header's refresh button.
 const MessagesConnected = (): React.JSX.Element => {
   const { pollFailed: threadsPollFailed, resumePolling: resumeThreadsPolling, threads } = useThreads()
   const [selectedAddress, setSelectedAddress] = useState<string | undefined>()
   const { messages, pollFailed: conversationPollFailed, resumePolling: resumeConversationPolling } = useConversation(selectedAddress)
   const { error: sendError, send, sending: sendPending } = useSend(selectedAddress)
+  const { sync: refreshContacts, syncing: refreshingContacts } = useContactsSync()
   useMarkRead(messages)
 
   const handleDeleted = useCallback(() => {
@@ -44,11 +48,13 @@ const MessagesConnected = (): React.JSX.Element => {
       deleting={deleting}
       onCancelDelete={cancelDelete}
       onConfirmDelete={confirmDelete}
+      onRefreshContacts={refreshContacts}
       onRequestDelete={requestDelete}
       onResumeConversationPolling={resumeConversationPolling}
       onResumeThreadsPolling={resumeThreadsPolling}
       onSelectThread={handleSelectThread}
       onSendMessage={send}
+      refreshingContacts={refreshingContacts}
       selectedAddress={selectedAddress}
       sendError={sendError}
       sendPending={sendPending}

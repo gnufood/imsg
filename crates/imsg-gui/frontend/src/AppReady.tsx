@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import AppTemplate from '@/ui/templates/AppTemplate.tsx'
+import ContactsConnected from '@/contacts/connected/ContactsConnected.tsx'
 import MessagesConnected from '@/messages/connected/MessagesConnected.tsx'
 import SettingsConnected from '@/settings/connected/SettingsConnected.tsx'
 import useThemePreference from '@/theme/application/use-theme-preference.ts'
 
-type Screen = 'messages' | 'settings'
+type Screen = 'contacts' | 'messages' | 'settings'
 
 // Split out of `App.tsx` so `useThemePreference` (and anything else post-gate) only ever mounts
 // Once `App.tsx`'s gate reports `ready` — mounting, not a runtime branch inside one component, is
@@ -14,12 +15,15 @@ const AppReady = (): React.JSX.Element => {
   const { preference, setPreference } = useThemePreference()
 
   const messagesSlot = useMemo(() => <MessagesConnected />, [])
+  const contactsSlot = useMemo(() => <ContactsConnected />, [])
   const settingsSlot = useMemo(
     () => <SettingsConnected onPreferenceChange={setPreference} preference={preference} />,
     [preference, setPreference],
   )
 
-  return <AppTemplate messagesSlot={messagesSlot} onSelectScreen={setScreen} screen={screen} settingsSlot={settingsSlot} />
+  return (
+    <AppTemplate contactsSlot={contactsSlot} messagesSlot={messagesSlot} onSelectScreen={setScreen} screen={screen} settingsSlot={settingsSlot} />
+  )
 }
 
 export default AppReady
