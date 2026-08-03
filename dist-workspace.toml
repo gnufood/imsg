@@ -12,6 +12,7 @@ simple-download-url = "https://releases.gnu.foo/imsg/{tag}"
 hosting = ["simple", "github"]
 changelog-style = "git-cliff"
 allow-dirty = ["ci"]
+precise-builds = true
 
 [dist.dependencies.apt]
 libdbus-1-dev = '*'
