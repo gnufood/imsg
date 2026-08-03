@@ -337,16 +337,17 @@ jobs:
 
           gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
 
-  # Not part of dist's own graph — hand-added because dist only builds plain binaries, not
-  # native app bundles. Builds and hands bundles off as `artifacts-gui-*` workflow artifacts
-  # (matching the `artifacts-*` pattern `host`/`upload-r2` already fetch) instead of letting
-  # tauri-action manage its own release — keeps GUI bundles on the exact same GitHub
-  # Release + R2 path the CLI artifacts already use.
   build-gui:
     needs:
       - plan
     if: ${{ needs.plan.outputs.publishing == 'true' }}
-    runs-on: "ubuntu-22.04"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+          - platform: ubuntu-22.04-arm
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -370,7 +371,7 @@ jobs:
         with:
           projectPath: crates/imsg-gui
           uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: 'artifacts-gui-[bundle]'
+          workflowArtifactNamePattern: 'artifacts-gui-[arch]-[bundle]'
 
   announce:
     needs:
