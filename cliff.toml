@@ -37,7 +37,7 @@ conventional_commits = true
 filter_unconventional = true
 commit_parsers = [
   { message = "^feat", group = "Added" },
-  { body = ".*security", group = "Security" },
+  { body = "(?i)\\bRUSTSEC-|\\bCVE-|\\bsecurity vulnerability\\b|\\bsecurity advisory\\b|\\bsecurity issue\\b", group = "Security" },
   { message = "^fix", group = "Fixed" },
   { message = "^refactor", group = "Changed" },
   { message = "^perf", group = "Changed" },
