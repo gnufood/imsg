@@ -22,6 +22,7 @@ fn set_hub_key_roundtrip() {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         let key = "fakehubkey456";
         set_hub_key(key).map_err(|e| figment::Error::from(e.to_string()))?;
         // crate::figment(None) includes DEFAULTS + user file at HOME/.config/imsg/imsg.toml
@@ -60,6 +61,7 @@ fn set_map_channel_roundtrip_as_typed_integer() {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         set_map_channel(9).map_err(|e| figment::Error::from(e.to_string()))?;
         // Typed extraction into `u8` fails if this was written as a quoted TOML string
         // instead of a bare integer, so this also proves `patch_config`'s generalization.
@@ -76,6 +78,7 @@ fn set_pbap_channel_roundtrip_as_typed_integer() {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         set_pbap_channel(21).map_err(|e| figment::Error::from(e.to_string()))?;
         let cfg: crate::Config = crate::figment(None).extract()?;
         assert_eq!(cfg.device.pbap_channel, 21_u8);
@@ -90,6 +93,7 @@ fn set_broker_security_level_roundtrip() {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         set_broker_security_level(SecurityLevel::High)
             .map_err(|e| figment::Error::from(e.to_string()))?;
         let cfg: crate::Config = crate::figment(None).extract()?;
@@ -122,6 +126,7 @@ fn set_device_and_channels_roundtrip() {
     figment::Jail::expect_with(|jail| {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         set_device_and_channels("AA:BB:CC:DD:EE:FF", 5, 17)
             .map_err(|e| figment::Error::from(e.to_string()))?;
         let cfg: crate::Config = crate::figment(None).extract()?;
@@ -138,6 +143,7 @@ fn patch_config_writes_multiple_keys_in_one_call() {
     figment::Jail::expect_with(|jail| {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         patch_config(
             "device",
             &[
@@ -163,6 +169,7 @@ fn set_device_and_channels_rejects_invalid_pbap_without_writing_address() {
     figment::Jail::expect_with(|jail| {
         let tmp = jail.directory().to_path_buf();
         jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
         let result = set_device_and_channels("AA:BB:CC:DD:EE:FF", 5, 31);
         assert!(matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })));
         // `device.address` has no default, so extraction only fails here if the earlier
