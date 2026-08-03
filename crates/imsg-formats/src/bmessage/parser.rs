@@ -147,7 +147,7 @@ fn parse_bbody(input: &mut &str) -> Result<BBody, BMessageError> {
 // LENGTH is always CRLF-based (MAP spec); simulate +2 per line even on LF-only input
 fn parse_msg(input: &mut &str, length: usize) -> Result<String, BMessageError> {
     expect_begin("MSG", input)?;
-    let budget = length.saturating_sub(20);
+    let budget = length.saturating_sub(super::BEGIN_MSG_LEN.saturating_add(super::END_MSG_LEN));
     let mut body = String::new();
     let mut consumed: usize = 0;
     while consumed < budget {

@@ -20,6 +20,7 @@ tokio = { version = "1.52.3", features = ["full"] }
 tracing = "0.1.44"
 uuid = { version = "1" }
 zbus = "5.16.0"
+zeroize = "1.8.2"
 
 [dev-dependencies]
 futures  = "0.3"

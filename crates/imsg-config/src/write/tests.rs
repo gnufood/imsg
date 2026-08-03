@@ -134,6 +134,31 @@ fn set_device_and_channels_roundtrip() {
 
 #[test]
 #[serial]
+fn patch_config_writes_multiple_keys_in_one_call() {
+    figment::Jail::expect_with(|jail| {
+        let tmp = jail.directory().to_path_buf();
+        jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        patch_config(
+            "device",
+            &[
+                ("address", "AA:BB:CC:DD:EE:FF".into()),
+                ("map_channel", i64::from(7_u8).into()),
+                ("pbap_channel", i64::from(19_u8).into()),
+            ],
+        )
+        .map_err(|e| figment::Error::from(e.to_string()))?;
+        // All three land from a single call -- `set_device_and_channels` relies on this to
+        // avoid three separate read-modify-write cycles of the same file.
+        let cfg: crate::Config = crate::figment(None).extract()?;
+        assert_eq!(cfg.device.address, "AA:BB:CC:DD:EE:FF");
+        assert_eq!(cfg.device.map_channel, 7_u8);
+        assert_eq!(cfg.device.pbap_channel, 19_u8);
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
 fn set_device_and_channels_rejects_invalid_pbap_without_writing_address() {
     figment::Jail::expect_with(|jail| {
         let tmp = jail.directory().to_path_buf();

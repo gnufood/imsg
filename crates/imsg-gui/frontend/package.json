@@ -9,6 +9,7 @@
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview",
+    "tauri": "tauri",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
@@ -25,6 +26,7 @@
     "@storybook/addon-docs": "^10.5.2",
     "@storybook/addon-themes": "^10.5.2",
     "@storybook/react-vite": "^10.5.2",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

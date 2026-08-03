@@ -225,7 +225,8 @@ jobs:
       - plan
       - build-local-artifacts
       - build-global-artifacts
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') }}
+      - build-gui
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.build-gui.result == 'skipped' || needs.build-gui.result == 'success') }}
     runs-on: "ubuntu-22.04"
     steps:
       - name: Fetch artifacts
@@ -271,8 +272,9 @@ jobs:
       - plan
       - build-local-artifacts
       - build-global-artifacts
-    # Only run if we're "publishing", and only if plan, local and global didn't fail (skipped is fine)
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') }}
+      - build-gui
+    # Only run if we're "publishing", and only if plan, local, global and gui didn't fail (skipped is fine)
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.build-gui.result == 'skipped' || needs.build-gui.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-22.04"
@@ -334,6 +336,41 @@ jobs:
             "$RUNNER_TEMP/notes.txt"
 
           gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+
+  # Not part of dist's own graph — hand-added because dist only builds plain binaries, not
+  # native app bundles. Builds and hands bundles off as `artifacts-gui-*` workflow artifacts
+  # (matching the `artifacts-*` pattern `host`/`upload-r2` already fetch) instead of letting
+  # tauri-action manage its own release — keeps GUI bundles on the exact same GitHub
+  # Release + R2 path the CLI artifacts already use.
+  build-gui:
+    needs:
+      - plan
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    runs-on: "ubuntu-22.04"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev libbluetooth-dev libwebkit2gtk-4.1-dev \
+            build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev \
+            librsvg2-dev
+      - run: npm ci --prefix crates/imsg-gui/frontend
+      # frontend/src/bindings.ts is generated + gitignored (see frontend/.gitignore) — every
+      # local build has it because someone ran this at some point, but a clean checkout doesn't.
+      - run: cargo run --example export_bindings -p imsg-gui
+      - uses: tauri-apps/tauri-action@v1
+        with:
+          projectPath: crates/imsg-gui
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: 'artifacts-gui-[bundle]'
 
   announce:
     needs:

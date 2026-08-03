@@ -1,6 +1,32 @@
 # Roadmap
 
-> Last updated: 2026-07-22
+> Last updated: 2026-07-31
+
+---
+
+## Tags
+
+Domain-scoped — a small set of broad prefixes, each spanning multiple sections below, numbered
+sequentially within the prefix (not per-section) as sub-items ship:
+
+| Prefix | Domain |
+|---|---|
+| `PLATFORM` | Internal engineering — error handling, logging, and shared infrastructure |
+| `TRANSPORT` | Connectivity and protocol support |
+| `MSG` | Messaging and contacts features |
+| `STORE` | Persistence and data security |
+| `SVC` | Service management |
+| `CLIENTS` | Alternative frontends |
+| `API` | Public API and SDKs |
+| `DISC` | Built-in device discovery — fully shipped, kept only so the tag in Completed can be looked up |
+
+Cross-cutting — fixes that don't map to a roadmap line item:
+
+| Prefix | Meaning |
+|---|---|
+| `OBS` | Observability — logging/tracing/diagnostics fixes |
+| `GAP` | Protocol/device compliance gap — workaround for something the spec implies but the device doesn't honor |
+| `ISS` | Tracked issue — scoped bug or gap, not large enough to warrant its own roadmap section |
 
 ---
 
@@ -8,94 +34,142 @@
 
 ### Standardized error + logging (CLI + GUI)
 
-The CLI uses `anyhow` throughout; the GUI has its own `CommandError` (`imsg-gui/src/commands.rs`)
-requiring a hand-written `From` impl per domain error, which already lags behind new features.
-Logging is also duplicated — `cli`/`main.rs` and `imsg-gui/src/main.rs` each hand-roll their own
-`tracing_subscriber` init.
+The CLI and GUI each handle errors their own way, and the GUI's approach requires a manual update
+for every new kind of error, which already lags behind new features. Logging setup is also
+duplicated between the two entrypoints instead of shared.
 
-- [ ] Unify or share the error-conversion boundary between CLI and GUI
-- [ ] Extract one shared `tracing_subscriber` init used by both entrypoints
+- [ ] **PLATFORM-01** — Unify or share the error-conversion boundary between CLI and GUI
+- [ ] **PLATFORM-02** — Extract one shared logging setup used by both entrypoints
 
-### Broker mode for hub and spoke
+### Hub and spoke topology
 
-`imsg hub` proxies raw MAP/PBAP RFCOMM per-connection today — it doesn't use the broker/daemon's
-persistent session handling at all, so the hub/spoke path gets none of the benefit of the
-persistent-PBAP-session work already shipped for the local/direct path.
+The hub relay connects to the phone per-connection today, rather than through the daemon's
+persistent session handling, so the hub-and-spoke path gets none of the benefit of the
+persistent-session work already shipped for direct connections.
 
-- [ ] Extend broker/daemon session handling to the hub/spoke topology
+- [ ] **TRANSPORT-01** — Extend persistent session handling to the hub side of the hub-and-spoke setup
+- [ ] **TRANSPORT-02** — Extend persistent session handling to the spoke side of the hub-and-spoke setup
 
-### Send attachments
+### Message attachments
 
 MAP supports advertising MMS, but Apple's SDP record doesn't advertise it, and the Attachment
 flag isn't respected by the device — attachment support can't be driven off protocol metadata
 alone. Messages are also UTF-8 constrained.
 
-- [ ] Investigate a non-metadata-driven detection/transfer path for MMS content
+- [ ] **MSG-01** — Investigate a non-metadata-driven detection/transfer path for MMS content
 
 ### Export
 
-- [ ] Add an export command (format/target TBD)
+- [ ] **MSG-02** — Add an export command (format/target TBD)
 
-### Persistence layer (`store` crate)
+### Persistence layer
 
-Local encrypted message database so `imsg` works without the phone connected.
-
-- [x] `watch` retired in favor of the persistent `daemon` — writes incoming messages to DB on MNS event
-- [x] Body fetch strategy decided: eager (full content fetched on every MNS `NewMessage` event)
+Local encrypted message database so the app works without the phone connected. Fully shipped —
+see STORE-01/02/03 in Completed.
 
 ### Built-in device discovery
 
-Eliminates `imsg config set-device <MAC>`.
-
-- [x] Scan paired Bluetooth devices on startup — `imsg config setup`
-- [x] Interactive picker when no device is configured
-- [x] Write selected MAC + resolved channels to config
+Eliminates having to manually configure the device by its Bluetooth address. Fully shipped —
+see DISC-01 in Completed.
 
 ### Full TUI client
 
 Interactive TUI for the CLI (the desktop GUI covers the graphical case separately).
 
-- [ ] Scrollable thread list (arrow-key navigation)
-- [ ] Message reader pane (selected thread contents)
-- [ ] Compose / reply pane
-- [ ] Unified layout with live MNS updates
+- [ ] **CLIENTS-01** — Scrollable thread list (arrow-key navigation)
+- [ ] **CLIENTS-02** — Message reader pane (selected thread contents)
+- [ ] **CLIENTS-03** — Compose / reply pane
+- [ ] **CLIENTS-04** — Unified layout with live MNS updates
 
 ### Fuzzy + semantic search of conversations
 
-No search of any kind exists today — `list`/`get`/`threads` only filter by folder/sender/date.
+No search of any kind exists today — the existing commands only filter by folder, sender, or date.
 
-- [ ] Fuzzy text match over local message bodies (typo-tolerant)
-- [ ] Semantic search — embedding-based similarity search over the local store, for
-      meaning-based queries rather than exact/fuzzy text match
+- [ ] **MSG-03** — Fuzzy text match over local message bodies (typo-tolerant)
+- [ ] **MSG-04** — Semantic search — embedding-based similarity search over the local store,
+      for meaning-based queries rather than exact/fuzzy text match
 
 ### Advanced security
 
 Post-store-crate hardening.
 
-- [ ] Per-record encryption — independent key per message
-- [ ] Audit log — track decryption access (who read what, when)
-- [ ] Key rotation — re-key DB without full rewrite
+- [ ] **STORE-04** — Per-record encryption — independent key per message
+- [ ] **STORE-05** — Audit log — track decryption access (who read what, when)
+- [ ] **STORE-06** — Key rotation — re-key DB without full rewrite
 
 ### Library + SDKs
 
 Stable public API for building on top of imsg.
 
-- [ ] Define and stabilize a public Rust API surface, with real semver discipline, separate
-      from the internal workspace crates
-- [ ] Version the broker IPC protocol (`imsg-ipc`) — `BrokerRequest`/`BrokerResponse` currently
-      carry no version tag/handshake, so a long-lived `daemon` and an upgraded CLI have no way
-      to detect a wire-format mismatch
-- [ ] C FFI layer for cross-language binding
-- [ ] Python SDK (PyO3 / maturin)
-- [ ] Go SDK (cgo)
+- [ ] **API-01** — Define and stabilize a public Rust API surface, with real semver discipline,
+      separate from the internal workspace crates
+- [ ] **API-02** — Version the broker's wire protocol so a long-running daemon and an upgraded
+      CLI can detect a mismatch instead of silently talking past each other
+- [ ] **API-03** — C FFI layer for cross-language binding
+- [ ] **API-04** — Python SDK (PyO3 / maturin)
+- [ ] **API-05** — Go SDK (cgo)
 
 ### Web UI
 
 Browser-based interface as an alternative to the CLI/TUI.
 
-- [ ] Serves the local message DB over a local HTTP server
-- [ ] Thread list, message view, compose / reply in the browser
-- [ ] Real-time updates via SSE or WebSocket from the daemon
+- [ ] **CLIENTS-05** — Serves the local message DB over a local HTTP server
+- [ ] **CLIENTS-06** — Thread list, message view, compose / reply in the browser
+- [ ] **CLIENTS-07** — Real-time updates via SSE or WebSocket from the daemon
+
+### Service management
+
+Covers getting the daemon service installed, controlled, and kept in sync with what's configured.
+Installing it as a system-wide (rather than per-user) service requires elevated privileges that
+neither the GUI nor the underlying service-management layer currently has a way to request — the
+GUI's system-install option was pulled for this reason, and system-level install/uninstall remains
+CLI-only, run manually with elevated privileges. Separately, some settings changes made in the GUI are saved
+but not picked up by an already-running daemon, leaving the user with no indication that a manual
+restart is required.
+
+- [ ] **SVC-01** — Ship a packaged installer for the major Linux distributions that can install
+      the daemon as a system service with proper elevation, rather than the current unprivileged
+      shell install
+- [ ] **SVC-02** — Have the GUI install and control the system service through the operating
+      system's native authorization flow instead of a custom elevation path
+- [ ] **SVC-03** — Decide whether the system service should be able to start before login or only
+      within a logged-in session, then restore system-level install/uninstall in the GUI
+      accordingly
+- [ ] **SVC-04** — Tell the user when a settings change requires a daemon restart to take
+      effect, and offer a one-click way to do it
+- [ ] **SVC-05** — Fix daemon restart so it actually restarts an already-running daemon
+      instead of leaving it untouched
+- [ ] **SVC-06** — Share the daemon restart/reconnect logic between the CLI and GUI instead of
+      maintaining it twice
+
+### Message previews
+
+No preview rendering exists for message content beyond plain text today.
+
+- [ ] **LINK-01** — Detect links in message text and render them as clickable
+- [ ] **LINK-02** — Show a preview (title/image/description) for a detected link
+
+### Contacts
+
+The GUI shows a generic avatar for every contact today.
+
+- [ ] **CONTACT-01** — Investigate syncing contact photos from the phone alongside the existing
+      contact data
+- [ ] **CONTACT-02** — Show a contact's synced photo in place of the generic avatar
+
+### Phone number handling
+
+Phone numbers written without a country code aren't normalized to a canonical form today, so
+they can silently fail to match against numbers that do carry one. A design for deriving and
+applying a default region has already been scoped.
+
+- [ ] **PHONE-01** — Derive a default region for normalization from the device's own phone
+      number, with a safe fallback and a user-configurable override
+- [ ] **PHONE-02** — Validate a manually configured region up front so a typo is caught
+      immediately instead of causing silent normalization failures later
+- [ ] **PHONE-03** — Cache the derived region so it isn't re-derived on every use
+- [ ] **PHONE-04** — Apply phone-number normalization consistently from one shared place
+      instead of separately in each frontend
 
 ---
 
@@ -107,50 +181,20 @@ Items that need protocol investigation or feasibility work before they land on t
 
 Beyond RFCOMM (Classic Bluetooth) and iroh (hub/spoke QUIC).
 
-- [ ] **BLE** — investigate ANCS for notification delivery; MAP requires Classic Bluetooth, so full message sync over BLE is unproven
-- [ ] **TCP** — scaffolded (`imsg-transport::tcp::connect`), not yet wired into any caller; plain TCP for same-machine or LAN use without iroh's relay overhead
-- [ ] **iAP** — iPod Accessory Protocol for USB-connected iOS devices; potentially lower latency than RFCOMM
+- [ ] **XPORT-01 (BLE)** — investigate ANCS for notification delivery; MAP requires Classic Bluetooth, so full message sync over BLE is unproven
+- [ ] **XPORT-02 (TCP)** — partially scaffolded internally but not yet wired into any caller; plain TCP for same-machine or LAN use without iroh's relay overhead
+- [ ] **XPORT-03 (iAP)** — iPod Accessory Protocol for USB-connected iOS devices; potentially lower latency than RFCOMM
 
 ### Additional Bluetooth profiles
 
 Expand beyond MAP (messaging) and PBAP (contacts).
 
-- [ ] **HFP** — Hands-Free Profile for call history and call control
-- [ ] **OBEX FTP** — File Transfer Profile for browsing and pulling files from the phone
+- [ ] **BTP-01 (HFP)** — Hands-Free Profile for call history and call control
+- [ ] **BTP-02 (OBEX FTP)** — File Transfer Profile for browsing and pulling files from the phone
 
 ---
 
 ## Known issues
-
----
-
-## Tags
-
-Section-scoped — one prefix per Planned/Research section above, numbered sequentially as
-sub-items in that section ship:
-
-| Prefix | Section |
-|---|---|
-| `ERR` | Standardized error + logging |
-| `HUB` | Broker mode for hub and spoke |
-| `ATT` | Send attachments |
-| `EXP` | Export |
-| `STORE` | Persistence layer |
-| `DISC` | Built-in device discovery |
-| `TUI` | Full TUI client |
-| `SEARCH` | Fuzzy + semantic search |
-| `SEC` | Advanced security |
-| `API` | Library + SDKs |
-| `WEB` | Web UI |
-| `XPORT` | Additional transport protocols (Research) |
-| `BTP` | Additional Bluetooth profiles (Research) |
-
-Cross-cutting — fixes that don't map to a roadmap line item:
-
-| Prefix | Meaning |
-|---|---|
-| `OBS` | Observability — logging/tracing/diagnostics fixes |
-| `GAP` | Protocol/device compliance gap — workaround for something the spec implies but the device doesn't honor |
 
 ---
 
@@ -162,3 +206,25 @@ Cross-cutting — fixes that don't map to a roadmap line item:
 - [x] **STORE-02** — Keyring-backed 256-bit DB key — `3dd359e`
 - [x] **DISC-01** — Built-in device discovery (scan, picker, persist) — `1a584de`
 - [x] **STORE-03** — Persistence layer: `watch` retired for the persistent `daemon` (`ca7d21c`), eager MNS body fetch (`91597b9`)
+
+---
+
+## Issues
+
+Scoped bugs and gaps found during testing that don't warrant their own roadmap section. Tagged
+`ISS-NN` here; moves to Completed with a commit hash once fixed.
+
+- [ ] **ISS-01** — GUI channel overrides let the same channel be set for both messaging and
+      contacts, which is always invalid, and a partial save can leave one written and the other
+      not
+- [ ] **ISS-02** — Automatic channel detection doesn't retry on a transient failure, unlike other
+      connection attempts in the app
+- [ ] **ISS-03** — The GUI treats a broken or unreadable config file the same as no device being
+      configured, silently sending the user through first-time setup instead of showing an error
+- [ ] **ISS-04** — Contact sync can report as never having run immediately after a successful
+      sync, and can cache garbled contact names; not yet root-caused
+- [ ] **ISS-05** — A sent message occasionally files into the wrong folder, which then causes the
+      default delete action to target the wrong place; not yet root-caused
+- [ ] **ISS-06** — The conversation view doesn't resolve or display the other party's contact name
+- [ ] **ISS-07** — On first launch, device discovery for the picker runs only after the splash
+      animation finishes instead of alongside it, adding avoidable delay

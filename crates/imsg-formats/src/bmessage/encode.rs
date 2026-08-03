@@ -63,9 +63,9 @@ fn encode_bbody(out: &mut String, encoding: &str, charset: &str, language: &str,
 
 // iOS computes LENGTH from the CRLF block; LF-only lengths cause send failures.
 fn msg_block_length(text: &str) -> usize {
-    let mut n: usize = 11;
+    let mut n: usize = super::BEGIN_MSG_LEN;
     for l in text.lines() {
         n = n.saturating_add(l.len()).saturating_add(2);
     }
-    n.saturating_add(9)
+    n.saturating_add(super::END_MSG_LEN)
 }

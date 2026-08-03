@@ -17,7 +17,6 @@ formats = { package = "imsg-formats", version = "0.3.1", path = "../imsg-formats
 obex-core = { package = "imsg-obex", version = "0.3.1", path = "../imsg-obex" }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["full"] }
-transport = { package = "imsg-transport", version = "0.3.1", path = "../imsg-transport" }
 
 [lints]
 workspace = true

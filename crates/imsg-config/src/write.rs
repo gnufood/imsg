@@ -8,19 +8,19 @@ use toml_edit::{DocumentMut, Item, Table};
 use super::ConfigError;
 use crate::broker::SecurityLevel;
 
-// opens (or creates) ~/.config/imsg/imsg.toml, sets [section].key = value, writes back.
-// all other keys/sections preserved; parent dirs created if absent. value is written with
-// its real TOML type (e.g. bare integer for i64) — callers must pass the type the config
-// struct actually deserializes into, or the next load fails (a quoted string never coerces
-// into a typed numeric field).
+// opens (or creates) ~/.config/imsg/imsg.toml, sets [section].key = value for every entry,
+// writes back once. all other keys/sections preserved; parent dirs created if absent. values
+// are written with their real TOML type (e.g. bare integer for i64) — callers must pass the
+// type the config struct actually deserializes into, or the next load fails (a quoted string
+// never coerces into a typed numeric field).
+//
+// all entries land in one read-modify-write cycle so a multi-key caller (e.g.
+// set_device_and_channels) can't leave a partially-written section if a later write in a
+// sequence of separate calls were to fail — there's only one write.
 //
 // errors: Io when the config dir can't be determined or on FS failure; Parse when the
 // existing file has invalid TOML; Invalid when the section exists but isn't a TOML table.
-fn patch_config(
-    section: &'static str,
-    key: &str,
-    value: impl Into<toml_edit::Value>,
-) -> Result<(), ConfigError> {
+fn patch_config(section: &'static str, entries: &[(&str, toml_edit::Value)]) -> Result<(), ConfigError> {
     let config_dir = dirs::config_dir().ok_or_else(|| {
         io::Error::new(io::ErrorKind::NotFound, "cannot determine user config directory")
     })?;
@@ -36,13 +36,13 @@ fn patch_config(
     if root.get(section).is_none_or(|i| !i.is_table()) {
         root.insert(section, Item::Table(Table::new()));
     }
-    root.get_mut(section)
-        .and_then(Item::as_table_mut)
-        .ok_or(ConfigError::Invalid {
-            field: section,
-            msg: format!("[{section}] section is not a TOML table"),
-        })?
-        .insert(key, toml_edit::value(value));
+    let table = root.get_mut(section).and_then(Item::as_table_mut).ok_or(ConfigError::Invalid {
+        field: section,
+        msg: format!("[{section}] section is not a TOML table"),
+    })?;
+    for (key, value) in entries {
+        table.insert(key, toml_edit::value(value.clone()));
+    }
 
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
@@ -66,7 +66,7 @@ pub fn set_device(address: &str) -> Result<(), ConfigError> {
     address
         .parse::<bluer::Address>()
         .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
-    patch_config("device", "address", address)
+    patch_config("device", &[("address", address.into())])
 }
 
 /// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
@@ -81,7 +81,7 @@ pub fn set_device(address: &str) -> Result<(), ConfigError> {
 /// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
 pub fn set_map_channel(channel: u8) -> Result<(), ConfigError> {
     crate::validate_channel("device.map_channel", channel)?;
-    patch_config("device", "map_channel", i64::from(channel))
+    patch_config("device", &[("map_channel", i64::from(channel).into())])
 }
 
 /// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
@@ -96,7 +96,7 @@ pub fn set_map_channel(channel: u8) -> Result<(), ConfigError> {
 /// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
 pub fn set_pbap_channel(channel: u8) -> Result<(), ConfigError> {
     crate::validate_channel("device.pbap_channel", channel)?;
-    patch_config("device", "pbap_channel", i64::from(channel))
+    patch_config("device", &[("pbap_channel", i64::from(channel).into())])
 }
 
 /// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
@@ -125,9 +125,14 @@ pub fn set_device_and_channels(
     crate::validate_channel("device.map_channel", map_channel)?;
     crate::validate_channel("device.pbap_channel", pbap_channel)?;
 
-    set_device(address)?;
-    set_map_channel(map_channel)?;
-    set_pbap_channel(pbap_channel)
+    patch_config(
+        "device",
+        &[
+            ("address", address.into()),
+            ("map_channel", i64::from(map_channel).into()),
+            ("pbap_channel", i64::from(pbap_channel).into()),
+        ],
+    )
 }
 
 /// `{data_dir}/imsg/hub.key`; `None` in minimal containers where `dirs::data_dir()` is unavailable.
@@ -212,7 +217,7 @@ pub fn set_hub_key(key: &str) -> Result<(), ConfigError> {
             msg: "must not be empty".to_owned(),
         });
     }
-    patch_config("hub", "node_key", key)
+    patch_config("hub", &[("node_key", key.into())])
 }
 
 /// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
@@ -226,7 +231,7 @@ pub fn set_hub_key(key: &str) -> Result<(), ConfigError> {
 /// cannot be determined.
 /// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
 pub fn set_broker_security_level(level: SecurityLevel) -> Result<(), ConfigError> {
-    patch_config("broker", "security_level", level.as_str())
+    patch_config("broker", &[("security_level", level.as_str().into())])
 }
 
 #[cfg(test)]

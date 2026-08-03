@@ -2,8 +2,18 @@ pre-commit:
   commands:
     rust:
       run: just pre-commit
+    gui:
+      glob:
+        - "crates/imsg-gui/*"
+        - "crates/imsg-gui/**"
+      run: just gui-pre-commit
 
 pre-push:
   commands:
     rust:
       run: just pre-push
+    gui:
+      glob:
+        - "crates/imsg-gui/*"
+        - "crates/imsg-gui/**"
+      run: just gui-pre-push

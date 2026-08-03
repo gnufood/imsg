@@ -9,6 +9,10 @@ mod types;
 
 pub use types::{BBody, BEnvelope, BMessage, BMessageError, BVCard, MessageStatus, MessageType};
 
+// LENGTH covers the CRLF `BEGIN:MSG…END:MSG` block; encode and parse must agree on its overhead.
+const BEGIN_MSG_LEN: usize = "BEGIN:MSG\r\n".len();
+const END_MSG_LEN: usize = "END:MSG\r\n".len();
+
 impl BMessage {
     /// Parses a bMessage from UTF-8 text, accepting CRLF and LF line endings.
     ///

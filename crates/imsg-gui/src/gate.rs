@@ -152,8 +152,12 @@ pub async fn run<F, R>(
             continue;
         }
         crate::contacts::ensure_synced_best_effort(cfg.device.address()).await;
-        state.set(GateStatus::Ready);
+        // `on_ready` must run before publishing `Ready` — `state.set` wakes waiting watchers
+        // immediately, and on a multi-threaded runtime a waiter can observe `Ready` and act on
+        // it (e.g. checking that the store was handed off) before this thread would otherwise
+        // reach `on_ready`, if the two were reversed.
         on_ready(db);
+        state.set(GateStatus::Ready);
         return;
     }
 }

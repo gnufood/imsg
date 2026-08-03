@@ -1,7 +1,8 @@
 default: build
 
 # imsg-gui needs tauri's GTK/WebKit dev headers, which this toolchain doesn't provision —
-# excluded from these workspace-wide recipes; build/test/lint it directly via `-p imsg-gui`.
+# excluded from these workspace-wide recipes; build/test/lint it directly via `-p imsg-gui`
+# (see gui-cargo-check/gui-cargo-lint/gui-cargo-test below).
 build:
     cargo build --workspace --exclude imsg-gui --all-targets --all-features
 
@@ -34,6 +35,19 @@ docs:
 gen-completions:
     cargo run --example gen-completions -p imsg
 
+# The Rust side of imsg-gui itself — not covered by the workspace-wide check/lint/test above.
+gui-cargo-check:
+    cargo check -p imsg-gui --all-targets --all-features
+
+gui-cargo-lint:
+    cargo clippy -p imsg-gui --all-targets --all-features -- -D warnings
+
+# nextest, not `cargo test` — imsg-gui's suite is known-flaky under `cargo test`'s in-process
+# threaded runner; nextest's per-test-process isolation (plus the crate's own `#[serial]`
+# markers via `serial_test`) is what makes it safe to run. Requires `cargo-nextest` on PATH.
+gui-cargo-test:
+    cargo nextest run -p imsg-gui --all-features
+
 # crates/imsg-gui/frontend — kept separate from the Rust recipes above; no GTK/WebKit
 # headers needed for these, just Node.
 gui-typecheck:
@@ -45,7 +59,14 @@ gui-lint:
 gui-build:
     cd crates/imsg-gui/frontend && npm run build
 
-gui-ci: gui-typecheck gui-lint gui-build
+gui-ci: gui-cargo-check gui-cargo-lint gui-cargo-test gui-typecheck gui-lint gui-build
+
+# Mirrors pre-commit/pre-push above but scoped to imsg-gui — skips gui-cargo-test (slow,
+# and pre-commit stays fast on the Rust side too) and gui-build (neither Rust pre-commit
+# nor pre-push builds; that's reserved for `ci`/`gui-ci`).
+gui-pre-commit: gui-cargo-check gui-cargo-lint gui-typecheck gui-lint
+
+gui-pre-push: gui-cargo-check gui-cargo-lint gui-cargo-test gui-typecheck gui-lint
 
 # WebDriver test build (`@wdio/tauri-service`, embedded provider): the one build where the
 # Rust `webdriver` feature, the frontend `VITE_WEBDRIVER` flag, and `withGlobalTauri` (via
@@ -55,6 +76,12 @@ gui-ci: gui-typecheck gui-lint gui-build
 gui-webdriver-build:
     cd crates/imsg-gui/frontend && VITE_WEBDRIVER=true npm run build
     TAURI_CONFIG='{"app":{"withGlobalTauri":true}}' cargo build -p imsg-gui --features webdriver
+
+# Local sanity check for the bundled .deb/.rpm/.AppImage before trusting CI with it. Requires
+# `cargo-tauri` on PATH (`cargo install tauri-cli --version 2.11.4 --locked`, matching the
+# `tauri-cli` dev-dependency pin) — the CI release job installs its own copy separately.
+gui-package:
+    cd crates/imsg-gui && cargo tauri build
 
 pre-commit: fmt check lint
 
