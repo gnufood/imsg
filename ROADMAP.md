@@ -146,16 +146,16 @@ restart is required.
 
 No preview rendering exists for message content beyond plain text today.
 
-- [ ] **LINK-01** — Detect links in message text and render them as clickable
-- [ ] **LINK-02** — Show a preview (title/image/description) for a detected link
+- [ ] **MSG-05** — Detect links in message text and render them as clickable
+- [ ] **MSG-06** — Show a preview (title/image/description) for a detected link
 
 ### Contacts
 
 The GUI shows a generic avatar for every contact today.
 
-- [ ] **CONTACT-01** — Investigate syncing contact photos from the phone alongside the existing
+- [ ] **MSG-07** — Investigate syncing contact photos from the phone alongside the existing
       contact data
-- [ ] **CONTACT-02** — Show a contact's synced photo in place of the generic avatar
+- [ ] **MSG-08** — Show a contact's synced photo in place of the generic avatar
 
 ### Phone number handling
 
@@ -163,12 +163,12 @@ Phone numbers written without a country code aren't normalized to a canonical fo
 they can silently fail to match against numbers that do carry one. A design for deriving and
 applying a default region has already been scoped.
 
-- [ ] **PHONE-01** — Derive a default region for normalization from the device's own phone
+- [ ] **MSG-09** — Derive a default region for normalization from the device's own phone
       number, with a safe fallback and a user-configurable override
-- [ ] **PHONE-02** — Validate a manually configured region up front so a typo is caught
+- [ ] **MSG-10** — Validate a manually configured region up front so a typo is caught
       immediately instead of causing silent normalization failures later
-- [ ] **PHONE-03** — Cache the derived region so it isn't re-derived on every use
-- [ ] **PHONE-04** — Apply phone-number normalization consistently from one shared place
+- [ ] **MSG-11** — Cache the derived region so it isn't re-derived on every use
+- [ ] **MSG-12** — Apply phone-number normalization consistently from one shared place
       instead of separately in each frontend
 
 ---
@@ -181,16 +181,16 @@ Items that need protocol investigation or feasibility work before they land on t
 
 Beyond RFCOMM (Classic Bluetooth) and iroh (hub/spoke QUIC).
 
-- [ ] **XPORT-01 (BLE)** — investigate ANCS for notification delivery; MAP requires Classic Bluetooth, so full message sync over BLE is unproven
-- [ ] **XPORT-02 (TCP)** — partially scaffolded internally but not yet wired into any caller; plain TCP for same-machine or LAN use without iroh's relay overhead
-- [ ] **XPORT-03 (iAP)** — iPod Accessory Protocol for USB-connected iOS devices; potentially lower latency than RFCOMM
+- [ ] **TRANSPORT-03 (BLE)** — investigate ANCS for notification delivery; MAP requires Classic Bluetooth, so full message sync over BLE is unproven
+- [ ] **TRANSPORT-04 (TCP)** — partially scaffolded internally but not yet wired into any caller; plain TCP for same-machine or LAN use without iroh's relay overhead
+- [ ] **TRANSPORT-05 (iAP)** — iPod Accessory Protocol for USB-connected iOS devices; potentially lower latency than RFCOMM
 
 ### Additional Bluetooth profiles
 
 Expand beyond MAP (messaging) and PBAP (contacts).
 
-- [ ] **BTP-01 (HFP)** — Hands-Free Profile for call history and call control
-- [ ] **BTP-02 (OBEX FTP)** — File Transfer Profile for browsing and pulling files from the phone
+- [ ] **TRANSPORT-06 (HFP)** — Hands-Free Profile for call history and call control
+- [ ] **TRANSPORT-07 (OBEX FTP)** — File Transfer Profile for browsing and pulling files from the phone
 
 ---
 

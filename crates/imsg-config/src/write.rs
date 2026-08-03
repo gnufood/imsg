@@ -20,7 +20,10 @@ use crate::broker::SecurityLevel;
 //
 // errors: Io when the config dir can't be determined or on FS failure; Parse when the
 // existing file has invalid TOML; Invalid when the section exists but isn't a TOML table.
-fn patch_config(section: &'static str, entries: &[(&str, toml_edit::Value)]) -> Result<(), ConfigError> {
+fn patch_config(
+    section: &'static str,
+    entries: &[(&str, toml_edit::Value)],
+) -> Result<(), ConfigError> {
     let config_dir = dirs::config_dir().ok_or_else(|| {
         io::Error::new(io::ErrorKind::NotFound, "cannot determine user config directory")
     })?;

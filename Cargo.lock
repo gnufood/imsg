@@ -4888,7 +4888,6 @@ dependencies = [
  "futures",
  "imsg-formats",
  "imsg-obex",
- "imsg-transport",
  "quick-xml 0.41.0",
  "thiserror 2.0.18",
  "tokio",
