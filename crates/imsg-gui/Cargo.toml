@@ -7,6 +7,9 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
+# Not buildable from a packaged tarball as-is: frontend/dist and bindings.ts are generated,
+# gitignored, and nothing in this crate's build regenerates them — see frontend/README.md.
+publish = false
 
 [dependencies]
 serde     = { version = "1", features = ["derive"] }
