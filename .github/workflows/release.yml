@@ -370,6 +370,7 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         with:
           projectPath: crates/imsg-gui
+          args: --bundles deb,rpm,appimage
           uploadWorkflowArtifacts: true
           workflowArtifactNamePattern: 'artifacts-gui-[arch]-[bundle]'
 
