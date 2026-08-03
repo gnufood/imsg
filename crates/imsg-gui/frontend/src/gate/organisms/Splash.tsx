@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import CenteredScreen from '@/ui/templates/CenteredScreen.tsx'
 import { motion } from 'motion/react'
+import motionTokens from '@/ui/atoms/motion.ts'
 
-const MIN_FLOOR_MS = 3800
+// Public/splash.webp: 173 frames, 7080ms total runtime (`webpmux -info`).
+const MIN_FLOOR_MS = 7080
 const CAP_MS = 1750
-const FADE_SECONDS = 0.3
-const FADE_TRANSITION = { duration: FADE_SECONDS }
 
 interface SplashProps {
   ready: boolean
@@ -46,7 +46,7 @@ const Splash = ({ ready, onDone }: SplashProps): React.JSX.Element => {
         alt="imsg"
         className="w-80"
         animate={animate}
-        transition={FADE_TRANSITION}
+        transition={motionTokens.fadeTransition}
         onAnimationComplete={handleFadeComplete}
       />
     </CenteredScreen>
