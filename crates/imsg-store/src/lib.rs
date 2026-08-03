@@ -7,7 +7,9 @@
 
 mod contacts;
 mod cursors;
+mod meta;
 mod outbox;
+mod outgoing;
 mod query;
 mod read;
 mod row;
