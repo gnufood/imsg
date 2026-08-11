@@ -11,6 +11,9 @@ Silicon, no macOS bridge.
 
 ---
 
+> [!WARNING]
+> `imsg` is pre-1.0. Anything below `1.0.0` should be treated as unstable — APIs, CLI flags, and config format may change without notice between releases.
+
 ## Requirements
 
 - Linux with BlueZ (`bluetoothd` running)
