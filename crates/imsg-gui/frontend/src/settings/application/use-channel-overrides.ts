@@ -102,10 +102,9 @@ interface SaveArgs {
 
 const saveChannels = async ({ dispatch, mapChannel, onSaved, pbapChannel }: SaveArgs): Promise<void> => {
   dispatch({ type: 'saveStarted' })
-  const results = await Promise.all([commands.configSetMapChannel(mapChannel), commands.configSetPbapChannel(pbapChannel)])
-  const failed = results.find((result) => result.status === 'error')
-  if (failed !== undefined && failed.status === 'error') {
-    dispatch({ message: failed.error.message, type: 'saveFailed' })
+  const result = await commands.configSetChannels(mapChannel, pbapChannel)
+  if (result.status === 'error') {
+    dispatch({ message: result.error.message, type: 'saveFailed' })
     return
   }
   dispatch({ type: 'saveSucceeded' })

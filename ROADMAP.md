@@ -109,7 +109,6 @@ Research work produces a validated technical direction, prototype, or implementa
 
 *Settings and configuration behavior that requires stronger validation or error handling.*
 
-- [ ]  **CONF-01** — Prevent messaging and contact services from using the same channel, and save channel overrides atomically — [#1](https://github.com/gnufood/imsg/issues/1)
 - [ ]  **CONF-02** — Surface unreadable or invalid configuration files instead of launching first-time setup — [#2](https://github.com/gnufood/imsg/issues/2)
 
 ### Device Integration
@@ -133,4 +132,5 @@ Completed work retains its original numeric identifier under its current broad d
 - [x]  **DATA-01** — Added an encrypted SQLCipher message store — `68fef48`
 - [x]  **DATA-02** — Secured the 256-bit database key through the system keyring — `3dd359e`
 - [x]  **DEVC-01** — Added built-in device scanning, selection, and persistence — `1a584de`
+- [x]  **CONF-01** — Rejected equal MAP/PBAP channel assignments and made channel-override writes atomic — `6f77671`, `b037a38`
 - [x]  **DATA-03** — Replaced `watch` with the persistent `daemon` and added eager MNS body retrieval — `ca7d21c`, `91597b9`
