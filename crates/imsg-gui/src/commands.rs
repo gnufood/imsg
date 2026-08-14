@@ -1,12 +1,9 @@
 //! `#[tauri::command]` shims — the invoke-handler boundary a `tauri_specta::Builder` wraps.
 //!
-//! Split by domain (`reads`, `config`, `daemon`, `send`, `delete`) to stay under the
-//! 250-line module ceiling as the command surface grows; `CommandError` (shared across every
-//! domain) lives here.
+//! Split by domain.
 //!
-//! Commands taking `String`/`PathBuf` args (not `&str`/`&Path`) carry
-//! `#[allow(clippy::needless_pass_by_value)]`: `#[tauri::command]` arguments are deserialized
-//! from the frontend's IPC call and must be owned.
+//! `String`/`PathBuf` args carry `#[allow(clippy::needless_pass_by_value)]`:
+//! `#[tauri::command]` arguments are deserialized from IPC and must be owned.
 
 pub mod config;
 pub mod contacts;
@@ -22,9 +19,8 @@ use specta::Type;
 
 /// Failure surfaced to the frontend from any `#[tauri::command]` in this crate.
 ///
-/// Wraps the underlying error's `Display` text; none of the sources converted below leak
-/// secrets (no raw key material, no `SQLite`/service-manager internals beyond a driver-level
-/// description).
+/// Wraps the source error's `Display` text. No converted source leaks key material or
+/// `SQLite`/service-manager internals.
 #[derive(Debug, Serialize, Type, thiserror::Error)]
 #[error("{message}")]
 pub struct CommandError {
@@ -83,14 +79,11 @@ impl From<transport::discover::DiscoverError> for CommandError {
 
 /// Registers every `#[tauri::command]` in this crate on a fresh `tauri_specta::Builder`.
 ///
-/// Single source of truth for the exported command surface — reused by the `bindings.ts`
-/// export step (`examples/export_bindings.rs`) and by `main.rs`'s own `invoke_handler`/
-/// `mount_events` wiring once that exists, so the list is never hand-duplicated.
+/// Shared by the `bindings.ts` export step and `main.rs`, so the list is never hand-duplicated.
 ///
-/// `i64`/`u64` fields (e.g. `MessageDto::timestamp_ms`) export as lossless JS `bigint` via
-/// semantic types — `specta_typescript` otherwise hard-forbids exporting them at all
-/// (precision loss past 2^53 in a plain JS `number`). Only the generated `bindings.ts`
-/// wrappers apply the runtime conversion; calling raw `invoke()` bypasses it.
+/// `i64`/`u64` fields export as JS `bigint` via semantic types; `specta_typescript` otherwise
+/// forbids exporting them (precision loss past 2^53). Only the generated `bindings.ts` wrappers
+/// apply the conversion, so raw `invoke()` bypasses it.
 #[must_use]
 pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
@@ -105,8 +98,7 @@ pub fn builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             contacts::sync_contacts_now,
             config::config_show,
             config::config_set_device,
-            config::config_set_map_channel,
-            config::config_set_pbap_channel,
+            config::config_set_channels,
             config::config_is_device_configured,
             config::config_set_device_and_channels,
             config::config_set_broker_security_level,

@@ -33,60 +33,6 @@ fn set_hub_key_roundtrip() {
 }
 
 #[test]
-fn set_map_channel_rejects_out_of_bounds() {
-    for bad in [0_u8, 31_u8] {
-        let result = set_map_channel(bad);
-        assert!(
-            matches!(result, Err(ConfigError::Invalid { field: "device.map_channel", .. })),
-            "expected Invalid for map_channel={bad}"
-        );
-    }
-}
-
-#[test]
-fn set_pbap_channel_rejects_out_of_bounds() {
-    for bad in [0_u8, 31_u8] {
-        let result = set_pbap_channel(bad);
-        assert!(
-            matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })),
-            "expected Invalid for pbap_channel={bad}"
-        );
-    }
-}
-
-#[test]
-#[serial]
-fn set_map_channel_roundtrip_as_typed_integer() {
-    figment::Jail::expect_with(|jail| {
-        let tmp = jail.directory().to_path_buf();
-        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-        jail.set_env("HOME", tmp.to_str().unwrap_or_default());
-        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
-        set_map_channel(9).map_err(|e| figment::Error::from(e.to_string()))?;
-        // Typed extraction into `u8` fails if this was written as a quoted TOML string
-        // instead of a bare integer, so this also proves `patch_config`'s generalization.
-        let cfg: crate::Config = crate::figment(None).extract()?;
-        assert_eq!(cfg.device.map_channel, 9_u8);
-        Ok(())
-    });
-}
-
-#[test]
-#[serial]
-fn set_pbap_channel_roundtrip_as_typed_integer() {
-    figment::Jail::expect_with(|jail| {
-        let tmp = jail.directory().to_path_buf();
-        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-        jail.set_env("HOME", tmp.to_str().unwrap_or_default());
-        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
-        set_pbap_channel(21).map_err(|e| figment::Error::from(e.to_string()))?;
-        let cfg: crate::Config = crate::figment(None).extract()?;
-        assert_eq!(cfg.device.pbap_channel, 21_u8);
-        Ok(())
-    });
-}
-
-#[test]
 #[serial]
 fn set_broker_security_level_roundtrip() {
     figment::Jail::expect_with(|jail| {
@@ -98,6 +44,61 @@ fn set_broker_security_level_roundtrip() {
             .map_err(|e| figment::Error::from(e.to_string()))?;
         let cfg: crate::Config = crate::figment(None).extract()?;
         assert_eq!(cfg.broker.security_level, Some(SecurityLevel::High));
+        Ok(())
+    });
+}
+
+#[test]
+fn set_channels_rejects_out_of_bounds_map_channel() {
+    let result = set_channels(0, 13);
+    assert!(matches!(result, Err(ConfigError::Invalid { field: "device.map_channel", .. })));
+}
+
+#[test]
+fn set_channels_rejects_out_of_bounds_pbap_channel() {
+    let result = set_channels(2, 31);
+    assert!(matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })));
+}
+
+#[test]
+fn set_channels_rejects_equal_channels() {
+    let result = set_channels(9, 9);
+    assert!(matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })));
+}
+
+#[test]
+#[serial]
+fn set_channels_roundtrip() {
+    figment::Jail::expect_with(|jail| {
+        let tmp = jail.directory().to_path_buf();
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
+        set_channels(6, 22).map_err(|e| figment::Error::from(e.to_string()))?;
+        // Typed extraction into `u8` fails if these were written as quoted TOML strings
+        // instead of bare integers, so this also proves `patch_config`'s generalization.
+        let cfg: crate::Config = crate::figment(None).extract()?;
+        assert_eq!(cfg.device.map_channel, 6_u8);
+        assert_eq!(cfg.device.pbap_channel, 22_u8);
+        Ok(())
+    });
+}
+
+#[test]
+#[serial]
+fn set_channels_rejects_equal_channels_without_writing() {
+    figment::Jail::expect_with(|jail| {
+        let tmp = jail.directory().to_path_buf();
+        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
+        jail.set_env("HOME", tmp.to_str().unwrap_or_default());
+        jail.set_env("XDG_CONFIG_HOME", tmp.to_str().unwrap_or_default());
+        // Seed prior values so a would-be partial write would be observable.
+        set_channels(6, 22).map_err(|e| figment::Error::from(e.to_string()))?;
+        let result = set_channels(9, 9);
+        assert!(matches!(result, Err(ConfigError::Invalid { field: "device.pbap_channel", .. })));
+        let cfg: crate::Config = crate::figment(None).extract()?;
+        assert_eq!(cfg.device.map_channel, 6_u8, "rejected pair must not overwrite map_channel");
+        assert_eq!(cfg.device.pbap_channel, 22_u8, "rejected pair must not overwrite pbap_channel");
         Ok(())
     });
 }

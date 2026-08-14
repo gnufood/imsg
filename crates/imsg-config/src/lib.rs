@@ -6,8 +6,7 @@ mod write;
 pub use broker::{BrokerConfig, SecurityLevel};
 pub use write::{
     broker_abstract_name, broker_log_path, daemon_log_path, db_path, hub_key_path, hub_lock_path,
-    set_broker_security_level, set_device, set_device_and_channels, set_hub_key, set_map_channel,
-    set_pbap_channel,
+    set_broker_security_level, set_channels, set_device, set_device_and_channels, set_hub_key,
 };
 
 use std::path::PathBuf;
@@ -67,12 +66,10 @@ pub fn load(explicit: Option<PathBuf>) -> Result<Config, ConfigError> {
     Ok(cfg)
 }
 
-/// `true` if `device.address` is set by any layered source (file/env), without validating its
-/// value or erroring on any other missing/malformed field.
+/// `true` if any layered source sets `device.address`, without validating it.
 ///
-/// For callers (the GUI's device-config startup gate) that need "no device configured yet"
-/// distinguished from every other [`load()`] failure — [`ConfigError::Load`] doesn't carry
-/// structured field information, so pattern-matching it can't make that distinction.
+/// [`ConfigError::Load`] carries no structured field information, so [`load()`] can't
+/// distinguish "no device configured yet" from any other failure.
 #[must_use]
 pub fn is_device_configured(explicit: Option<PathBuf>) -> bool {
     figment(explicit).contains("device.address")
@@ -84,7 +81,7 @@ pub enum ConfigError {
     /// Figment failed to extract — missing required field or type mismatch; inner error names the key.
     #[error("failed to load config: {0}")]
     Load(Box<figment::Error>),
-    /// Domain constraint violated — `field` names the dotted key, `msg` describes the violation.
+    /// Domain constraint violated.
     #[error("invalid config: {field}: {msg}")]
     Invalid {
         /// Dotted config key path where the constraint was violated (e.g. `"device.address"`).
@@ -92,7 +89,7 @@ pub enum ConfigError {
         /// Free-form description of the constraint violation.
         msg: String,
     },
-    /// Reading or writing the config file failed.
+    /// Config directory undeterminable, or filesystem failure on read/write.
     #[error("config I/O error: {0}")]
     Io(#[from] std::io::Error),
     /// The existing config file contains invalid TOML and cannot be safely edited.
@@ -126,9 +123,9 @@ pub struct Config {
 #[derive(Debug, Deserialize)]
 pub struct DeviceConfig {
     address: String,
-    /// RFCOMM channel for the MAP MAS profile. Validated to `[1, 30]`.
+    /// RFCOMM channel for the MAP MAS profile.
     pub map_channel: u8,
-    /// RFCOMM channel for the PBAP PSE profile. Validated to `[1, 30]`.
+    /// RFCOMM channel for the PBAP PSE profile.
     pub pbap_channel: u8,
 }
 
@@ -140,38 +137,35 @@ impl DeviceConfig {
     }
 }
 
-/// Absent until `imsg spoke add <KEY>` writes it. Unvalidated — checked at connect time via `node_key.parse::<EndpointId>()`.
+/// Absent until `imsg spoke add <KEY>` writes it.
 #[derive(Debug, Default, Deserialize)]
 pub struct HubConfig {
-    /// The iroh public key written by `imsg spoke add`.
+    /// Unvalidated; parsed as an iroh `EndpointId` at connect time.
     pub node_key: Option<String>,
 }
 
 /// Optional DB path override. Absent from config → [`StoreConfig::resolve`] falls back to [`db_path`].
 #[derive(Debug, Default, Deserialize)]
 pub struct StoreConfig {
-    /// Absolute path to the `SQLCipher` database file. When absent, resolved via [`db_path`].
     pub(crate) path: Option<PathBuf>,
 }
 
 impl StoreConfig {
-    /// Returns the configured path when set; otherwise delegates to [`db_path`].
-    ///
-    /// Returns `None` only in minimal containers where [`db_path`] itself returns `None`.
+    /// `None` only in minimal containers where [`db_path`] itself returns `None`.
     #[must_use]
     pub fn resolve(&self) -> Option<PathBuf> {
         self.path.clone().or_else(db_path)
     }
 }
 
-/// Checks `device.address` MAC format, channel values in `[1, 30]`, and broker timing
-/// consistency. Does not cross-validate bridge addresses against each other or verify device
-/// reachability.
+/// Checks `device.address` MAC format, channel values in `[1, 30]`, that `map_channel` and
+/// `pbap_channel` differ, and broker timing consistency. Does not verify device reachability.
 ///
 /// # Errors
 ///
 /// Returns [`ConfigError::Invalid`] when `device.address` is not `XX:XX:XX:XX:XX:XX`, a channel
-/// value is `0` or greater than `30`, or the `[broker]` timing policy is inconsistent.
+/// value is `0` or greater than `30`, `map_channel` equals `pbap_channel`, or the `[broker]`
+/// timing policy is inconsistent.
 pub(crate) fn validate(cfg: &Config) -> Result<(), ConfigError> {
     cfg.device
         .address
@@ -179,14 +173,26 @@ pub(crate) fn validate(cfg: &Config) -> Result<(), ConfigError> {
         .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
     validate_channel("device.map_channel", cfg.device.map_channel)?;
     validate_channel("device.pbap_channel", cfg.device.pbap_channel)?;
+    validate_channel_pair(cfg.device.map_channel, cfg.device.pbap_channel)?;
     cfg.broker.validate()
 }
 
-/// Shared by [`validate`] (load-time) and `write::{set_map_channel,set_pbap_channel}`
-/// (pre-write, same bound so a saved value never fails the next load).
+/// Same bound at load-time and pre-write, so a saved value never fails the next load.
 pub(crate) fn validate_channel(field: &'static str, channel: u8) -> Result<(), ConfigError> {
     if channel == 0 || channel > 30 {
         return Err(ConfigError::Invalid { field, msg: format!("{channel} is not in [1, 30]") });
+    }
+    Ok(())
+}
+
+/// MAP and PBAP can't share an RFCOMM channel — the device can't route inbound data to two
+/// profiles at once. Enforced at load and again before any write.
+pub(crate) fn validate_channel_pair(map_channel: u8, pbap_channel: u8) -> Result<(), ConfigError> {
+    if map_channel == pbap_channel {
+        return Err(ConfigError::Invalid {
+            field: "device.pbap_channel",
+            msg: format!("must differ from device.map_channel ({map_channel})"),
+        });
     }
     Ok(())
 }

@@ -1,5 +1,5 @@
-//! Same `figment::Jail` isolation as `crate::config`'s own tests — these just prove the
-//! `#[tauri::command]` shims delegate correctly and map errors through `CommandError`.
+//! `figment::Jail` isolation, as in `crate::config`'s tests. These prove the shims delegate
+//! and map errors through `CommandError`.
 
 use serial_test::serial;
 
@@ -43,45 +43,30 @@ fn config_set_device_maps_invalid_mac_to_command_error() {
 
 #[test]
 #[serial]
-fn config_set_map_channel_persists() {
+fn config_set_channels_persists() {
     figment::Jail::expect_with(|jail| {
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
         let home = jail.directory().to_path_buf();
         jail.set_env("HOME", home.to_str().unwrap_or_default());
 
-        config_set_map_channel(14).map_err(|e| figment::Error::from(e.to_string()))?;
+        config_set_channels(14, 19).map_err(|e| figment::Error::from(e.to_string()))?;
 
         let dto = config_show(None).map_err(|e| figment::Error::from(e.to_string()))?;
         assert_eq!(dto.map_channel, 14);
-        Ok(())
-    });
-}
-
-#[test]
-fn config_set_map_channel_maps_out_of_bounds_to_command_error() {
-    let result = config_set_map_channel(0);
-    assert!(result.is_err());
-}
-
-#[test]
-#[serial]
-fn config_set_pbap_channel_persists() {
-    figment::Jail::expect_with(|jail| {
-        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-        let home = jail.directory().to_path_buf();
-        jail.set_env("HOME", home.to_str().unwrap_or_default());
-
-        config_set_pbap_channel(19).map_err(|e| figment::Error::from(e.to_string()))?;
-
-        let dto = config_show(None).map_err(|e| figment::Error::from(e.to_string()))?;
         assert_eq!(dto.pbap_channel, 19);
         Ok(())
     });
 }
 
 #[test]
-fn config_set_pbap_channel_maps_out_of_bounds_to_command_error() {
-    let result = config_set_pbap_channel(31);
+fn config_set_channels_maps_out_of_bounds_to_command_error() {
+    let result = config_set_channels(0, 19);
+    assert!(result.is_err());
+}
+
+#[test]
+fn config_set_channels_maps_equal_channels_to_command_error() {
+    let result = config_set_channels(9, 9);
     assert!(result.is_err());
 }
 

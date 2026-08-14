@@ -1,6 +1,5 @@
-//! Real config-file I/O, isolated via `figment::Jail` (same approach `imsg-config`'s own
-//! `set_hub_key_roundtrip` test uses) so these never touch this machine's real
-//! `~/.config/imsg/imsg.toml`. `#[serial]` because `Jail` mutates process-global env vars.
+//! `figment::Jail` isolates these from the real `~/.config/imsg/imsg.toml`.
+//! `#[serial]` because `Jail` mutates process-global env vars.
 
 use serial_test::serial;
 
@@ -79,48 +78,24 @@ fn set_device_rejects_invalid_mac() {
 
 #[test]
 #[serial]
-fn set_map_channel_persists_and_show_reflects_it() {
+fn set_channels_persists_and_show_reflects_it() {
     figment::Jail::expect_with(|jail| {
         jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
         let home = jail.directory().to_path_buf();
         jail.set_env("HOME", home.to_str().unwrap_or_default());
 
-        set_map_channel(11).map_err(|e| figment::Error::from(e.to_string()))?;
+        set_channels(6, 23).map_err(|e| figment::Error::from(e.to_string()))?;
 
         let dto = show(None).map_err(|e| figment::Error::from(e.to_string()))?;
-        assert_eq!(dto.map_channel, 11);
+        assert_eq!(dto.map_channel, 6);
+        assert_eq!(dto.pbap_channel, 23);
         Ok(())
     });
 }
 
 #[test]
-fn set_map_channel_rejects_out_of_bounds() {
-    let result = set_map_channel(0);
-    assert!(matches!(
-        result,
-        Err(config::ConfigError::Invalid { field: "device.map_channel", .. })
-    ));
-}
-
-#[test]
-#[serial]
-fn set_pbap_channel_persists_and_show_reflects_it() {
-    figment::Jail::expect_with(|jail| {
-        jail.set_env("IMSG_DEVICE__ADDRESS", "AA:BB:CC:DD:EE:FF");
-        let home = jail.directory().to_path_buf();
-        jail.set_env("HOME", home.to_str().unwrap_or_default());
-
-        set_pbap_channel(22).map_err(|e| figment::Error::from(e.to_string()))?;
-
-        let dto = show(None).map_err(|e| figment::Error::from(e.to_string()))?;
-        assert_eq!(dto.pbap_channel, 22);
-        Ok(())
-    });
-}
-
-#[test]
-fn set_pbap_channel_rejects_out_of_bounds() {
-    let result = set_pbap_channel(31);
+fn set_channels_rejects_equal_channels() {
+    let result = set_channels(9, 9);
     assert!(matches!(
         result,
         Err(config::ConfigError::Invalid { field: "device.pbap_channel", .. })

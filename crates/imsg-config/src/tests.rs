@@ -64,6 +64,24 @@ fn validate_rejects_channel_bounds() {
 }
 
 #[test]
+fn validate_rejects_equal_map_and_pbap_channel() {
+    let cfg = Config {
+        device: DeviceConfig {
+            map_channel: 9,
+            pbap_channel: 9,
+            ..make_device("AA:BB:CC:DD:EE:FF")
+        },
+        hub: HubConfig::default(),
+        store: StoreConfig::default(),
+        broker: BrokerConfig::default(),
+    };
+    assert!(matches!(
+        validate(&cfg),
+        Err(ConfigError::Invalid { field: "device.pbap_channel", .. })
+    ));
+}
+
+#[test]
 #[serial]
 fn env_override_address() {
     figment::Jail::expect_with(|jail| {

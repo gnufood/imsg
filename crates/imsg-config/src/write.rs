@@ -8,18 +8,8 @@ use toml_edit::{DocumentMut, Item, Table};
 use super::ConfigError;
 use crate::broker::SecurityLevel;
 
-// opens (or creates) ~/.config/imsg/imsg.toml, sets [section].key = value for every entry,
-// writes back once. all other keys/sections preserved; parent dirs created if absent. values
-// are written with their real TOML type (e.g. bare integer for i64) — callers must pass the
-// type the config struct actually deserializes into, or the next load fails (a quoted string
-// never coerces into a typed numeric field).
-//
-// all entries land in one read-modify-write cycle so a multi-key caller (e.g.
-// set_device_and_channels) can't leave a partially-written section if a later write in a
-// sequence of separate calls were to fail — there's only one write.
-//
-// errors: Io when the config dir can't be determined or on FS failure; Parse when the
-// existing file has invalid TOML; Invalid when the section exists but isn't a TOML table.
+// Pass the TOML type the config struct deserializes into; a quoted string won't coerce into a
+// numeric field.
 fn patch_config(
     section: &'static str,
     entries: &[(&str, toml_edit::Value)],
@@ -50,14 +40,14 @@ fn patch_config(
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
+    // Single write: a multi-key caller can't leave a half-written section.
     fs::write(&path, doc.to_string())?;
     Ok(())
 }
 
-/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+/// Writes `device.address` to `~/.config/imsg/imsg.toml`, creating it if absent.
 ///
-/// All other keys preserved. Does not touch `/etc/imsg.toml`, `./imsg.toml`, or env vars.
-/// Validates `address` against `XX:XX:XX:XX:XX:XX` before any I/O.
+/// Other keys and config layers untouched. Validated before any I/O.
 ///
 /// # Errors
 ///
@@ -72,48 +62,42 @@ pub fn set_device(address: &str) -> Result<(), ConfigError> {
     patch_config("device", &[("address", address.into())])
 }
 
-/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+/// Writes both channels to `~/.config/imsg/imsg.toml`, creating it if absent.
 ///
-/// All other keys preserved. Validates `channel` is in `[1, 30]` before any I/O.
+/// Other keys untouched. Single write, so the pair is never observably mismatched. Both
+/// validated before any I/O.
 ///
 /// # Errors
 ///
-/// Returns [`ConfigError::Invalid`] when `channel` is `0` or greater than `30`.
+/// Returns [`ConfigError::Invalid`] when either channel is `0` or greater than `30`, or when
+/// `map_channel` equals `pbap_channel`.
 /// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory
 /// cannot be determined.
 /// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
-pub fn set_map_channel(channel: u8) -> Result<(), ConfigError> {
-    crate::validate_channel("device.map_channel", channel)?;
-    patch_config("device", &[("map_channel", i64::from(channel).into())])
+pub fn set_channels(map_channel: u8, pbap_channel: u8) -> Result<(), ConfigError> {
+    crate::validate_channel("device.map_channel", map_channel)?;
+    crate::validate_channel("device.pbap_channel", pbap_channel)?;
+    crate::validate_channel_pair(map_channel, pbap_channel)?;
+
+    patch_config(
+        "device",
+        &[
+            ("map_channel", i64::from(map_channel).into()),
+            ("pbap_channel", i64::from(pbap_channel).into()),
+        ],
+    )
 }
 
-/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+/// Writes `address` and both channels to `~/.config/imsg/imsg.toml`, creating it if absent.
 ///
-/// All other keys preserved. Validates `channel` is in `[1, 30]` before any I/O.
+/// The schema requires `u8`, not `Option<u8>`, so callers must resolve or reject a missing SDP
+/// record before calling. All three validated before any I/O, so a rejected channel never
+/// leaves a partially-written `address`.
 ///
 /// # Errors
 ///
-/// Returns [`ConfigError::Invalid`] when `channel` is `0` or greater than `30`.
-/// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory
-/// cannot be determined.
-/// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
-pub fn set_pbap_channel(channel: u8) -> Result<(), ConfigError> {
-    crate::validate_channel("device.pbap_channel", channel)?;
-    patch_config("device", &[("pbap_channel", i64::from(channel).into())])
-}
-
-/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
-///
-/// Writes `address`, `map_channel`, and `pbap_channel` together — the combined write that automatic
-/// device discovery needs, since a resolved channel has no "not found" representation in config
-/// (the schema requires `u8`, not `Option<u8>`); callers must resolve or reject a missing SDP
-/// record themselves before calling this. All three inputs are validated before any I/O, so a
-/// rejected channel never leaves a partially-written `address`.
-///
-/// # Errors
-///
-/// Returns [`ConfigError::Invalid`] if `address` is not a valid Bluetooth MAC, or if either
-/// channel is `0` or greater than `30`.
+/// Returns [`ConfigError::Invalid`] if `address` is not a valid Bluetooth MAC, either channel is
+/// `0` or greater than `30`, or `map_channel` equals `pbap_channel`.
 /// Returns [`ConfigError::Io`] on filesystem failure or when the user config directory cannot
 /// be determined.
 /// Returns [`ConfigError::Parse`] when the existing config file contains invalid TOML.
@@ -127,6 +111,7 @@ pub fn set_device_and_channels(
         .map_err(|e| ConfigError::Invalid { field: "device.address", msg: e.to_string() })?;
     crate::validate_channel("device.map_channel", map_channel)?;
     crate::validate_channel("device.pbap_channel", pbap_channel)?;
+    crate::validate_channel_pair(map_channel, pbap_channel)?;
 
     patch_config(
         "device",
@@ -154,10 +139,9 @@ pub fn db_path() -> Option<PathBuf> {
 
 /// Abstract-namespace local socket name for the broker serving `addr`.
 ///
-/// On Linux this maps to the kernel abstract socket namespace — no filesystem inode,
-/// automatic kernel cleanup on process death, and `EADDRINUSE` on a second bind (atomic
-/// single-instance election with no TOCTOU window).  The `addr` component (Bluetooth MAC)
-/// gives per-device isolation without a separate registry.
+/// No filesystem inode; the kernel cleans up on process death. A second bind gets
+/// `EADDRINUSE`, giving single-instance election with no TOCTOU window. `addr` provides
+/// per-device isolation without a separate registry.
 ///
 /// # Errors
 ///
@@ -167,7 +151,6 @@ pub fn broker_abstract_name(addr: &str) -> io::Result<Name<'static>> {
     format!("imsg/broker/{addr}").to_ns_name::<GenericNamespaced>()
 }
 
-// $XDG_STATE_HOME/imsg/{kind}-{addr}.log, falling back to ~/.local/state then $TMPDIR
 fn state_log_path(kind: &str, addr: &str) -> PathBuf {
     let base = dirs::state_dir().unwrap_or_else(|| {
         dirs::home_dir().unwrap_or_else(std::env::temp_dir).join(".local/state")
@@ -202,10 +185,9 @@ pub fn hub_lock_path() -> Option<PathBuf> {
     dirs::data_dir().map(|d| d.join("imsg/hub.lock"))
 }
 
-/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file if absent; preserves all other keys.
+/// Writes `hub.node_key` to `~/.config/imsg/imsg.toml`, creating it if absent.
 ///
-/// Does not validate `key` as an iroh `PublicKey` — deferred to connect time via
-/// `key.parse::<transport::iroh::EndpointId>()`.
+/// Other keys untouched. Not validated as an iroh `PublicKey`; deferred to connect time.
 ///
 /// # Errors
 ///
@@ -223,10 +205,9 @@ pub fn set_hub_key(key: &str) -> Result<(), ConfigError> {
     patch_config("hub", &[("node_key", key.into())])
 }
 
-/// Target: `~/.config/imsg/imsg.toml` (XDG). Creates the file and parent directories if absent.
+/// Writes `broker.security_level` to `~/.config/imsg/imsg.toml`, creating it if absent.
 ///
-/// All other keys preserved. Always valid — `SecurityLevel` has no invalid states — so this
-/// only fails on I/O.
+/// Other keys untouched. `SecurityLevel` has no invalid states, so this fails only on I/O.
 ///
 /// # Errors
 ///

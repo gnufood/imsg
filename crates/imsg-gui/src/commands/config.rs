@@ -11,8 +11,7 @@ use super::CommandError;
 ///
 /// # Errors
 ///
-/// Returns [`CommandError`] if no config source sets `device.address`, an existing value fails
-/// validation, or the layered config sources can't be read.
+/// Returns [`CommandError`] if no config source sets `device.address`, or validation fails.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]
@@ -24,8 +23,7 @@ pub fn config_show(config_path: Option<PathBuf>) -> Result<ConfigDto, CommandErr
 ///
 /// # Errors
 ///
-/// Returns [`CommandError`] if `address` is not a valid `XX:XX:XX:XX:XX:XX` MAC, or the config
-/// file can't be written.
+/// Returns [`CommandError`] if `address` is not a valid MAC, or the write fails.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]
@@ -33,35 +31,23 @@ pub fn config_set_device(address: String) -> Result<(), CommandError> {
     Ok(crate::config::set_device(&address)?)
 }
 
-/// Persists the MAP RFCOMM channel to the user config file.
+/// Persists the MAP and PBAP RFCOMM channels together to the user config file.
 ///
 /// # Errors
 ///
-/// Returns [`CommandError`] if `channel` is not in `[1, 30]`, or the config file can't be
-/// written.
+/// Returns [`CommandError`] if a channel is outside `[1, 30]`, the two are equal, or the write
+/// fails.
 #[tauri::command]
 #[specta::specta]
-pub fn config_set_map_channel(channel: u8) -> Result<(), CommandError> {
-    Ok(crate::config::set_map_channel(channel)?)
-}
-
-/// Persists the PBAP RFCOMM channel to the user config file.
-///
-/// # Errors
-///
-/// Returns [`CommandError`] if `channel` is not in `[1, 30]`, or the config file can't be
-/// written.
-#[tauri::command]
-#[specta::specta]
-pub fn config_set_pbap_channel(channel: u8) -> Result<(), CommandError> {
-    Ok(crate::config::set_pbap_channel(channel)?)
+pub fn config_set_channels(map_channel: u8, pbap_channel: u8) -> Result<(), CommandError> {
+    Ok(crate::config::set_channels(map_channel, pbap_channel)?)
 }
 
 /// Persists the RFCOMM `BT_SECURITY` requirement to the user config file.
 ///
 /// # Errors
 ///
-/// Returns [`CommandError`] on filesystem failure or if the config file can't be parsed.
+/// Returns [`CommandError`] on filesystem failure, or if the existing config can't be parsed.
 #[tauri::command]
 #[specta::specta]
 pub fn config_set_broker_security_level(level: SecurityLevelDto) -> Result<(), CommandError> {
@@ -82,8 +68,8 @@ pub fn config_is_device_configured() -> bool {
 ///
 /// # Errors
 ///
-/// Returns [`CommandError`] if `address` is not a valid MAC, either channel is outside
-/// `[1, 30]`, or the config file can't be written.
+/// Returns [`CommandError`] if `address` is not a valid MAC, a channel is outside `[1, 30]`,
+/// the two are equal, or the write fails.
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 #[specta::specta]
