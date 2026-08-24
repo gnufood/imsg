@@ -66,6 +66,8 @@ async fn stream_mns(
 
 Each event is framed as a 4-byte big-endian length prefix followed by the raw event-report bytes. This explicit framing lets the spoke read exactly one event at a time without needing delimiters in the payload itself.
 
+The payload stays raw on purpose. The relay loop in `imsg-session` forwards event-report bytes verbatim and leaves XML parsing to each spoke, so a malformed event costs only the spoke that tried to parse it. The hub's ingest keeps running and the other subscribers are unaffected. Parsing hub-side would invert that: one bad report from the phone could take down the fan-out for everyone.
+
 ## The Spoke: Outbound QUIC Connections
 
 Spokes are clients that connect to the hub. The spoke side lives in `spoke.rs` and provides three connection functions:
