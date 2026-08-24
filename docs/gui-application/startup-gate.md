@@ -117,7 +117,7 @@ The gate's design reflects several specific constraints and choices:
 
 ## Related Documentation
 
-- [Daemon Provisioning](daemon_provisioning.md) — Detailed coverage of self-provisioning and the headless re-exec mechanism
-- [Configuration](configuration.md) — How the layered config system works and what options the gate uses
-- [Synchronization](synchronization.md) — The MAP sync protocol and the `sync_enabled` flag
-- [Store](store.md) — The local SQLite store and its relationship to the broker's store
+- [Daemon Provisioning](daemon-self-provisioning.md) — Detailed coverage of self-provisioning and the headless re-exec mechanism
+- [Configuration](../configuration/index.md) — How the layered config system works and what options the gate uses
+- [Synchronization](../storage/sync-cursors.md) — The MAP sync protocol and the `sync_enabled` flag
+- [Store](../storage/index.md) — The local SQLite store and its relationship to the broker's store

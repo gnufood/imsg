@@ -204,6 +204,6 @@ pub type Stream = Either<HubStream, bluer::rfcomm::Stream>;
 ## See Also
 
 - [Live Query API](live-query-api.md) — reading messages directly from the device without store writes
-- [Sync API](./sync-api.md) — store-integrated message and contact synchronization
-- [Outbox API](./outbox-api.md) — outgoing message push and delivery tracking
-- [MNS API](./mns-api.md) — Message Notification Service event handling
+- [Sync API](./sending-and-sync.md) — store-integrated message and contact synchronization
+- [Outbox API](../storage/outbox-lifecycle.md) — outgoing message push and delivery tracking
+- [MNS API](../protocol-clients/map-client-walkthrough.md#phase-5-mns-event-reception) — Message Notification Service event handling

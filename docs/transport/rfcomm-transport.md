@@ -172,6 +172,6 @@ The resulting `ObexTransport` yields and accepts complete OBEX packets as `bytes
 
 ## Related Modules
 
-- [`discover`](discover.md): Paired device listing and SDP channel resolution
-- [`iroh`](iroh.md): QUIC hub/spoke transport for remote machine connectivity
-- [`tcp`](tcp.md): TCP stream connector for development proxy
+- [`discover`](device-discovery.md): Paired device listing and SDP channel resolution
+- [`iroh`](iroh-quic-transport.md): QUIC hub/spoke transport for remote machine connectivity
+- `tcp`: TCP stream connector for the development bridge; no dedicated page, see `crates/imsg-transport/src/tcp.rs`

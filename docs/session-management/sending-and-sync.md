@@ -9,7 +9,7 @@ The system operates with two distinct data paths:
 1. **Live queries** — read directly from the device without persisting, used for immediate UI display
 2. **Persistent sync** — ingests messages into a local SQLite store with cursor-based incremental backfill
 
-The sending and sync flows belong to the persistent path. They assume an established MAP session with notification registration enabled (see [Connection Establishment](./connection-establishment.md) for the handshake sequence).
+The sending and sync flows belong to the persistent path. They assume an established MAP session with notification registration enabled (see [Connection Establishment](./connection-api.md#session-establishment) for the handshake sequence).
 
 ---
 
@@ -364,7 +364,7 @@ The `MapClient` never accesses the store directly; the session layer only moves 
 
 ## Related Documentation
 
-- [Connection Establishment](./connection-establishment.md) — MAP session setup, OBEX handshake, notification registration
-- [Live Queries](./live-queries.md) — Direct device reads without persistence
-- [Contact Sync](./contact-sync.md) — PBAP-based contact synchronization with version watermarks
-- [Retry Policy](./retry-policy.md) — Transient vs. permanent error classification and backoff schedule
+- [Connection Establishment](./connection-api.md#session-establishment) — MAP session setup, OBEX handshake, notification registration
+- [Live Queries](./live-query-api.md) — Direct device reads without persistence
+- [Contact Sync](../storage/contact-caching.md) — PBAP-based contact synchronization with version watermarks
+- [Retry Policy](./connection-api.md#retry-policy) — Transient vs. permanent error classification and backoff schedule

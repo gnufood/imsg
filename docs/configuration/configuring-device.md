@@ -161,6 +161,6 @@ The device address becomes required for all subsequent operations—the broker c
 
 ## Related Documentation
 
-- [Configuration Loading](./configuration-loading.md) — How `load()` merges and validates the layered configuration
-- [Broker Configuration](./broker-configuration.md) — Session broker lifecycle and timing policy
-- [Error Types](./config-error.md) — Detailed `ConfigError` variants and their causes
+- [Configuration Loading](./config-layering.md) — How `load()` merges and validates the layered configuration
+- [Broker Configuration](./config-options.md#broker-configuration) — Session broker lifecycle and timing policy
+- [Error Types](./config-options.md#errors) — Detailed `ConfigError` variants and their causes

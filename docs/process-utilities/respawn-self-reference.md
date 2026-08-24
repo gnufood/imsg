@@ -113,5 +113,5 @@ let child = respawn_self(
 
 ## See Also
 
-- [`respawn_args`](./respawn_args.md) — Pure function for building the argument vector.
-- [`open_log`](./open_log.md) — Helper for creating log files with appropriate permissions.
+- [`respawn_args`](#argument-assembly) — Pure function for building the argument vector.
+- [`open_log`](#log-file-creation) — Helper for creating log files with appropriate permissions.

@@ -101,5 +101,5 @@ assert_eq!(listing.folders()[1].name(), "sent");
 
 ## See Also
 
-- [MAP Protocol Overview](../map-overview.md) — High-level MAP protocol flow.
-- [bMessage Encoding](../bmessage-encoding.md) — bMessage format for MAP message transfer.
+- [MAP Protocol Overview](../protocol-clients/map-client-walkthrough.md) — High-level MAP protocol flow.
+- [bMessage Encoding](./bmessage-format.md) — bMessage format for MAP message transfer.

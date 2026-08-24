@@ -120,7 +120,7 @@ The caller owns all presentation and selection logic. The discovery module provi
 
 ## Relationship to RFCOMM
 
-The resolved channel numbers are used by the [`rfcomm`](rfcomm/index.html) module to establish connections:
+The resolved channel numbers are used by the [`rfcomm`](rfcomm-transport.md) module to establish connections:
 
 - `rfcomm::connect()` takes a `bluer::Address` and a channel number to open an RFCOMM socket.
 - The channel must be obtained via SDP resolution (this module) or known a priori from manual configuration.
@@ -135,4 +135,4 @@ The resolved channel numbers are used by the [`rfcomm`](rfcomm/index.html) modul
 
 The `list_paired_devices` and `resolve_channels` functions require a real BlueZ adapter and are not unit-tested. Unit tests in `discover.rs` verify error message formatting and the default value of `Channels`.
 
-See [`rfcomm::connect`](rfcomm/index.html#connect) for the BT_CONNECTED gate behavior, which ensures the RFCOMM link is fully established before the transport is returned to callers.
+See [`rfcomm::connect`](rfcomm-transport.md#connect) for the BT_CONNECTED gate behavior, which ensures the RFCOMM link is fully established before the transport is returned to callers.

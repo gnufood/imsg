@@ -205,6 +205,6 @@ The session layer does not own the retry loop itself — that lives in imsg-brok
 
 ## Related Concepts
 
-- [Transport Architecture](./transport-architecture.md) — details on RFCOMM and iroh hub transport implementation
-- [Broker Lifecycle](./broker-lifecycle.md) — how the broker drives session creation, retry, and teardown
-- [MNS and Event Handling](./mns-events.md) — the notification service that complements the session layer
+- [Transport Architecture](../transport/index.md) — details on RFCOMM and iroh hub transport implementation
+- [Broker Lifecycle](../broker-daemon/device-actor-lifecycle.md) — how the broker drives session creation, retry, and teardown
+- [MNS and Event Handling](../broker-daemon/broker-daemon-overview.md#mns-and-event-notification) — the notification service that complements the session layer

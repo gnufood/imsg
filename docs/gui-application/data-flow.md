@@ -203,5 +203,5 @@ The dual-store pattern has practical consequences for frontend developers:
 ## Related Concepts
 
 - The [Startup Gate](startup-gate.md) page covers the gate's state machine and error handling in detail.
-- The [Broker IPC](./broker_ipc.md) page explains the wire protocol between the GUI and daemon.
-- The [Store Architecture](./store_architecture.md) page covers the local store's design and row types.
+- The [Broker IPC](../ipc/ipc-protocol.md) page explains the wire protocol between the GUI and daemon.
+- The [Store Architecture](../storage/message-storage.md) page covers the local store's design and row types.

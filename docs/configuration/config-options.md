@@ -192,6 +192,6 @@ if is_device_configured(None) {
 
 ## See Also
 
-- [Configuration file format specification](../explanation/configuration-file-format.md)
-- [Daemon startup flow](../how-to/daemon-startup.md)
-- [Device pairing and SDP discovery](../how-to/device-discovery.md)
+- [Configuration file format specification](./config-layering.md)
+- [Daemon startup flow](../broker-daemon/index.md)
+- [Device pairing and SDP discovery](../transport/device-discovery.md)

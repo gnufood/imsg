@@ -145,8 +145,8 @@ The separation of outbox (intent) and messages (result) may seem redundant, but 
 
 ## Related Concepts
 
-- The [Folder Sync and Cursors](folder-sync.md) page covers how the sync worker tracks progress and how reconciliation fits into the broader sync loop
+- The [Folder Sync and Cursors](sync-cursors.md) page covers how the sync worker tracks progress and how reconciliation fits into the broader sync loop
 - The [Message Storage](message-storage.md) page covers the messages table schema and read paths
-- The [Error Handling](error-handling.md) page covers how the store surfaces connection and transition errors to callers
+- [Error Types](store-api.md#error-types) lists the variants the store returns, and [Error Handling Philosophy](message-storage.md#error-handling-philosophy) explains how they surface to callers
 
 The outbox and outgoing lifecycle is one of the more intricate parts of the store because it must handle ambiguity gracefully. By maintaining two parallel state machines, using atomic transactions, and deferring to reconciliation for ambiguous cases, the system can make progress even under adverse network conditions while preserving a consistent internal model.

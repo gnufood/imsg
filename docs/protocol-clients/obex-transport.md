@@ -361,6 +361,6 @@ The separation of framing, packet parsing, and state management reflects several
 
 ## Related Concepts
 
-- The [OBEX Packet Format](obex-packet-format.md) reference page provides detailed specifications for each opcode and header encoding.
-- The [PBAP Session Flow](pbap-session.md) and [MAP Session Flow](map-session.md) pages trace the complete request-response sequences for each profile.
-- The [Transport Abstraction](transport-abstraction.md) page explains how the framing layer integrates with different underlying transports (RFCOMM, TCP, in-memory).
+- The [Packet Structure](#packet-structure-opcode-extras-and-headers) reference page provides detailed specifications for each opcode and header encoding.
+- The [PBAP Session Flow](pbap-client-walkthrough.md) and [MAP Session Flow](map-client-walkthrough.md) pages trace the complete request-response sequences for each profile.
+- The [Transport](../transport/index.md) section covers the underlying stream connectors the framing layer wraps: RFCOMM for Bluetooth Classic and iroh QUIC for remote hub/spoke.

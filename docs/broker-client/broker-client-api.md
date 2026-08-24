@@ -278,6 +278,6 @@ High-level operations (`send`, `delete`, `sync`, `folders`, `sync_contacts`) sur
 
 ## See Also
 
-- [Broker Protocol Reference](./broker_protocol.md) — full request/response specification
-- [Broker Configuration](./broker_config.md) — startup timing and lifecycle policy
-- [Session State Machine](./session_state.md) — MAP connection lifecycle details
+- [Broker Protocol Reference](../ipc/ipc-protocol.md) — full request/response specification
+- [Broker Configuration](../configuration/config-options.md#broker-configuration) — startup timing and lifecycle policy
+- [Session State Machine](../ipc/ipc-protocol.md#session-state) — MAP connection lifecycle details

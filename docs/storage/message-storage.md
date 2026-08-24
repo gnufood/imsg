@@ -121,6 +121,6 @@ Silent no-ops are used extensively: upserts ignore existing handles, updates and
 
 ## Related Concepts
 
-- The [Sync Architecture](./sync-architecture.md) page covers how the store interacts with MAP protocol synchronization, including folder backfill and push operations.
-- The [Contact Synchronization](./contact-sync.md) page details how PBAP contacts are fetched, normalized, and cached.
-- The [Outbox Worker](./outbox-worker.md) page explains the background worker that drains queued outbox entries and handles retry logic.
+- The [Sync Architecture](./sync-cursors.md) page covers how the store interacts with MAP protocol synchronization, including folder backfill and push operations.
+- The [Contact Synchronization](./contact-caching.md) page details how PBAP contacts are fetched, normalized, and cached.
+- The [Outbox Worker](./outbox-lifecycle.md) page explains the background worker that drains queued outbox entries and handles retry logic.

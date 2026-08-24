@@ -424,6 +424,6 @@ pub async fn disconnect(mut self) -> Result<(), PbapError> {
 
 - [OBEX Transport](obex-transport.md) — framed I/O and packet codec
 - [Contact Caching](../storage/contact-caching.md) — higher-level caching layer built on PBAP
-- [`PbapClient` API reference](../imsg_pbap/client/struct.PbapClient.html) — method signatures and error types
-- [`PhonebookPath` enum](../imsg_pbap/phonebook/enum.PhonebookPath.html) — available phonebook paths
-- [`PhonebookMetadata` struct](../imsg_pbap/metadata/struct.PhonebookMetadata.html) — metadata fields
+- [`PbapClient` API reference](https://docs.rs/imsg-pbap/latest/imsg_pbap/client/struct.PbapClient.html) — method signatures and error types
+- [`PhonebookPath` enum](https://docs.rs/imsg-pbap/latest/imsg_pbap/phonebook/enum.PhonebookPath.html) — available phonebook paths
+- [`PhonebookMetadata` struct](https://docs.rs/imsg-pbap/latest/imsg_pbap/metadata/struct.PhonebookMetadata.html) — metadata fields

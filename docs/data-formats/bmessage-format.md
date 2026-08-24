@@ -265,6 +265,6 @@ END:BMSG
 
 ## See Also
 
-- [Phone Number Normalization Reference](phone-number-normalization-reference.html) — E.164 normalization for addresses in bMessage
-- [vCard Format Reference](vcard-format-reference.html) — Contact structure parsing
-- [XML Folder Listing Reference](xml-folder-listing-reference.html) — MAP folder listing responses
+- [Phone Number Normalization](phone-number-normalization.md) — E.164 normalization for addresses in bMessage
+- [vCard Structure (BVCard)](#vcard-structure-bvcard) — Contact structure parsing
+- [MAP Folder Listing XML](map-folder-listing.md) — MAP folder listing responses

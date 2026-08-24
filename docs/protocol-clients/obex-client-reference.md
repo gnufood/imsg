@@ -155,10 +155,10 @@ let req = obex.disconnect_request()?;
 transport.send(req).await?;
 ```
 
-Higher-level clients (MAP, PBAP) wrap `ObexClient` and add profile-specific request construction and response parsing. See [MAP Client Reference](./imsg-map/client-reference.md) and [PBAP Client Reference](./imsg-pbap/client-reference.md) for those layers.
+Higher-level clients (MAP, PBAP) wrap `ObexClient` and add profile-specific request construction and response parsing. See the [MAP and PBAP Client API Reference](./profile-client-reference.md) for those layers.
 
 ## See Also
 
-- [OBEX Packet Reference](./imsg-obex/packet-reference.md) — wire format details, opcode enumeration, and `PacketExtra` variants.
-- [OBEX Headers Reference](./imsg-obex/headers-reference.md) — header encoding rules and tag bytes.
-- [OBEX Server Reference](./imsg-obex/server-reference.md) — symmetric server state machine.
+- [OBEX Packet Structure](./obex-transport.md#packet-structure-opcode-extras-and-headers) — wire format details, opcode enumeration, and `PacketExtra` variants.
+- [Headers](#headers) — header encoding rules and tag bytes.
+- [The Server State Machine](./obex-transport.md#the-server-state-machine) — symmetric server state machine.

@@ -548,5 +548,5 @@ Both MAP and PBAP clients enforce a maximum response body size of 4 MiB (`MAX_BO
 
 ## See Also
 
-- [MNS Server Reference](mns-server-reference.md) — MAP notification server for receiving event reports
-- [OBEX Codec Reference](obex-codec-reference.md) — OBEX packet encoding and decoding
+- [MNS Event Reception](map-client-walkthrough.md#phase-5-mns-event-reception) — MAP notification server for receiving event reports
+- [OBEX Framing](obex-transport.md#framing-from-bytes-to-packets) — OBEX packet encoding and decoding

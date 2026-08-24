@@ -281,6 +281,6 @@ Test-only: every production path is BlueZ-backed. A transport with no link-liven
 
 ## See Also
 
-- [Server Reference](./server-reference.md) — Socket binding, accept loop, and connection handling
-- [Shutdown Reference](./shutdown-reference.md) — Graceful shutdown coordinator for persistent mode
-- [Handler Reference](./handler-reference.md) — Per-connection request handling and readiness gating
+- [Server Reference](./broker-daemon-overview.md#abstract-socket-binding-and-single-instance-election) — Socket binding, accept loop, and connection handling
+- [Shutdown Reference](./daemon-graceful-shutdown.md) — Graceful shutdown coordinator for persistent mode
+- [Handler Reference](./running-broker-commands.md#phase-3-readiness-gating) — Per-connection request handling and readiness gating
