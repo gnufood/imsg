@@ -35,6 +35,23 @@ docs:
 gen-completions:
     cargo run --example gen-completions -p imsg
 
+metainfo-release VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    FILE=crates/imsg-gui/packaging/foo.gnu.imsg.metainfo.xml
+    VERSION=$(echo '{{VERSION}}' | sed 's/^v//')
+    if grep -q "<release version=\"${VERSION}\"" "${FILE}"; then
+        exit 0
+    fi
+    ENTRY=$(mktemp)
+    trap 'rm -f "${ENTRY}"' EXIT
+    {
+        printf '    <release version="%s" date="%s">\n' "${VERSION}" "$(date +%F)"
+        printf '      <url>https://github.com/gnufood/imsg/releases/tag/v%s</url>\n' "${VERSION}"
+        printf '    </release>\n'
+    } > "${ENTRY}"
+    sed -i "/^  <releases>$/r ${ENTRY}" "${FILE}"
+
 # The Rust side of imsg-gui itself — not covered by the workspace-wide check/lint/test above.
 gui-cargo-check:
     cargo check -p imsg-gui --all-targets --all-features

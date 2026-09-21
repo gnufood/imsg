@@ -26,6 +26,30 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.png"
-    ]
+    ],
+    "category": "SocialNetworking",
+    "publisher": "gnufood",
+    "homepage": "https://github.com/gnufood/imsg",
+    "license": "MIT",
+    "licenseFile": "../../LICENSE",
+    "shortDescription": "Read and send iMessages over Bluetooth from Linux",
+    "longDescription": "imsg reads and sends iMessages on a paired iPhone, from a Linux desktop. It talks to the phone directly over the standard Bluetooth Message Access Profile (MAP) and Phone Book Access Profile (PBAP), with no iCloud login, no Apple hardware, and no macOS bridge involved.",
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/share/metainfo/foo.gnu.imsg.metainfo.xml": "packaging/foo.gnu.imsg.metainfo.xml"
+        }
+      },
+      "rpm": {
+        "files": {
+          "/usr/share/metainfo/foo.gnu.imsg.metainfo.xml": "packaging/foo.gnu.imsg.metainfo.xml"
+        }
+      },
+      "appimage": {
+        "files": {
+          "/usr/share/metainfo/foo.gnu.imsg.metainfo.xml": "packaging/foo.gnu.imsg.metainfo.xml"
+        }
+      }
+    }
   }
 }

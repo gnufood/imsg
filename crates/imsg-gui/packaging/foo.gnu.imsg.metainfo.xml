@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>foo.gnu.imsg</id>
+  <launchable type="desktop-id">imsg.desktop</launchable>
+
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>imsg</name>
+  <summary>Read and send iMessages over Bluetooth from Linux</summary>
+
+  <developer id="foo.gnu">
+    <name>gnufood</name>
+  </developer>
+
+  <description>
+    <p>
+      imsg reads and sends iMessages on a paired iPhone, from a Linux desktop. It talks
+      to the phone directly over the standard Bluetooth Message Access Profile (MAP) and
+      Phone Book Access Profile (PBAP), the same protocols a car stereo uses.
+    </p>
+    <p>
+      There is no iCloud login, no Apple hardware, and no macOS bridge involved. Your
+      messages stay between the phone and the local machine, in an encrypted database on
+      disk. All you need is a Linux system running BlueZ and a phone that is already paired.
+    </p>
+    <p>
+      Browse conversations, read message history, send replies, and delete threads. Contacts
+      are pulled from the phone's address book so conversations show names instead of phone
+      numbers. A command line client ships alongside the desktop app for scripting the
+      same operations.
+    </p>
+  </description>
+
+  <url type="homepage">https://github.com/gnufood/imsg</url>
+  <url type="bugtracker">https://github.com/gnufood/imsg/issues</url>
+  <url type="vcs-browser">https://github.com/gnufood/imsg</url>
+
+  <content_rating type="oars-1.1"/>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Conversation list beside an open thread with delivery states</caption>
+      <image type="source" width="1280" height="800">https://raw.githubusercontent.com/gnufood/imsg/main/assets/screens/03-messages-main.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Picking which paired iPhone to connect to</caption>
+      <image type="source" width="1280" height="800">https://raw.githubusercontent.com/gnufood/imsg/main/assets/screens/01-gate-devices.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings showing device, daemon, channel and security status</caption>
+      <image type="source" width="1280" height="800">https://raw.githubusercontent.com/gnufood/imsg/main/assets/screens/06-settings-status.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Confirming deletion of a conversation</caption>
+      <image type="source" width="1280" height="800">https://raw.githubusercontent.com/gnufood/imsg/main/assets/screens/05-delete-confirm.png</image>
+    </screenshot>
+    <screenshot environment="gnome:dark">
+      <caption>The same conversation view in dark mode</caption>
+      <image type="source" width="1280" height="800">https://raw.githubusercontent.com/gnufood/imsg/main/assets/screens/08-messages-dark.png</image>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="0.4.0" date="2026-08-03">
+      <url>https://github.com/gnufood/imsg/releases/tag/v0.4.0</url>
+    </release>
+  </releases>
+</component>
