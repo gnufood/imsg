@@ -9,7 +9,7 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
-formats = { package = "imsg-formats", version = "0.4.0", path = "../imsg-formats" }
+formats = { package = "imsg-formats", version = "0.5.0", path = "../imsg-formats" }
 rusqlite = { version = "0.37", features = ["bundled-sqlcipher"] }
 # tokio-rusqlite 0.7 pins rusqlite ^0.37; versions must stay in sync
 tokio-rusqlite = "0.7"

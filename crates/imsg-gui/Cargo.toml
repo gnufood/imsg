@@ -32,21 +32,21 @@ tauri-specta  = { version = "2.0.0-rc.25", features = ["typescript"] }
 # feature above already pulls this in transitively) — declared directly since
 # `examples/export_bindings.rs` names `specta_typescript::Typescript` itself.
 specta-typescript = "0.0.12"
-config        = { package = "imsg-config",  version = "0.4.0", path = "../imsg-config" }
-keyring       = { package = "imsg-keyring", version = "0.4.0", path = "../imsg-keyring" }
-store         = { package = "imsg-store",   version = "0.4.0", path = "../imsg-store" }
-service       = { package = "imsg-service", version = "0.4.0", path = "../imsg-service" }
-broker-client = { package = "imsg-broker-client", version = "0.4.0", path = "../imsg-broker-client" }
+config        = { package = "imsg-config",  version = "0.5.0", path = "../imsg-config" }
+keyring       = { package = "imsg-keyring", version = "0.5.0", path = "../imsg-keyring" }
+store         = { package = "imsg-store",   version = "0.5.0", path = "../imsg-store" }
+service       = { package = "imsg-service", version = "0.5.0", path = "../imsg-service" }
+broker-client = { package = "imsg-broker-client", version = "0.5.0", path = "../imsg-broker-client" }
 # The daemon runtime itself (`run_daemon`) — needed for self-provisioning's headless mode,
 # which runs the broker in-process rather than talking to one over IPC like every other
 # imsg-gui command. See `daemon/provision.rs`.
-imsg-broker   = { version = "0.4.0", path = "../imsg-broker" }
-ipc           = { package = "imsg-ipc", version = "0.4.0", path = "../imsg-ipc", features = ["specta"] }
+imsg-broker   = { version = "0.5.0", path = "../imsg-broker" }
+ipc           = { package = "imsg-ipc", version = "0.5.0", path = "../imsg-ipc", features = ["specta"] }
 # `respawn_self` — the headless-child spawn/log-redirect mechanics `daemon/provision.rs` shares
 # with the CLI's own two spawn sites.
-imsg-proc     = { version = "0.4.0", path = "../imsg-proc" }
+imsg-proc     = { version = "0.5.0", path = "../imsg-proc" }
 # `discover::{list_paired_devices, resolve_channels}` — the device-config gate's data source.
-transport     = { package = "imsg-transport", version = "0.4.0", path = "../imsg-transport" }
+transport     = { package = "imsg-transport", version = "0.5.0", path = "../imsg-transport" }
 # `watch`/`Notify` for the startup gate's status/proceed signalling (`gate.rs`); `time` for
 # the headless child's connected-announcement poll (`daemon/provision.rs`).
 tokio         = { version = "1.52.3", features = ["sync", "time"] }

@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.5.0] - 2026-09-21
+
+### Added
+
+- **gui:** Ship AppStream metainfo for Linux app stores
+
+### Changed
+
+- Add pre-1.0 stability warning and curated CodeWiki module documentation
+- **wiki:** Fix broken cross-links across the module documentation
+- **transport:** Explain why MNS events relay verbatim to spokes
+
+### Fixed
+
+- **config:** Reject equal MAP/PBAP channels and make paired writes atomic
+- **gui:** Stop channel-override save from racing two IPC calls
 ## [0.4.0] - 2026-08-03
 
 ### Added
@@ -86,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **readme:** Rewrite around desktop app and CLI as equal peers
 - **readme:** Add CI, crates.io version, MSRV, and license badges
 - **gui:** Rewrite frontend README to reflect actual GUI capabilities
+- **roadmap:** Link Known Issues items to filed GitHub issues
 
 ### Fixed
 
@@ -104,6 +121,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **cli:** Inherit workspace rust-version so published metadata isn't empty
 - **cliff:** Stop letting chore commits escape the skip rule via "remove"
 - **gui:** Stop imsg-gui from being publish-eligible
+- **config:** Isolate XDG_CONFIG_HOME in write tests to stop cross-test leakage
+- **dist:** Scope release builds to only the packaged binary
+- **ci:** Pass --bundles to tauri-action so GUI packaging actually runs
 
 ### Security
 
@@ -179,13 +199,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **cli:** Inherit workspace version so cargo-release renders release commit
-## [0.1.3] - 2026-06-15
-
-### Fixed
-
 - **transport:** Drain proxy tasks before endpoint close
 - **cli:** Skip undelete — iOS ignores SetMessageStatus (GAP-06)
+- **cli:** Inherit workspace version so cargo-release renders release commit
 ## [0.1.2] - 2026-06-14
 
 ### Fixed
